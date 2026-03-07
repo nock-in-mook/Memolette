@@ -1,0 +1,15 @@
+remote_bat*.bat
+remote_start*.sh
+
+# Xcode
+*.xcuserdata
+*.xcworkspace
+xcuserdata/
+DerivedData/
+build/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# macOS
+.DS_Store

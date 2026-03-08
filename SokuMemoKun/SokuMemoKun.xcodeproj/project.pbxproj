@@ -18,6 +18,8 @@
 		B1000000000000000000AC /* TagTitleSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000AC /* TagTitleSheetView.swift */; };
 		B1000000000000000000AD /* MemoInputViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000AD /* MemoInputViewModel.swift */; };
 		B1000000000000000000AE /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000AE /* Assets.xcassets */; };
+		B1000000000000000000B1 /* TrapezoidTabShape.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000B1 /* TrapezoidTabShape.swift */; };
+		B1000000000000000000B2 /* TabbedMemoListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000B2 /* TabbedMemoListView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -33,6 +35,8 @@
 		A1000000000000000000AD /* MemoInputViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoInputViewModel.swift; sourceTree = "<group>"; };
 		A1000000000000000000AE /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A1000000000000000000AF /* SokuMemoKun.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SokuMemoKun.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1000000000000000000B1 /* TrapezoidTabShape.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrapezoidTabShape.swift; sourceTree = "<group>"; };
+		A1000000000000000000B2 /* TabbedMemoListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabbedMemoListView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -84,6 +88,8 @@
 				A1000000000000000000AA /* MemoRowView.swift */,
 				A1000000000000000000AB /* TagFilterPickerView.swift */,
 				A1000000000000000000AC /* TagTitleSheetView.swift */,
+				A1000000000000000000B1 /* TrapezoidTabShape.swift */,
+				A1000000000000000000B2 /* TabbedMemoListView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -184,6 +190,8 @@
 				B1000000000000000000AB /* TagFilterPickerView.swift in Sources */,
 				B1000000000000000000AC /* TagTitleSheetView.swift in Sources */,
 				B1000000000000000000AD /* MemoInputViewModel.swift in Sources */,
+				B1000000000000000000B1 /* TrapezoidTabShape.swift in Sources */,
+				B1000000000000000000B2 /* TabbedMemoListView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

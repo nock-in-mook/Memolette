@@ -3,13 +3,11 @@ import SwiftData
 
 struct MemoInputView: View {
     @Bindable var viewModel: MemoInputViewModel
-    var isInputFocused: FocusState<Bool>.Binding
     @Environment(\.modelContext) private var modelContext
 
     var body: some View {
         VStack(spacing: 8) {
             TextEditor(text: $viewModel.inputText)
-                .focused(isInputFocused)
                 .frame(minHeight: 100, maxHeight: 150)
                 .padding(8)
                 .overlay(

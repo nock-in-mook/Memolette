@@ -21,9 +21,9 @@ struct NewTagSheetView: View {
                     TextField("タグ名を入力（20文字まで）", text: $tagName)
                         .font(.system(size: 16, design: .rounded))
                         .padding(10)
-                        .background(
+                        .overlay(
                             RoundedRectangle(cornerRadius: 8)
-                                .fill(Color(uiColor: .secondarySystemBackground))
+                                .stroke(Color.gray.opacity(0.2), lineWidth: 1)
                         )
                         .onChange(of: tagName) { _, newValue in
                             if newValue.count > 20 {

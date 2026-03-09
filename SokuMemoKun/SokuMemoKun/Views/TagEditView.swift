@@ -11,94 +11,114 @@ struct TagEditView: View {
     @State private var selectedForDeletion: Set<UUID> = []
 
     var body: some View {
-        VStack(spacing: 0) {
-            // 上部ボタン行
-            HStack {
-                if isDeleteMode {
-                    Button("キャンセル") {
+        // タグ一覧（ボタンもリスト内に含める）
+        List {
+            // 上部: 新規追加 / 選択削除ボタン
+            if isDeleteMode {
+                HStack {
+                    Button {
                         isDeleteMode = false
                         selectedForDeletion.removeAll()
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 12))
+                            Text("キャンセル")
+                                .font(.system(size: 13, design: .rounded))
+                        }
+                        .foregroundStyle(.secondary)
                     }
-                    .font(.system(size: 14, design: .rounded))
 
                     Spacer()
 
                     Button {
                         deleteSelected()
                     } label: {
-                        Text("削除(\(selectedForDeletion.count))")
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundStyle(.red)
+                        HStack(spacing: 4) {
+                            Image(systemName: "trash")
+                                .font(.system(size: 12))
+                            Text("削除(\(selectedForDeletion.count))")
+                                .font(.system(size: 13, weight: .bold, design: .rounded))
+                        }
+                        .foregroundStyle(.red)
                     }
                     .disabled(selectedForDeletion.isEmpty)
-                } else {
+                }
+                .listRowBackground(Color.clear)
+            } else {
+                HStack {
+                    Button {
+                        showNewTagSheet = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 14))
+                            Text("新規追加")
+                                .font(.system(size: 13, design: .rounded))
+                        }
+                    }
+
                     Spacer()
 
                     Button {
                         isDeleteMode = true
                         selectedForDeletion.removeAll()
                     } label: {
-                        Image(systemName: "trash")
-                            .font(.system(size: 14))
-                            .foregroundStyle(.red.opacity(0.7))
+                        HStack(spacing: 4) {
+                            Image(systemName: "trash")
+                                .font(.system(size: 12))
+                            Text("選択削除")
+                                .font(.system(size: 13, design: .rounded))
+                        }
+                        .foregroundStyle(.red.opacity(0.7))
                     }
                     .disabled(tags.isEmpty)
-
-                    Button {
-                        showNewTagSheet = true
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 18))
-                    }
                 }
+                .listRowBackground(Color.clear)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
 
             // タグ一覧
-            List {
-                ForEach(tags) { tag in
-                    Button {
+            ForEach(tags) { tag in
+                Button {
+                    if isDeleteMode {
+                        toggleDeletion(tag)
+                    } else {
+                        editingTag = tag
+                    }
+                } label: {
+                    HStack(spacing: 10) {
+                        // 削除モード時のチェックマーク
                         if isDeleteMode {
-                            toggleDeletion(tag)
-                        } else {
-                            editingTag = tag
+                            Image(systemName: selectedForDeletion.contains(tag.id)
+                                  ? "checkmark.circle.fill" : "circle")
+                                .font(.system(size: 20))
+                                .foregroundStyle(selectedForDeletion.contains(tag.id)
+                                                 ? .red : .gray.opacity(0.4))
                         }
-                    } label: {
-                        HStack(spacing: 10) {
-                            // 削除モード時のチェックマーク
-                            if isDeleteMode {
-                                Image(systemName: selectedForDeletion.contains(tag.id)
-                                      ? "checkmark.circle.fill" : "circle")
-                                    .font(.system(size: 20))
-                                    .foregroundStyle(selectedForDeletion.contains(tag.id)
-                                                     ? .red : .gray.opacity(0.4))
-                            }
 
-                            // カラー付きタグ名
-                            Text(tag.name)
-                                .font(.system(size: 15, weight: .medium, design: .rounded))
-                                .foregroundStyle(.primary.opacity(0.85))
-                                .lineLimit(1)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(tagColor(for: tag.colorIndex))
-                                )
+                        // カラー付きタグ名（文字色は黒）
+                        Text(tag.name)
+                            .font(.system(size: 15, weight: .medium, design: .rounded))
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(tagColor(for: tag.colorIndex))
+                            )
 
-                            Spacer()
+                        Spacer()
 
-                            if !isDeleteMode {
-                                // メモ数
-                                Text("\(tag.memos.count)件")
-                                    .font(.system(size: 12, design: .rounded))
-                                    .foregroundStyle(.tertiary)
+                        if !isDeleteMode {
+                            // メモ数
+                            Text("\(tag.memos.count)件")
+                                .font(.system(size: 12, design: .rounded))
+                                .foregroundStyle(.tertiary)
 
-                                Image(systemName: "chevron.right")
-                                    .font(.system(size: 12))
-                                    .foregroundStyle(.tertiary)
-                            }
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12))
+                                .foregroundStyle(.tertiary)
                         }
                     }
                 }
@@ -163,7 +183,7 @@ struct ColorPaletteGrid: View {
     }
 }
 
-// プレビュー枠（タグ:ラベル + タグパネル）
+// プレビュー枠（プレビューラベル + タグパネル）
 struct TagPreviewBox: View {
     let name: String
     let colorIndex: Int
@@ -179,29 +199,19 @@ struct TagPreviewBox: View {
                 .font(.system(size: 12, design: .rounded))
                 .foregroundStyle(.secondary)
 
-            // タグパネル（メイン画面と同じ見た目）
-            VStack(alignment: .leading, spacing: 1) {
-                Text("タグ:")
-                    .font(.system(size: 9, design: .rounded))
-                    .foregroundStyle(.tertiary)
-                Text(displayName)
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundStyle(.primary.opacity(0.8))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(tagColor(for: colorIndex))
-                    )
-            }
+            // タグパネル（メイン画面と同じ見た目、タグ:なし）
+            Text(displayName)
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .foregroundStyle(.primary.opacity(0.8))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(tagColor(for: colorIndex))
+                )
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color(uiColor: .secondarySystemBackground))
-        )
         .overlay(
             RoundedRectangle(cornerRadius: 10)
                 .stroke(Color.gray.opacity(0.2), lineWidth: 1)
@@ -220,7 +230,7 @@ struct TagDetailEditView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
-                // タグ名入力
+                // タグ名入力（背景なし）
                 VStack(alignment: .leading, spacing: 6) {
                     Text("タグ名")
                         .font(.system(size: 13, weight: .medium, design: .rounded))
@@ -229,9 +239,9 @@ struct TagDetailEditView: View {
                     TextField("タグ名を入力（20文字まで）", text: $editName)
                         .font(.system(size: 16, design: .rounded))
                         .padding(10)
-                        .background(
+                        .overlay(
                             RoundedRectangle(cornerRadius: 8)
-                                .fill(Color(uiColor: .secondarySystemBackground))
+                                .stroke(Color.gray.opacity(0.2), lineWidth: 1)
                         )
                         .onChange(of: editName) { _, newValue in
                             if newValue.count > 20 {
@@ -254,7 +264,7 @@ struct TagDetailEditView: View {
                     ColorPaletteGrid(selectedIndex: $editColorIndex)
                 }
 
-                // プレビュー枠
+                // プレビュー枠（コンパクト）
                 TagPreviewBox(name: editName, colorIndex: editColorIndex)
 
                 Spacer()

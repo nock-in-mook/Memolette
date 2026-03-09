@@ -122,6 +122,7 @@ struct TagEditView: View {
                         }
                     }
                 }
+                .buttonStyle(.plain)
             }
         }
         .navigationTitle("タグ編集")

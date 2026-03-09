@@ -28,5 +28,7 @@ class MemoInputViewModel {
         context.insert(memo)
         inputText = ""
         titleText = ""
+        // 保存後、デフォルト設定からマークダウンON/OFFをリセット
+        isMarkdown = UserDefaults.standard.bool(forKey: "defaultMarkdown")
     }
 }

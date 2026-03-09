@@ -5,6 +5,7 @@ struct MainView: View {
     @State private var viewModel = MemoInputViewModel()
     @State private var isKeyboardVisible = false
     @State private var showSettings = false
+    @AppStorage("defaultMarkdown") private var defaultMarkdown = false
 
     var body: some View {
         NavigationStack {
@@ -29,6 +30,12 @@ struct MainView: View {
             }
             .sheet(isPresented: $showSettings) {
                 SettingsView()
+            }
+            .onChange(of: defaultMarkdown) { _, newValue in
+                // 入力欄が空のときだけデフォルト設定を即反映
+                if viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    viewModel.isMarkdown = newValue
+                }
             }
             .overlay(alignment: .bottomTrailing) {
                 if isKeyboardVisible {

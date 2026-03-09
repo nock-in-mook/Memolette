@@ -8,7 +8,7 @@ struct TagDialView: View {
     @Binding var selectedTagID: UUID?
 
     private var options: [(id: String, name: String, color: Color)] {
-        var list: [(String, String, Color)] = [("none", "なし", tagColor(for: 0))]
+        var list: [(String, String, Color)] = [("none", "タグなし", tagColor(for: 0))]
         for tag in tags {
             list.append((tag.id.uuidString, tag.name, tagColor(for: tag.colorIndex)))
         }

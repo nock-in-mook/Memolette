@@ -48,7 +48,7 @@ struct TabbedMemoListView: View {
     @State private var editingMemo: Memo?
 
     private var tabItems: [(label: String, tag: Tag?, colorIndex: Int)] {
-        var items: [(String, Tag?, Int)] = [("タグ無し", nil, 0)]
+        var items: [(String, Tag?, Int)] = [("タグなし", nil, 0)]
         for tag in tags {
             items.append((tag.name, tag, tag.colorIndex))
         }

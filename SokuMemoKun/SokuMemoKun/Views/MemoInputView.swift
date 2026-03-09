@@ -84,16 +84,21 @@ struct MemoInputView: View {
                                     .fill(selectedTagInfo.color)
                             )
 
-                        // 新規タグ追加ボタン（グレー）
+                        Spacer()
+
+                        // 新規タグ追加ボタン（薄グレー、コピーの左）
                         Button {
                             showNewTagSheet = true
                         } label: {
                             Image(systemName: "plus.circle.fill")
                                 .font(.system(size: 15))
-                                .foregroundStyle(.gray)
+                                .foregroundStyle(.gray.opacity(0.4))
                         }
 
-                        Spacer()
+                        // タグ系とアクション系の仕切り線
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.25))
+                            .frame(width: 1, height: 18)
 
                         Button {
                             UIPasteboard.general.string = viewModel.inputText

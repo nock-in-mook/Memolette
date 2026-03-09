@@ -4,6 +4,7 @@ import SwiftData
 struct MainView: View {
     @State private var viewModel = MemoInputViewModel()
     @State private var isKeyboardVisible = false
+    @State private var showSettings = false
 
     var body: some View {
         NavigationStack {
@@ -16,6 +17,19 @@ struct MainView: View {
             }
             .navigationTitle("即メモ君")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                            .font(.system(size: 15))
+                    }
+                }
+            }
+            .sheet(isPresented: $showSettings) {
+                SettingsView()
+            }
             .overlay(alignment: .bottomTrailing) {
                 if isKeyboardVisible {
                     Button {

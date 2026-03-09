@@ -22,6 +22,8 @@
 		B1000000000000000000B2 /* TabbedMemoListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000B2 /* TabbedMemoListView.swift */; };
 		B1000000000000000000B3 /* TagDialView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000B3 /* TagDialView.swift */; };
 		B1000000000000000000B4 /* NewTagSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000B4 /* NewTagSheetView.swift */; };
+		B1000000000000000000B5 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000B5 /* SettingsView.swift */; };
+		B1000000000000000000B6 /* TagEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000B6 /* TagEditView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -41,6 +43,8 @@
 		A1000000000000000000B2 /* TabbedMemoListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabbedMemoListView.swift; sourceTree = "<group>"; };
 		A1000000000000000000B3 /* TagDialView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagDialView.swift; sourceTree = "<group>"; };
 		A1000000000000000000B4 /* NewTagSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewTagSheetView.swift; sourceTree = "<group>"; };
+		A1000000000000000000B5 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		A1000000000000000000B6 /* TagEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagEditView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -96,6 +100,8 @@
 				A1000000000000000000B2 /* TabbedMemoListView.swift */,
 				A1000000000000000000B3 /* TagDialView.swift */,
 				A1000000000000000000B4 /* NewTagSheetView.swift */,
+				A1000000000000000000B5 /* SettingsView.swift */,
+				A1000000000000000000B6 /* TagEditView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -200,6 +206,8 @@
 				B1000000000000000000B2 /* TabbedMemoListView.swift in Sources */,
 				B1000000000000000000B3 /* TagDialView.swift in Sources */,
 				B1000000000000000000B4 /* NewTagSheetView.swift in Sources */,
+				B1000000000000000000B5 /* SettingsView.swift in Sources */,
+				B1000000000000000000B6 /* TagEditView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

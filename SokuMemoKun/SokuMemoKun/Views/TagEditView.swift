@@ -20,11 +20,11 @@ struct TagEditView: View {
                         isDeleteMode = false
                         selectedForDeletion.removeAll()
                     } label: {
-                        HStack(spacing: 4) {
+                        HStack(spacing: 5) {
                             Image(systemName: "xmark")
-                                .font(.system(size: 12))
+                                .font(.system(size: 14))
                             Text("キャンセル")
-                                .font(.system(size: 13, design: .rounded))
+                                .font(.system(size: 15, weight: .medium, design: .rounded))
                         }
                         .foregroundStyle(.secondary)
                     }
@@ -34,11 +34,11 @@ struct TagEditView: View {
                     Button {
                         deleteSelected()
                     } label: {
-                        HStack(spacing: 4) {
+                        HStack(spacing: 5) {
                             Image(systemName: "trash")
-                                .font(.system(size: 12))
+                                .font(.system(size: 14))
                             Text("削除(\(selectedForDeletion.count))")
-                                .font(.system(size: 13, weight: .bold, design: .rounded))
+                                .font(.system(size: 15, weight: .bold, design: .rounded))
                         }
                         .foregroundStyle(.red)
                     }
@@ -50,11 +50,11 @@ struct TagEditView: View {
                     Button {
                         showNewTagSheet = true
                     } label: {
-                        HStack(spacing: 4) {
+                        HStack(spacing: 5) {
                             Image(systemName: "plus.circle.fill")
-                                .font(.system(size: 14))
+                                .font(.system(size: 16))
                             Text("新規追加")
-                                .font(.system(size: 13, design: .rounded))
+                                .font(.system(size: 15, weight: .medium, design: .rounded))
                         }
                     }
 
@@ -64,11 +64,11 @@ struct TagEditView: View {
                         isDeleteMode = true
                         selectedForDeletion.removeAll()
                     } label: {
-                        HStack(spacing: 4) {
+                        HStack(spacing: 5) {
                             Image(systemName: "trash")
-                                .font(.system(size: 12))
+                                .font(.system(size: 14))
                             Text("選択削除")
-                                .font(.system(size: 13, design: .rounded))
+                                .font(.system(size: 15, weight: .medium, design: .rounded))
                         }
                         .foregroundStyle(.red.opacity(0.7))
                     }

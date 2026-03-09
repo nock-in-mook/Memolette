@@ -75,7 +75,7 @@ struct MemoInputView: View {
                         // タグ表示（リアルタイム反映・ルーレット/タブと色統一）
                         Text(truncatedTagName)
                             .font(.system(size: 11, weight: .bold, design: .rounded))
-                            .foregroundStyle(.primary.opacity(0.8))
+                            .foregroundStyle(.primary)
                             .lineLimit(1)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 3)

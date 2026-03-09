@@ -12,6 +12,8 @@ struct MemoInputView: View {
 
     // 新規タグ作成シート
     @State private var showNewTagSheet = false
+    // 全画面編集
+    @State private var showFullEditor = false
 
     // 選択中タグの表示名と色（ルーレット・タブと統一）
     private var selectedTagInfo: (name: String, color: Color) {
@@ -48,6 +50,28 @@ struct MemoInputView: View {
                             .padding(.horizontal, 8)
                             .padding(.vertical, 12)
                             .allowsHitTesting(false)
+                    }
+
+                    // 拡大ボタン（右上）
+                    VStack {
+                        HStack {
+                            Spacer()
+                            Button {
+                                showFullEditor = true
+                            } label: {
+                                Image(systemName: "arrow.up.left.and.arrow.down.right")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.gray.opacity(0.5))
+                                    .padding(5)
+                                    .background(
+                                        Circle()
+                                            .fill(Color(uiColor: .systemBackground).opacity(0.8))
+                                    )
+                            }
+                            .padding(.trailing, 4)
+                            .padding(.top, 4)
+                        }
+                        Spacer()
                     }
                 }
                 .frame(maxHeight: .infinity)
@@ -147,6 +171,12 @@ struct MemoInputView: View {
         .padding(.vertical, 6)
         .sheet(isPresented: $showNewTagSheet) {
             NewTagSheetView()
+        }
+        .fullScreenCover(isPresented: $showFullEditor) {
+            FullEditorView(
+                text: $viewModel.inputText,
+                isMarkdown: $viewModel.isMarkdown
+            )
         }
     }
 

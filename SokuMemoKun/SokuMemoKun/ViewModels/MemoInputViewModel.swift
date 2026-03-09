@@ -6,6 +6,7 @@ class MemoInputViewModel {
     var inputText: String = ""
     var titleText: String = ""
     var selectedTagID: UUID?
+    var isMarkdown: Bool = UserDefaults.standard.bool(forKey: "defaultMarkdown")
 
     var canSave: Bool {
         !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -13,7 +14,10 @@ class MemoInputViewModel {
 
     func save(context: ModelContext, tags: [Tag]) {
         guard canSave else { return }
-        let memo = Memo(content: inputText.trimmingCharacters(in: .whitespacesAndNewlines))
+        let memo = Memo(
+            content: inputText.trimmingCharacters(in: .whitespacesAndNewlines),
+            isMarkdown: isMarkdown
+        )
         memo.title = titleText.trimmingCharacters(in: .whitespacesAndNewlines)
 
         // ルーレットで選択されたタグを自動付与

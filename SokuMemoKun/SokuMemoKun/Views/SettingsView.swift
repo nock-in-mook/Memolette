@@ -3,6 +3,8 @@ import SwiftUI
 // 設定画面
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
+    @AppStorage("defaultMarkdown") private var defaultMarkdown = false
+    @AppStorage("markdownLayout") private var markdownLayout: String = MarkdownLayout.split.rawValue
 
     var body: some View {
         NavigationStack {
@@ -14,14 +16,22 @@ struct SettingsView: View {
                     Label("タグ編集", systemImage: "tag")
                 }
 
-                // マークダウン（将来実装）
-                Section {
+                // マークダウン設定
+                Section("マークダウン") {
+                    Toggle(isOn: $defaultMarkdown) {
+                        Label("新規メモでデフォルトON", systemImage: "text.quote")
+                    }
+
+                    // レイアウト選択
                     HStack {
-                        Label("マークダウン表示", systemImage: "text.quote")
+                        Label("プレビュー表示", systemImage: "rectangle.split.1x2")
                         Spacer()
-                        Text("準備中")
-                            .font(.system(size: 12, design: .rounded))
-                            .foregroundStyle(.tertiary)
+                        Picker("", selection: $markdownLayout) {
+                            ForEach(MarkdownLayout.allCases, id: \.rawValue) { layout in
+                                Text(layout.rawValue).tag(layout.rawValue)
+                            }
+                        }
+                        .pickerStyle(.menu)
                     }
                 }
 

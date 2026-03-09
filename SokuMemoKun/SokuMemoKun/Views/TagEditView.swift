@@ -7,50 +7,105 @@ struct TagEditView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var editingTag: Tag?
     @State private var showNewTagSheet = false
+    @State private var isDeleteMode = false
+    @State private var selectedForDeletion: Set<UUID> = []
 
     var body: some View {
-        List {
-            ForEach(tags) { tag in
-                Button {
-                    editingTag = tag
-                } label: {
-                    HStack(spacing: 10) {
-                        // カラーインジケータ
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(tagColor(for: tag.colorIndex))
-                            .frame(width: 24, height: 24)
+        VStack(spacing: 0) {
+            // 上部ボタン行
+            HStack {
+                if isDeleteMode {
+                    Button("キャンセル") {
+                        isDeleteMode = false
+                        selectedForDeletion.removeAll()
+                    }
+                    .font(.system(size: 14, design: .rounded))
 
-                        // タグ名
-                        Text(tag.name)
-                            .font(.system(size: 15, design: .rounded))
-                            .foregroundStyle(.primary)
+                    Spacer()
 
-                        Spacer()
+                    Button {
+                        deleteSelected()
+                    } label: {
+                        Text("削除(\(selectedForDeletion.count))")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundStyle(.red)
+                    }
+                    .disabled(selectedForDeletion.isEmpty)
+                } else {
+                    Spacer()
 
-                        // メモ数
-                        Text("\(tag.memos.count)件")
-                            .font(.system(size: 12, design: .rounded))
-                            .foregroundStyle(.tertiary)
+                    Button {
+                        isDeleteMode = true
+                        selectedForDeletion.removeAll()
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 14))
+                            .foregroundStyle(.red.opacity(0.7))
+                    }
+                    .disabled(tags.isEmpty)
 
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.tertiary)
+                    Button {
+                        showNewTagSheet = true
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 18))
                     }
                 }
             }
-            .onDelete(perform: deleteTags)
-        }
-        .navigationTitle("タグ編集")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    showNewTagSheet = true
-                } label: {
-                    Image(systemName: "plus")
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+
+            // タグ一覧
+            List {
+                ForEach(tags) { tag in
+                    Button {
+                        if isDeleteMode {
+                            toggleDeletion(tag)
+                        } else {
+                            editingTag = tag
+                        }
+                    } label: {
+                        HStack(spacing: 10) {
+                            // 削除モード時のチェックマーク
+                            if isDeleteMode {
+                                Image(systemName: selectedForDeletion.contains(tag.id)
+                                      ? "checkmark.circle.fill" : "circle")
+                                    .font(.system(size: 20))
+                                    .foregroundStyle(selectedForDeletion.contains(tag.id)
+                                                     ? .red : .gray.opacity(0.4))
+                            }
+
+                            // カラー付きタグ名
+                            Text(tag.name)
+                                .font(.system(size: 15, weight: .medium, design: .rounded))
+                                .foregroundStyle(.primary.opacity(0.85))
+                                .lineLimit(1)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(tagColor(for: tag.colorIndex))
+                                )
+
+                            Spacer()
+
+                            if !isDeleteMode {
+                                // メモ数
+                                Text("\(tag.memos.count)件")
+                                    .font(.system(size: 12, design: .rounded))
+                                    .foregroundStyle(.tertiary)
+
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                    }
                 }
             }
         }
+        .navigationTitle("タグ編集")
+        .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $editingTag) { tag in
             TagDetailEditView(tag: tag)
         }
@@ -59,15 +114,98 @@ struct TagEditView: View {
         }
     }
 
-    private func deleteTags(at offsets: IndexSet) {
-        for index in offsets {
-            let tag = tags[index]
-            // タグを削除（メモからの参照も自動解除）
+    private func toggleDeletion(_ tag: Tag) {
+        if selectedForDeletion.contains(tag.id) {
+            selectedForDeletion.remove(tag.id)
+        } else {
+            selectedForDeletion.insert(tag.id)
+        }
+    }
+
+    private func deleteSelected() {
+        for tag in tags where selectedForDeletion.contains(tag.id) {
             for memo in tag.memos {
                 memo.tags.removeAll { $0.id == tag.id }
             }
             modelContext.delete(tag)
         }
+        selectedForDeletion.removeAll()
+        isDeleteMode = false
+    }
+}
+
+// カラーパレット（28色、コンパクト表示）
+struct ColorPaletteGrid: View {
+    @Binding var selectedIndex: Int
+
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 7)
+
+    var body: some View {
+        LazyVGrid(columns: columns, spacing: 6) {
+            ForEach(1...28, id: \.self) { index in
+                Button {
+                    selectedIndex = index
+                } label: {
+                    RoundedRectangle(cornerRadius: 5)
+                        .fill(tagColor(for: index))
+                        .frame(height: 28)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 5)
+                                .stroke(
+                                    selectedIndex == index
+                                        ? Color.primary : Color.clear,
+                                    lineWidth: 2
+                                )
+                        )
+                }
+            }
+        }
+    }
+}
+
+// プレビュー枠（タグ:ラベル + タグパネル）
+struct TagPreviewBox: View {
+    let name: String
+    let colorIndex: Int
+
+    private var displayName: String {
+        let n = name.isEmpty ? "サンプル" : name
+        return n.count > 5 ? String(n.prefix(5)) + "…" : n
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text("プレビュー")
+                .font(.system(size: 12, design: .rounded))
+                .foregroundStyle(.secondary)
+
+            // タグパネル（メイン画面と同じ見た目）
+            VStack(alignment: .leading, spacing: 1) {
+                Text("タグ:")
+                    .font(.system(size: 9, design: .rounded))
+                    .foregroundStyle(.tertiary)
+                Text(displayName)
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundStyle(.primary.opacity(0.8))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(tagColor(for: colorIndex))
+                    )
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(uiColor: .secondarySystemBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+        )
     }
 }
 
@@ -79,14 +217,9 @@ struct TagDetailEditView: View {
     @State private var editName: String = ""
     @State private var editColorIndex: Int = 1
 
-    private let colorOptions: [(index: Int, label: String)] = [
-        (1, "水色"), (2, "オレンジ"), (3, "緑"), (4, "紫"),
-        (5, "黄色"), (6, "赤"), (7, "青")
-    ]
-
     var body: some View {
         NavigationStack {
-            VStack(spacing: 20) {
+            VStack(spacing: 16) {
                 // タグ名入力
                 VStack(alignment: .leading, spacing: 6) {
                     Text("タグ名")
@@ -112,61 +245,17 @@ struct TagDetailEditView: View {
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
 
-                // カラー選択
+                // カラー選択（コンパクト）
                 VStack(alignment: .leading, spacing: 6) {
                     Text("カラー")
                         .font(.system(size: 13, weight: .medium, design: .rounded))
                         .foregroundStyle(.secondary)
 
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 4), spacing: 10) {
-                        ForEach(colorOptions, id: \.index) { option in
-                            Button {
-                                editColorIndex = option.index
-                            } label: {
-                                VStack(spacing: 4) {
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(tagColor(for: option.index))
-                                        .frame(height: 40)
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 8)
-                                                .stroke(
-                                                    editColorIndex == option.index
-                                                        ? Color.primary : Color.clear,
-                                                    lineWidth: 2.5
-                                                )
-                                        )
-
-                                    Text(option.label)
-                                        .font(.system(size: 10, design: .rounded))
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                    }
+                    ColorPaletteGrid(selectedIndex: $editColorIndex)
                 }
 
-                // プレビュー
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("プレビュー")
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
-                        .foregroundStyle(.secondary)
-
-                    HStack {
-                        Text("タグ:")
-                            .font(.system(size: 10, design: .rounded))
-                            .foregroundStyle(.secondary)
-
-                        Text(previewName)
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
-                            .foregroundStyle(.primary.opacity(0.8))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(tagColor(for: editColorIndex))
-                            )
-                    }
-                }
+                // プレビュー枠
+                TagPreviewBox(name: editName, colorIndex: editColorIndex)
 
                 Spacer()
             }
@@ -191,14 +280,6 @@ struct TagDetailEditView: View {
             }
         }
         .presentationDetents([.medium])
-    }
-
-    private var previewName: String {
-        let name = editName.isEmpty ? "サンプル" : editName
-        if name.count > 5 {
-            return String(name.prefix(5)) + "…"
-        }
-        return name
     }
 
     private func saveChanges() {

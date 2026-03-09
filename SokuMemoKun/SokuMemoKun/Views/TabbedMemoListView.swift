@@ -1,9 +1,11 @@
 import SwiftUI
 import SwiftData
 
-// タブの色パレット
+// タグの色パレット（0=タグなし、1〜28=選択可能カラー）
 private let tabColors: [Color] = [
-    Color(red: 0.82, green: 0.80, blue: 0.76),  // タグ無し（ベージュグレー・画用紙風）
+    // 0: タグなし
+    Color(red: 0.82, green: 0.80, blue: 0.76),
+    // 1〜7: 基本色（明るめ）
     Color(red: 0.55, green: 0.80, blue: 0.95),  // 水色
     Color(red: 0.95, green: 0.70, blue: 0.55),  // オレンジ
     Color(red: 0.70, green: 0.90, blue: 0.70),  // 緑
@@ -11,10 +13,37 @@ private let tabColors: [Color] = [
     Color(red: 0.95, green: 0.85, blue: 0.55),  // 黄色
     Color(red: 0.95, green: 0.60, blue: 0.60),  // 赤
     Color(red: 0.60, green: 0.75, blue: 0.95),  // 青
+    // 8〜14: パステル系
+    Color(red: 0.80, green: 0.92, blue: 0.98),  // ベビーブルー
+    Color(red: 0.98, green: 0.85, blue: 0.80),  // ピーチ
+    Color(red: 0.85, green: 0.95, blue: 0.85),  // ミント
+    Color(red: 0.95, green: 0.85, blue: 0.95),  // ラベンダー
+    Color(red: 0.98, green: 0.95, blue: 0.80),  // クリーム
+    Color(red: 0.98, green: 0.82, blue: 0.82),  // サーモンピンク
+    Color(red: 0.82, green: 0.88, blue: 0.98),  // ペリウィンクル
+    // 15〜21: 深め
+    Color(red: 0.35, green: 0.65, blue: 0.80),  // ティール
+    Color(red: 0.80, green: 0.50, blue: 0.35),  // テラコッタ
+    Color(red: 0.40, green: 0.70, blue: 0.50),  // フォレスト
+    Color(red: 0.65, green: 0.45, blue: 0.70),  // プラム
+    Color(red: 0.80, green: 0.70, blue: 0.40),  // マスタード
+    Color(red: 0.75, green: 0.40, blue: 0.40),  // ワインレッド
+    Color(red: 0.40, green: 0.55, blue: 0.80),  // インディゴ
+    // 22〜28: アクセント
+    Color(red: 0.50, green: 0.85, blue: 0.80),  // ターコイズ
+    Color(red: 0.95, green: 0.55, blue: 0.40),  // コーラル
+    Color(red: 0.60, green: 0.82, blue: 0.55),  // ライム
+    Color(red: 0.75, green: 0.55, blue: 0.85),  // アメジスト
+    Color(red: 0.90, green: 0.80, blue: 0.50),  // ゴールド
+    Color(red: 0.85, green: 0.45, blue: 0.55),  // ローズ
+    Color(red: 0.50, green: 0.65, blue: 0.85),  // スレートブルー
 ]
 
 func tagColor(for index: Int) -> Color {
-    tabColors[index % tabColors.count]
+    guard index >= 0 && index < tabColors.count else {
+        return tabColors[0]
+    }
+    return tabColors[index]
 }
 
 // 紙の質感を表現するオーバーレイ

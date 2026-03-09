@@ -9,15 +9,9 @@ struct NewTagSheetView: View {
     @State private var tagName = ""
     @State private var selectedColorIndex = 1
 
-    // 選択可能な色（tabColorsと同じパレット、index 0のタグ無し色は除外）
-    private let colorOptions: [(index: Int, label: String)] = [
-        (1, "水色"), (2, "オレンジ"), (3, "緑"), (4, "紫"),
-        (5, "黄色"), (6, "赤"), (7, "青")
-    ]
-
     var body: some View {
         NavigationStack {
-            VStack(spacing: 20) {
+            VStack(spacing: 16) {
                 // タグ名入力
                 VStack(alignment: .leading, spacing: 6) {
                     Text("タグ名")
@@ -43,61 +37,17 @@ struct NewTagSheetView: View {
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
 
-                // カラー選択
+                // カラー選択（コンパクト28色）
                 VStack(alignment: .leading, spacing: 6) {
                     Text("カラー")
                         .font(.system(size: 13, weight: .medium, design: .rounded))
                         .foregroundStyle(.secondary)
 
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 4), spacing: 10) {
-                        ForEach(colorOptions, id: \.index) { option in
-                            Button {
-                                selectedColorIndex = option.index
-                            } label: {
-                                VStack(spacing: 4) {
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(tagColor(for: option.index))
-                                        .frame(height: 40)
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 8)
-                                                .stroke(
-                                                    selectedColorIndex == option.index
-                                                        ? Color.primary : Color.clear,
-                                                    lineWidth: 2.5
-                                                )
-                                        )
-
-                                    Text(option.label)
-                                        .font(.system(size: 10, design: .rounded))
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                    }
+                    ColorPaletteGrid(selectedIndex: $selectedColorIndex)
                 }
 
-                // プレビュー
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("プレビュー")
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
-                        .foregroundStyle(.secondary)
-
-                    HStack {
-                        Text("タグ:")
-                            .font(.system(size: 10, design: .rounded))
-                            .foregroundStyle(.secondary)
-
-                        Text(previewName)
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
-                            .foregroundStyle(.primary.opacity(0.8))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(tagColor(for: selectedColorIndex))
-                            )
-                    }
-                }
+                // プレビュー枠
+                TagPreviewBox(name: tagName, colorIndex: selectedColorIndex)
 
                 Spacer()
             }
@@ -118,14 +68,6 @@ struct NewTagSheetView: View {
             }
         }
         .presentationDetents([.medium])
-    }
-
-    private var previewName: String {
-        let name = tagName.isEmpty ? "サンプル" : tagName
-        if name.count > 5 {
-            return String(name.prefix(5)) + "…"
-        }
-        return name
     }
 
     private func saveTag() {

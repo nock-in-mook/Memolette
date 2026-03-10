@@ -5,16 +5,19 @@ struct MainView: View {
     @State private var viewModel = MemoInputViewModel()
     @State private var isKeyboardVisible = false
     @State private var showSettings = false
+    @State private var focusInput = false
     @AppStorage("defaultMarkdown") private var defaultMarkdown = false
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 // 入力エリア（大枠で囲まれた入力欄+ルーレット）
-                MemoInputView(viewModel: viewModel)
+                MemoInputView(viewModel: viewModel, focusInput: $focusInput)
 
                 // 台形タブ付きメモ一覧
-                TabbedMemoListView()
+                TabbedMemoListView(onAddMemo: {
+                    focusInput = true
+                })
             }
             .navigationTitle("即メモ君")
             .navigationBarTitleDisplayMode(.inline)

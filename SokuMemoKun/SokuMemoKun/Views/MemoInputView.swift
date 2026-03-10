@@ -3,8 +3,10 @@ import SwiftData
 
 struct MemoInputView: View {
     @Bindable var viewModel: MemoInputViewModel
+    @Binding var focusInput: Bool
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Tag.name) private var tags: [Tag]
+    @FocusState private var isTextEditorFocused: Bool
 
     // 保存アニメーション用
     @State private var showSaveAnimation = false
@@ -42,6 +44,7 @@ struct MemoInputView: View {
                     TextEditor(text: $viewModel.inputText)
                         .font(.system(size: 14))
                         .padding(4)
+                        .focused($isTextEditorFocused)
 
                     if viewModel.inputText.isEmpty {
                         VStack(alignment: .leading, spacing: 2) {
@@ -192,6 +195,12 @@ struct MemoInputView: View {
                 text: $viewModel.inputText,
                 isMarkdown: $viewModel.isMarkdown
             )
+        }
+        .onChange(of: focusInput) { _, newValue in
+            if newValue {
+                isTextEditorFocused = true
+                focusInput = false
+            }
         }
     }
 

@@ -98,8 +98,12 @@ struct TabbedMemoListView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var selectedTabIndex: Int = 0
     @State private var editingMemo: Memo?
+    @State private var isSelectMode = false
+    @State private var selectedMemoIDs: Set<UUID> = []
     // タグなし用のグリッドサイズ（UserDefaultsで保存）
     @AppStorage("noTagGridSize") private var noTagGridSize: Int = 2
+    // メモ追加コールバック
+    var onAddMemo: (() -> Void)?
 
     private var tabItems: [(label: String, tag: Tag?, colorIndex: Int)] {
         var items: [(String, Tag?, Int)] = [("タグなし", nil, 0)]
@@ -155,6 +159,9 @@ struct TabbedMemoListView: View {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         proxy.scrollTo(newValue, anchor: .center)
                     }
+                    // タブ切替で選択モード解除
+                    isSelectMode = false
+                    selectedMemoIDs.removeAll()
                 }
             }
 
@@ -181,19 +188,37 @@ struct TabbedMemoListView: View {
                         LazyVGrid(columns: currentColumns, spacing: 8) {
                             ForEach(filteredMemos) { memo in
                                 MemoCardView(memo: memo, gridSize: currentGridSize)
+                                    .overlay(alignment: .topLeading) {
+                                        if isSelectMode {
+                                            Image(systemName: selectedMemoIDs.contains(memo.id) ? "checkmark.circle.fill" : "circle")
+                                                .font(.system(size: 18))
+                                                .foregroundStyle(selectedMemoIDs.contains(memo.id) ? .red : .gray)
+                                                .padding(4)
+                                        }
+                                    }
                                     .onTapGesture {
-                                        editingMemo = memo
+                                        if isSelectMode {
+                                            if selectedMemoIDs.contains(memo.id) {
+                                                selectedMemoIDs.remove(memo.id)
+                                            } else {
+                                                selectedMemoIDs.insert(memo.id)
+                                            }
+                                        } else {
+                                            editingMemo = memo
+                                        }
                                     }
                                     .contextMenu {
-                                        Button {
-                                            UIPasteboard.general.string = memo.content
-                                        } label: {
-                                            Label("コピー", systemImage: "doc.on.doc")
-                                        }
-                                        Button(role: .destructive) {
-                                            modelContext.delete(memo)
-                                        } label: {
-                                            Label("削除", systemImage: "trash")
+                                        if !isSelectMode {
+                                            Button {
+                                                UIPasteboard.general.string = memo.content
+                                            } label: {
+                                                Label("コピー", systemImage: "doc.on.doc")
+                                            }
+                                            Button(role: .destructive) {
+                                                modelContext.delete(memo)
+                                            } label: {
+                                                Label("削除", systemImage: "trash")
+                                            }
                                         }
                                     }
                             }
@@ -204,10 +229,71 @@ struct TabbedMemoListView: View {
                     }
                 }
 
-                // グリッドサイズ切替ボタン（右上）
-                gridSizeButton
-                    .padding(.trailing, 10)
-                    .padding(.top, 6)
+                // ツールバー（右上）
+                HStack(spacing: 8) {
+                    // メモ追加ボタン
+                    Button {
+                        if isSelectMode { isSelectMode = false; selectedMemoIDs.removeAll() }
+                        onAddMemo?()
+                    } label: {
+                        Label("メモ追加", systemImage: "plus")
+                            .font(.system(size: 10, weight: .medium, design: .rounded))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(
+                                Capsule()
+                                    .fill(Color(uiColor: .systemBackground).opacity(0.85))
+                            )
+                    }
+                    .buttonStyle(.plain)
+
+                    // 選択削除ボタン
+                    Button {
+                        if isSelectMode {
+                            // 削除実行
+                            deleteSelectedMemos()
+                        } else {
+                            isSelectMode = true
+                            selectedMemoIDs.removeAll()
+                        }
+                    } label: {
+                        Label(isSelectMode ? "削除" : "選択削除", systemImage: "trash")
+                            .font(.system(size: 10, weight: .medium, design: .rounded))
+                            .foregroundStyle(isSelectMode && !selectedMemoIDs.isEmpty ? .red : .secondary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(
+                                Capsule()
+                                    .fill(Color(uiColor: .systemBackground).opacity(0.85))
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isSelectMode && selectedMemoIDs.isEmpty)
+
+                    // 選択モード中はキャンセルボタン
+                    if isSelectMode {
+                        Button {
+                            isSelectMode = false
+                            selectedMemoIDs.removeAll()
+                        } label: {
+                            Text("取消")
+                                .font(.system(size: 10, weight: .medium, design: .rounded))
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(
+                                    Capsule()
+                                        .fill(Color(uiColor: .systemBackground).opacity(0.85))
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    gridSizeButton
+                }
+                .padding(.trailing, 10)
+                .padding(.top, 6)
             }
             .animation(.easeInOut(duration: 0.2), value: selectedTabIndex)
             .animation(.easeInOut(duration: 0.2), value: currentGridSize)
@@ -243,6 +329,14 @@ struct TabbedMemoListView: View {
                         .fill(Color(uiColor: .systemBackground).opacity(0.85))
                 )
         }
+    }
+
+    private func deleteSelectedMemos() {
+        for memo in allMemos where selectedMemoIDs.contains(memo.id) {
+            modelContext.delete(memo)
+        }
+        selectedMemoIDs.removeAll()
+        isSelectMode = false
     }
 
     private func setGridSize(_ option: GridSizeOption) {

@@ -166,6 +166,7 @@ struct TabbedMemoListView: View {
             }
 
             // メモ一覧（縁取り付き）
+            GeometryReader { geo in
             ZStack(alignment: .topTrailing) {
                 currentColor
                     .ignoresSafeArea(edges: .bottom)
@@ -187,7 +188,7 @@ struct TabbedMemoListView: View {
                     ScrollView {
                         LazyVGrid(columns: currentColumns, spacing: 8) {
                             ForEach(filteredMemos) { memo in
-                                MemoCardView(memo: memo, gridSize: currentGridSize)
+                                MemoCardView(memo: memo, gridSize: currentGridSize, availableHeight: geo.size.height)
                                     .overlay(alignment: .topLeading) {
                                         if isSelectMode {
                                             Image(systemName: selectedMemoIDs.contains(memo.id) ? "checkmark.circle.fill" : "circle")
@@ -297,6 +298,7 @@ struct TabbedMemoListView: View {
             }
             .animation(.easeInOut(duration: 0.2), value: selectedTabIndex)
             .animation(.easeInOut(duration: 0.2), value: currentGridSize)
+            } // GeometryReader
         }
         .sheet(item: $editingMemo) { memo in
             TagTitleSheetView(memo: memo)
@@ -412,12 +414,29 @@ struct MemoCardView: View {
         }
     }
 
+    // GeometryReaderから渡される利用可能な高さで計算
+    var availableHeight: CGFloat = 0
+
     private var cardHeight: CGFloat {
-        switch gridSize {
-        case .small: return 56
-        case .medium: return 62
-        case .large: return 56
+        guard availableHeight > 0 else {
+            // フォールバック
+            switch gridSize {
+            case .small: return 80
+            case .medium: return 72
+            case .large: return 56
+            }
         }
+        let rows: CGFloat
+        switch gridSize {
+        case .small: rows = 6
+        case .medium: rows = 6
+        case .large: rows = 8
+        }
+        let spacing: CGFloat = 8
+        let topPadding: CGFloat = 34
+        let bottomPadding: CGFloat = 20
+        let usable = availableHeight - topPadding - bottomPadding - (spacing * (rows - 1))
+        return max(40, usable / rows)
     }
 
     var body: some View {

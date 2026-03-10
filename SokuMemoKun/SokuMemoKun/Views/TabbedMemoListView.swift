@@ -98,6 +98,7 @@ struct TabbedMemoListView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var selectedTabIndex: Int = 0
     @State private var editingMemo: Memo?
+    @State private var markdownMemo: Memo?
     @State private var isSelectMode = false
     @State private var selectedMemoIDs: Set<UUID> = []
     // タグなし用のグリッドサイズ（UserDefaultsで保存）
@@ -204,6 +205,8 @@ struct TabbedMemoListView: View {
                                             } else {
                                                 selectedMemoIDs.insert(memo.id)
                                             }
+                                        } else if memo.isMarkdown {
+                                            markdownMemo = memo
                                         } else {
                                             editingMemo = memo
                                         }
@@ -302,6 +305,18 @@ struct TabbedMemoListView: View {
         }
         .sheet(item: $editingMemo) { memo in
             TagTitleSheetView(memo: memo)
+        }
+        .fullScreenCover(item: $markdownMemo) { memo in
+            FullEditorView(
+                text: Binding(
+                    get: { memo.content },
+                    set: { memo.content = $0 }
+                ),
+                isMarkdown: Binding(
+                    get: { memo.isMarkdown },
+                    set: { memo.isMarkdown = $0 }
+                )
+            )
         }
     }
 
@@ -438,20 +453,30 @@ struct MemoCardView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(memo.title.isEmpty ? "無題" : memo.title)
-                .font(.system(size: titleFont, weight: .semibold, design: .rounded))
-                .lineLimit(1)
-                .truncationMode(.tail)
+        ZStack(alignment: .topTrailing) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(memo.title.isEmpty ? "無題" : memo.title)
+                    .font(.system(size: titleFont, weight: .semibold, design: .rounded))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
 
-            Text(memo.content)
-                .font(.system(size: bodyFont))
-                .foregroundStyle(.secondary)
-                .lineLimit(bodyLines)
-                .truncationMode(.tail)
+                Text(memo.content)
+                    .font(.system(size: bodyFont))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(bodyLines)
+                    .truncationMode(.tail)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .padding(cardPadding)
+
+            // マークダウンマーク（右上）
+            if memo.isMarkdown {
+                Text("M↓")
+                    .font(.system(size: 7, weight: .bold, design: .monospaced))
+                    .foregroundStyle(.gray.opacity(0.5))
+                    .padding(3)
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding(cardPadding)
         .frame(height: cardHeight)
         .background(Color(uiColor: .systemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 6))

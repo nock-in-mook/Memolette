@@ -147,6 +147,32 @@ struct SokuMemoKunApp: App {
             }
         }
 
+        // マークダウンメモ（タグなし）
+        let mdMemos: [(String, String)] = [
+            ("会議メモMD", "# 定例会議\n\n## 議題\n- 売上報告\n- 新規プロジェクト\n- **来週までの宿題**\n\n> 次回は金曜15時"),
+            ("レシピMD", "# カルボナーラ\n\n## 材料\n- パスタ 200g\n- ベーコン 100g\n- 卵 2個\n- **パルメザンチーズ** たっぷり\n\n## 手順\n1. パスタを茹でる\n2. ベーコンを炒める\n3. 卵とチーズを混ぜる"),
+            ("勉強ノートMD", "# Swift入門\n\n## 変数\n- `let` は定数\n- `var` は変数\n\n## 関数\n- `func 名前() -> 型`\n\n> SwiftUIは**宣言的UI**フレームワーク"),
+        ]
+        for (title, content) in mdMemos {
+            let memo = Memo(content: content, isMarkdown: true)
+            memo.title = title
+            context.insert(memo)
+        }
+
+        // マークダウンメモ（アイデアタグ付き）
+        if let ideaTag = tags.first(where: { $0.name == "アイデア" }) {
+            let mdIdeas: [(String, String)] = [
+                ("企画書MD", "# 新アプリ企画\n\n## コンセプト\n**最速メモ体験**\n\n## ターゲット\n- ビジネスマン\n- 学生\n\n## 差別化\n> 起動0.5秒で入力開始"),
+                ("技術調査MD", "# SwiftData vs CoreData\n\n## SwiftData\n- iOS 17+\n- **コード量が少ない**\n- CloudKit統合済み\n\n## CoreData\n- 枯れた技術\n- 複雑だが柔軟"),
+            ]
+            for (title, content) in mdIdeas {
+                let memo = Memo(content: content, isMarkdown: true)
+                memo.title = title
+                memo.tags.append(ideaTag)
+                context.insert(memo)
+            }
+        }
+
         try? context.save()
         UserDefaults.standard.set(true, forKey: key)
     }

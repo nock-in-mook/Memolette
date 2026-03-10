@@ -218,7 +218,7 @@ struct MemoCardView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(6)
-        .background(.regularMaterial)
+        .background(Color(uiColor: .systemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 }

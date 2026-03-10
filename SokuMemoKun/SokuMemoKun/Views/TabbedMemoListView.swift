@@ -296,7 +296,7 @@ struct TabbedMemoListView: View {
                 .padding(.trailing, 10)
                 .padding(.top, 6)
             }
-            .animation(.easeInOut(duration: 0.2), value: selectedTabIndex)
+            // タブ切替は瞬時（アニメーションなし）
             .animation(.easeInOut(duration: 0.2), value: currentGridSize)
             } // GeometryReader
         }
@@ -355,9 +355,7 @@ struct TabbedMemoListView: View {
         let color = tagColor(for: tabItems[index].colorIndex)
 
         return Button {
-            withAnimation(.easeInOut(duration: 0.15)) {
-                selectedTabIndex = index
-            }
+            selectedTabIndex = index
         } label: {
             Text(label)
                 .font(.system(size: 12, weight: isSelected ? .bold : .medium, design: .rounded))

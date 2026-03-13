@@ -62,7 +62,7 @@ struct NewTagSheetView: View {
                     Button("キャンセル") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("保存") {
+                    Button("追加") {
                         saveTag()
                     }
                     .disabled(tagName.trimmingCharacters(in: .whitespaces).isEmpty)

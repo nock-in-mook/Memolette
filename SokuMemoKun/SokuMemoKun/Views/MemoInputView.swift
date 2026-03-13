@@ -277,7 +277,7 @@ struct MemoInputView: View {
                             }
                         )
 
-                        // 閉じるタブ（右端、右スワイプでも閉じる）
+                        // 閉じるタブ（右端、タップ or 右スワイプで閉じる）
                         Text("‹")
                             .font(.system(size: 14, weight: .bold))
                             .foregroundStyle(.secondary)
@@ -292,8 +292,8 @@ struct MemoInputView: View {
                                     showChildDial = false
                                 }
                             }
-                            .gesture(
-                                DragGesture()
+                            .simultaneousGesture(
+                                DragGesture(minimumDistance: 10)
                                     .onEnded { value in
                                         if value.translation.width > 20 {
                                             withAnimation(.spring(response: 0.3)) {
@@ -322,8 +322,8 @@ struct MemoInputView: View {
                                 showChildDial = true
                             }
                         }
-                        .gesture(
-                            DragGesture()
+                        .simultaneousGesture(
+                            DragGesture(minimumDistance: 10)
                                 .onEnded { value in
                                     if value.translation.width < -20 {
                                         withAnimation(.spring(response: 0.3)) {

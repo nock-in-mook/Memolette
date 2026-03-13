@@ -278,12 +278,7 @@ struct TagDialView: View {
         if index < options.count {
             let option = options[index]
             if option.id == "add" {
-                // 「＋タグ追加」→ コールバック呼んで1つ前にスナップバック
-                let prevSnap = rotation - itemAngle
-                withAnimation(.easeOut(duration: 0.2)) {
-                    rotation = prevSnap
-                }
-                dragStart = prevSnap
+                // 「＋タグ追加」→ そのままの位置を維持してコールバック
                 onAddTap?()
             } else {
                 selectedID = option.id == "none" ? nil : UUID(uuidString: option.id)

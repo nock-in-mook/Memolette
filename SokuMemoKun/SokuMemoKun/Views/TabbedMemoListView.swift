@@ -910,7 +910,7 @@ struct TabDropDelegate: DropDelegate {
     }
 }
 
-// 無限ループするタブバー（3倍繰り返し方式）
+// 無限ループするタブバー（5セット繰り返し＋端でリセット）
 struct InfiniteTabBarView: View {
     let tabItems: [(label: String, tag: Tag?, colorIndex: Int)]
     @Binding var selectedTabIndex: Int
@@ -919,52 +919,55 @@ struct InfiniteTabBarView: View {
     var onSelectModeReset: () -> Void
     var onReorder: (Int, Int) -> Void
 
-    // ScrollViewのオフセットを管理
-    @State private var scrollOffset: CGFloat = 0
-    @State private var contentWidth: CGFloat = 0
-
     private let tabW: CGFloat = 76
+    // セット数（中央の前後にバッファ）
+    private let setCount = 5
+    private let centerSet = 2  // 0始まりで中央
+
+    // リセット抑制フラグ
+    @State private var isResetting = false
 
     var body: some View {
         let count = tabItems.count
         guard count > 0 else { return AnyView(EmptyView()) }
 
         return AnyView(
-            GeometryReader { geo in
-                let viewWidth = geo.size.width
-                // 1セットの幅
-                let oneSetWidth = CGFloat(count) * (tabW - 1) + 16  // spacing=-1, padding=8*2
-                // スクロール可能なビュー
-                ScrollViewReader { proxy in
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: -1) {
-                            // 前のセット
-                            ForEach(0..<count, id: \.self) { i in
-                                loopTabButton(label: tabItems[i].label, realIndex: i, loopID: "pre_\(i)")
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: -1) {
+                        ForEach(0..<setCount, id: \.self) { setIndex in
+                            // セット間の区切り線（最初のセットの前には不要）
+                            if setIndex > 0 {
+                                Rectangle()
+                                    .fill(Color.primary.opacity(0.12))
+                                    .frame(width: 1.5, height: 22)
+                                    .padding(.horizontal, 4)
+                                    .id("sep_\(setIndex)")
                             }
-                            // 本体セット
+
                             ForEach(0..<count, id: \.self) { i in
-                                loopTabButton(label: tabItems[i].label, realIndex: i, loopID: "main_\(i)")
+                                loopTabButton(
+                                    label: tabItems[i].label,
+                                    realIndex: i,
+                                    loopID: "s\(setIndex)_\(i)",
+                                    setIndex: setIndex,
+                                    proxy: proxy
+                                )
                             }
-                            // 後のセット
-                            ForEach(0..<count, id: \.self) { i in
-                                loopTabButton(label: tabItems[i].label, realIndex: i, loopID: "post_\(i)")
-                            }
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.top, 4)
-                    }
-                    .onChange(of: selectedTabIndex) { oldValue, newValue in
-                        onSelectModeReset()
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            proxy.scrollTo("main_\(newValue)", anchor: .center)
                         }
                     }
-                    .onAppear {
-                        // 初期位置を本体セットの選択タブに
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                            proxy.scrollTo("main_\(selectedTabIndex)", anchor: .center)
-                        }
+                    .padding(.horizontal, 8)
+                    .padding(.top, 4)
+                }
+                .onChange(of: selectedTabIndex) { oldValue, newValue in
+                    onSelectModeReset()
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        proxy.scrollTo("s\(centerSet)_\(newValue)", anchor: .center)
+                    }
+                }
+                .onAppear {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        proxy.scrollTo("s\(centerSet)_\(selectedTabIndex)", anchor: .center)
                     }
                 }
             }
@@ -972,13 +975,19 @@ struct InfiniteTabBarView: View {
         )
     }
 
-    private func loopTabButton(label: String, realIndex: Int, loopID: String) -> some View {
+    private func loopTabButton(label: String, realIndex: Int, loopID: String, setIndex: Int, proxy: ScrollViewProxy) -> some View {
         let isSelected = selectedTabIndex == realIndex
         let color = tagColor(for: tabItems[realIndex].colorIndex)
         let isDragging = draggingTabIndex == realIndex
 
         return Button {
             selectedTabIndex = realIndex
+            // タップしたのが中央セット以外なら、中央にリセット
+            if setIndex != centerSet {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    proxy.scrollTo("s\(centerSet)_\(realIndex)", anchor: .center)
+                }
+            }
         } label: {
             Text(label)
                 .font(.system(size: 14, weight: isSelected ? .bold : .medium, design: .rounded))
@@ -996,6 +1005,18 @@ struct InfiniteTabBarView: View {
         .buttonStyle(.plain)
         .zIndex(isSelected ? 1 : 0)
         .id(loopID)
+        // 端のセット（0番目 or 最後）のタブが画面に現れたらリセット
+        .onAppear {
+            if (setIndex == 0 || setIndex == setCount - 1) && !isResetting {
+                isResetting = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    proxy.scrollTo("s\(centerSet)_\(selectedTabIndex)", anchor: .center)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        isResetting = false
+                    }
+                }
+            }
+        }
         .onDrag {
             draggingTabIndex = realIndex
             return NSItemProvider(object: "\(realIndex)" as NSString)

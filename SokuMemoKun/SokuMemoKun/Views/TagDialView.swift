@@ -12,6 +12,9 @@ struct TagDialView: View {
     var width: CGFloat = 100
     // 「＋タグ追加」がセンターに来た時のコールバック
     var onAddTap: (() -> Void)?
+    // 外部ドラッグ入力（「子」タブからの引き出しドラッグ用）
+    // nil=外部ドラッグなし、値あり=外部からの垂直移動量
+    @Binding var externalDragY: CGFloat?
 
     // 円の半径
     private let wheelRadius: CGFloat = 300
@@ -276,6 +279,24 @@ struct TagDialView: View {
         )
         .onAppear {
             syncRotationToSelection()
+        }
+        // 外部ドラッグ入力を回転に反映
+        .onChange(of: externalDragY) { _, newValue in
+            if let dragY = newValue {
+                // ドラッグ中: 垂直移動量を回転に変換
+                isDragging = true
+                rotation = dragStart + dragY * -0.3
+            } else if isDragging {
+                // ドラッグ終了: スナップして選択更新
+                let snapped = round(rotation / itemAngle) * itemAngle
+                withAnimation(.easeOut(duration: 0.15)) {
+                    rotation = snapped
+                }
+                dragStart = snapped
+                isInternalChange = true
+                updateSelection()
+                isDragging = false
+            }
         }
         // 外部からselectedIDが変わった時にルーレット位置を同期
         .onChange(of: selectedID) { _, _ in

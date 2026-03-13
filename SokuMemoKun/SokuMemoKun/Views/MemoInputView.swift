@@ -25,6 +25,8 @@ struct MemoInputView: View {
     @State private var showDiscardAlert = false
     // 子タグダイアル展開
     @State private var showChildDial = false
+    // 子タグダイアルへの外部ドラッグ入力
+    @State private var childExternalDragY: CGFloat? = nil
 
     // タグIDからタブインデックスを算出（0=タグなし、1〜=親タグ順）
     private func tabIndex(for tagID: UUID?) -> Int {
@@ -275,7 +277,8 @@ struct MemoInputView: View {
                     onAddTap: {
                         newTagIsChild = false
                         showNewTagSheet = true
-                    }
+                    },
+                    externalDragY: .constant(nil)
                 )
 
                 // 子タグエリア（常時表示）
@@ -293,11 +296,12 @@ struct MemoInputView: View {
                         onAddTap: {
                             newTagIsChild = true
                             showNewTagSheet = true
-                        }
+                        },
+                        externalDragY: $childExternalDragY
                     )
 
                     // 閉じるタブ（右端、タップ or 右スワイプで閉じる）
-                    Text("‹")
+                    Text("›")
                         .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(.secondary)
                         .frame(width: 14, height: 60)
@@ -322,7 +326,7 @@ struct MemoInputView: View {
                                 }
                         )
                 } else {
-                    // 「子」タブ突起（タップ or 左スワイプで展開）
+                    // 「子」タブ突起（タップ or ドラッグで展開→そのまま回転）
                     VStack(spacing: 2) {
                         Text("子")
                             .font(.system(size: 9, weight: .bold, design: .rounded))
@@ -342,13 +346,18 @@ struct MemoInputView: View {
                         }
                     }
                     .simultaneousGesture(
-                        DragGesture(minimumDistance: 10)
-                            .onEnded { value in
-                                if value.translation.width < -20 {
-                                    withAnimation(.spring(response: 0.3)) {
-                                        showChildDial = true
-                                    }
+                        DragGesture(minimumDistance: 5)
+                            .onChanged { value in
+                                // ドラッグ開始でダイアルをリアルタイム展開
+                                if !showChildDial {
+                                    showChildDial = true
                                 }
+                                // 垂直成分を子ダイアルに転送
+                                childExternalDragY = value.translation.height
+                            }
+                            .onEnded { _ in
+                                // ドラッグ終了 → 子ダイアルにスナップさせる
+                                childExternalDragY = nil
                             }
                     )
                 }

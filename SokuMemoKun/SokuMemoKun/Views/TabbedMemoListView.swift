@@ -103,13 +103,11 @@ struct TabbedMemoListView: View {
     @Query(sort: \Memo.createdAt, order: .reverse) private var allMemos: [Memo]
     @Environment(\.modelContext) private var modelContext
     @Binding var selectedTabIndex: Int
+    @Binding var searchText: String
     @State private var isSelectMode = false
     @State private var selectedMemoIDs: Set<UUID> = []
     // 選択削除確認ダイアログ
     @State private var showDeleteConfirm = false
-    // 検索
-    @State private var isSearching = false
-    @State private var searchText = ""
     // スワイプ方向追跡（トランジション用）
     @State private var swipeDirection: SwipeDirection = .none
     enum SwipeDirection { case none, left, right }
@@ -142,18 +140,18 @@ struct TabbedMemoListView: View {
         Array(repeating: GridItem(.flexible(), spacing: 8), count: currentGridSize.columns)
     }
 
+    // 検索クエリ
+    private var searchQuery: String {
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    // 検索中かどうか
+    private var isSearchActive: Bool {
+        !searchQuery.isEmpty
+    }
+
+    // 通常タブ用フィルタ
     private var filteredMemos: [Memo] {
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-
-        // 検索中は全メモ横断で検索
-        if !query.isEmpty {
-            return allMemos.filter { memo in
-                memo.title.lowercased().contains(query) ||
-                memo.content.lowercased().contains(query)
-            }
-        }
-
-        // 通常のタブフィルタ
         let item = tabItems[selectedTabIndex]
         if let tag = item.tag {
             return allMemos.filter { memo in
@@ -162,6 +160,42 @@ struct TabbedMemoListView: View {
         } else {
             return allMemos.filter { $0.tags.isEmpty }
         }
+    }
+
+    // 検索結果の全メモ
+    private var searchResultMemos: [Memo] {
+        guard !searchQuery.isEmpty else { return [] }
+        return allMemos.filter { memo in
+            memo.title.lowercased().contains(searchQuery) ||
+            memo.content.lowercased().contains(searchQuery)
+        }
+    }
+
+    // 検索結果をタグ別にグループ化
+    // 返り値: [(タグ名, タグ色Index, メモ配列)]
+    private var searchResultsByTag: [(name: String, colorIndex: Int, memos: [Memo])] {
+        let hits = searchResultMemos
+        guard !hits.isEmpty else { return [] }
+
+        var sections: [(name: String, colorIndex: Int, memos: [Memo])] = []
+
+        // タグなしメモ
+        let noTag = hits.filter { $0.tags.isEmpty }
+        if !noTag.isEmpty {
+            sections.append(("タグなし", 0, noTag))
+        }
+
+        // 親タグごと
+        for tag in tags where tag.parentTagID == nil {
+            let matched = hits.filter { memo in
+                memo.tags.contains { $0.id == tag.id }
+            }
+            if !matched.isEmpty {
+                sections.append((tag.name, tag.colorIndex, matched))
+            }
+        }
+
+        return sections
     }
 
     private var currentColor: Color {
@@ -178,36 +212,155 @@ struct TabbedMemoListView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // タブ行（検索中は非表示）
-            if !isSearching || searchText.isEmpty {
-            ScrollViewReader { proxy in
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: -1) {
-                        ForEach(Array(tabItems.enumerated()), id: \.offset) { index, item in
-                            tabButton(label: item.label, index: index)
-                                .id(index)
+            if isSearchActive {
+                // ── 検索結果モード ──
+                searchResultTabBar
+                searchResultContent
+            } else {
+                // ── 通常モード: タブ行 ──
+                ScrollViewReader { proxy in
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: -1) {
+                            ForEach(Array(tabItems.enumerated()), id: \.offset) { index, item in
+                                tabButton(label: item.label, index: index)
+                                    .id(index)
+                            }
                         }
+                        .padding(.horizontal, 8)
+                        .padding(.top, 4)
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.top, 4)
+                    .onChange(of: selectedTabIndex) { oldValue, newValue in
+                        if swipeDirection == .none {
+                            swipeDirection = newValue > oldValue ? .left : .right
+                        }
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            proxy.scrollTo(newValue, anchor: .center)
+                        }
+                        isSelectMode = false
+                        selectedMemoIDs.removeAll()
+                    }
                 }
-                .onChange(of: selectedTabIndex) { oldValue, newValue in
-                    // スワイプ以外（タブタップ・ルーレット）の切替時もdirectionセット
-                    if swipeDirection == .none {
-                        swipeDirection = newValue > oldValue ? .left : .right
+
+                // ── 通常モード: メモ一覧 ──
+                normalMemoContent
+            }
+        }
+        .alert("\(selectedMemoIDs.count)件のメモを削除します。よろしいですか？", isPresented: $showDeleteConfirm) {
+            Button("削除", role: .destructive) {
+                deleteSelectedMemos()
+            }
+            Button("キャンセル", role: .cancel) {}
+        }
+    }
+
+    // MARK: - 検索結果タブバー
+
+    private var searchResultTabBar: some View {
+        HStack(spacing: 0) {
+            Text("\"\(searchText)\" の検索結果")
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .padding(.vertical, 9)
+                .padding(.horizontal, 16)
+                .frame(maxWidth: .infinity)
+                .background(
+                    TrapezoidTabShape()
+                        .fill(Color(red: 0.85, green: 0.90, blue: 0.95))
+                )
+        }
+        .padding(.horizontal, 8)
+        .padding(.top, 4)
+    }
+
+    // MARK: - 検索結果コンテンツ
+
+    private var searchResultContent: some View {
+        let searchColor = Color(red: 0.85, green: 0.90, blue: 0.95)
+        let resultSections = searchResultsByTag
+        let totalHits = searchResultMemos.count
+        let searchColumns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 2)
+
+        return GeometryReader { geo in
+            ZStack {
+                // 背景
+                searchColor.ignoresSafeArea(edges: .bottom)
+                PaperTextureOverlay().ignoresSafeArea(edges: .bottom)
+
+                if resultSections.isEmpty {
+                    // ヒットなし
+                    VStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.title2)
+                            .foregroundStyle(.secondary)
+                        Text("見つかりませんでした")
+                            .font(.system(size: 14, design: .rounded))
+                            .foregroundStyle(.secondary)
                     }
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        proxy.scrollTo(newValue, anchor: .center)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 16) {
+                            // ヒット件数
+                            Text("\(totalHits)件ヒット")
+                                .font(.system(size: 13, weight: .medium, design: .rounded))
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 10)
+
+                            // タグ別セクション
+                            ForEach(resultSections, id: \.name) { section in
+                                VStack(alignment: .leading, spacing: 6) {
+                                    // セクションヘッダー（タグ名 + 件数）
+                                    HStack(spacing: 6) {
+                                        Circle()
+                                            .fill(tagColor(for: section.colorIndex))
+                                            .frame(width: 10, height: 10)
+                                        Text(section.name)
+                                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                        Text("\(section.memos.count)件")
+                                            .font(.system(size: 12, design: .rounded))
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    .padding(.horizontal, 10)
+
+                                    // メモグリッド（2列）
+                                    LazyVGrid(columns: searchColumns, spacing: 8) {
+                                        ForEach(section.memos) { memo in
+                                            MemoCardView(memo: memo, gridSize: .grid2x3, availableHeight: geo.size.height)
+                                                .onTapGesture {
+                                                    onEditMemo?(memo)
+                                                }
+                                                .contextMenu {
+                                                    Button {
+                                                        UIPasteboard.general.string = memo.content
+                                                    } label: {
+                                                        Label("コピー", systemImage: "doc.on.doc")
+                                                    }
+                                                    Button(role: .destructive) {
+                                                        onDeleteMemo?(memo)
+                                                        modelContext.delete(memo)
+                                                    } label: {
+                                                        Label("削除", systemImage: "trash")
+                                                    }
+                                                }
+                                        }
+                                    }
+                                    .padding(.horizontal, 10)
+                                }
+                            }
+                        }
+                        .padding(.top, 10)
+                        .padding(.bottom, 40)
                     }
-                    // タブ切替で選択モード解除
-                    isSelectMode = false
-                    selectedMemoIDs.removeAll()
                 }
             }
-            } // if !isSearching
+        }
+    }
 
-            // メモ一覧（縁取り付き）
-            GeometryReader { geo in
+    // MARK: - 通常メモコンテンツ
+
+    private var normalMemoContent: some View {
+        GeometryReader { geo in
             ZStack {
                 // メモコンテンツ（タブごとにトランジション）
                 ZStack {
@@ -232,7 +385,6 @@ struct TabbedMemoListView: View {
                             LazyVGrid(columns: currentColumns, spacing: 8) {
                                 ForEach(filteredMemos) { memo in
                                     HStack(spacing: 4) {
-                                        // 選択チェック（選択モード時のみ表示、カード外に配置）
                                         if isSelectMode {
                                             Image(systemName: selectedMemoIDs.contains(memo.id) ? "checkmark.circle.fill" : "circle")
                                                 .font(.system(size: 20))
@@ -240,38 +392,37 @@ struct TabbedMemoListView: View {
                                         }
                                         MemoCardView(memo: memo, gridSize: currentGridSize, availableHeight: geo.size.height)
                                     }
-                                        .onTapGesture {
-                                            if isSelectMode {
-                                                if selectedMemoIDs.contains(memo.id) {
-                                                    selectedMemoIDs.remove(memo.id)
-                                                } else {
-                                                    selectedMemoIDs.insert(memo.id)
-                                                }
+                                    .onTapGesture {
+                                        if isSelectMode {
+                                            if selectedMemoIDs.contains(memo.id) {
+                                                selectedMemoIDs.remove(memo.id)
                                             } else {
-                                                onEditMemo?(memo)
+                                                selectedMemoIDs.insert(memo.id)
+                                            }
+                                        } else {
+                                            onEditMemo?(memo)
+                                        }
+                                    }
+                                    .draggable(memo.id.uuidString) {
+                                        MemoCardView(memo: memo, gridSize: currentGridSize, availableHeight: geo.size.height)
+                                            .frame(width: 120, height: 60)
+                                            .opacity(0.8)
+                                    }
+                                    .contextMenu {
+                                        if !isSelectMode {
+                                            Button {
+                                                UIPasteboard.general.string = memo.content
+                                            } label: {
+                                                Label("コピー", systemImage: "doc.on.doc")
+                                            }
+                                            Button(role: .destructive) {
+                                                onDeleteMemo?(memo)
+                                                modelContext.delete(memo)
+                                            } label: {
+                                                Label("削除", systemImage: "trash")
                                             }
                                         }
-                                        .draggable(memo.id.uuidString) {
-                                            // ドラッグ中のプレビュー
-                                            MemoCardView(memo: memo, gridSize: currentGridSize, availableHeight: geo.size.height)
-                                                .frame(width: 120, height: 60)
-                                                .opacity(0.8)
-                                        }
-                                        .contextMenu {
-                                            if !isSelectMode {
-                                                Button {
-                                                    UIPasteboard.general.string = memo.content
-                                                } label: {
-                                                    Label("コピー", systemImage: "doc.on.doc")
-                                                }
-                                                Button(role: .destructive) {
-                                                    onDeleteMemo?(memo)
-                                                    modelContext.delete(memo)
-                                                } label: {
-                                                    Label("削除", systemImage: "trash")
-                                                }
-                                            }
-                                        }
+                                    }
                                 }
                             }
                             .padding(.horizontal, 10)
@@ -286,73 +437,14 @@ struct TabbedMemoListView: View {
                     removal: .move(edge: swipeDirection == .left ? .leading : .trailing)
                 ))
 
-                // 上部ツールバー（検索・メモ枚数・メモ追加・グリッドサイズ）
-                VStack(spacing: 0) {
-                    // 検索バー（表示中のみ）
-                    if isSearching {
-                        HStack(spacing: 6) {
-                            Image(systemName: "magnifyingglass")
-                                .font(.system(size: 14))
-                                .foregroundStyle(.secondary)
-                            TextField("メモを検索...", text: $searchText)
-                                .font(.system(size: 15, design: .rounded))
-                                .textFieldStyle(.plain)
-                                .autocorrectionDisabled()
-                            if !searchText.isEmpty {
-                                Button {
-                                    searchText = ""
-                                } label: {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.system(size: 16))
-                                        .foregroundStyle(.secondary)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                            Button {
-                                searchText = ""
-                                isSearching = false
-                            } label: {
-                                Text("閉じる")
-                                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                                    .foregroundStyle(.secondary)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color(uiColor: .systemBackground).opacity(0.9))
-                        )
-                        .padding(.horizontal, 8)
-                        .padding(.top, 4)
-                        .padding(.bottom, 2)
-                    }
-
+                // 上部ツールバー（メモ枚数・メモ追加・グリッドサイズ）
+                VStack {
                     HStack(spacing: 8) {
-                        // メモ枚数（左上・背景に馴染む色）
-                        Text(isSearching && !searchText.isEmpty
-                            ? "\(filteredMemos.count)件ヒット"
-                            : "\(filteredMemos.count)枚のメモ")
+                        Text("\(filteredMemos.count)枚のメモ")
                             .font(.system(size: 13, weight: .medium, design: .rounded))
                             .foregroundStyle(darkenedColor)
 
                         Spacer()
-
-                        // 検索ボタン
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                isSearching.toggle()
-                                if !isSearching { searchText = "" }
-                            }
-                        } label: {
-                            Image(systemName: isSearching ? "magnifyingglass.circle.fill" : "magnifyingglass")
-                                .font(.system(size: 15))
-                                .foregroundStyle(.secondary)
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 4)
-                        }
-                        .buttonStyle(.plain)
 
                         // メモ追加ボタン
                         Button {
@@ -392,7 +484,6 @@ struct TabbedMemoListView: View {
                     HStack {
                         Spacer()
                         if isSelectMode {
-                            // 取消ボタン
                             Button {
                                 isSelectMode = false
                                 selectedMemoIDs.removeAll()
@@ -436,26 +527,21 @@ struct TabbedMemoListView: View {
                     .padding(.bottom, 8)
                 }
             }
-            // タブ切替は瞬時（アニメーションなし）
             .animation(.easeInOut(duration: 0.2), value: currentGridSize)
-            // 左右スワイプでフォルダ（タブ）切替
             .simultaneousGesture(
                 DragGesture(minimumDistance: 50)
                     .onEnded { value in
-                        // 横方向が縦方向より大きい場合のみ（スクロールと干渉しないように）
                         let horizontal = abs(value.translation.width)
                         let vertical = abs(value.translation.height)
                         guard horizontal > vertical * 1.5 else { return }
 
                         let count = tabItems.count
                         if value.translation.width < -50, selectedTabIndex < count - 1 {
-                            // 左スワイプ → 次のタブ
                             swipeDirection = .left
                             withAnimation(.easeOut(duration: 0.25)) {
                                 selectedTabIndex += 1
                             }
                         } else if value.translation.width > 50, selectedTabIndex > 0 {
-                            // 右スワイプ → 前のタブ
                             swipeDirection = .right
                             withAnimation(.easeOut(duration: 0.25)) {
                                 selectedTabIndex -= 1
@@ -463,15 +549,7 @@ struct TabbedMemoListView: View {
                         }
                     }
             )
-            } // GeometryReader
         }
-        .alert("\(selectedMemoIDs.count)件のメモを削除します。よろしいですか？", isPresented: $showDeleteConfirm) {
-            Button("削除", role: .destructive) {
-                deleteSelectedMemos()
-            }
-            Button("キャンセル", role: .cancel) {}
-        }
-        // メモの編集はonEditMemoコールバックで入力欄に読み込む
     }
 
     // グリッドサイズ切替ボタン

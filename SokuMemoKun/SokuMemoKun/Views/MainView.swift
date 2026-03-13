@@ -7,6 +7,7 @@ struct MainView: View {
     @State private var showSettings = false
     @State private var focusInput = false
     @State private var selectedTabIndex: Int = 0
+    @State private var searchText = ""
     @AppStorage("defaultMarkdown") private var defaultMarkdown = false
     @Environment(\.modelContext) private var modelContext
 
@@ -24,6 +25,7 @@ struct MainView: View {
                     // 下半分: フォルダ付きメモ一覧
                     TabbedMemoListView(
                         selectedTabIndex: $selectedTabIndex,
+                        searchText: $searchText,
                         onAddMemo: { tagID in
                             viewModel.clearInput()
                             viewModel.selectedTagID = tagID
@@ -42,7 +44,6 @@ struct MainView: View {
                 }
             }
             .ignoresSafeArea(.keyboard)
-            .navigationTitle("即メモ君")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 // 左: ＋ボタン（新規メモ作成）
@@ -55,13 +56,46 @@ struct MainView: View {
                             .font(.system(size: 17))
                     }
                 }
-                // 右: 設定
+                // 中央: 検索バー
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 13))
+                            .foregroundStyle(.secondary)
+                        TextField("メモをさがす", text: $searchText)
+                            .font(.system(size: 15, design: .rounded))
+                            .textFieldStyle(.plain)
+                            .autocorrectionDisabled()
+                        if !searchText.isEmpty {
+                            Button {
+                                searchText = ""
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 14))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color(uiColor: .secondarySystemBackground))
+                    )
+                }
+                // 右: ロゴ + 設定
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showSettings = true
-                    } label: {
-                        Image(systemName: "gearshape")
-                            .font(.system(size: 15))
+                    HStack(spacing: 10) {
+                        Text("即メモ君")
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .foregroundStyle(.secondary)
+                        Button {
+                            showSettings = true
+                        } label: {
+                            Image(systemName: "gearshape")
+                                .font(.system(size: 15))
+                        }
                     }
                 }
             }

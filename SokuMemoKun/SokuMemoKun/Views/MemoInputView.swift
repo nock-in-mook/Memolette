@@ -151,7 +151,7 @@ struct MemoInputView: View {
                         .disabled(viewModel.inputText.isEmpty)
 
                         Button {
-                            viewModel.save(context: modelContext, tags: tags)
+                            viewModel.clearInput()
                             triggerSaveAnimation()
                         } label: {
                             Label("保存", systemImage: "square.and.arrow.down.fill")
@@ -160,7 +160,7 @@ struct MemoInputView: View {
                         .buttonStyle(.borderedProminent)
                         .buttonBorderShape(.capsule)
                         .controlSize(.small)
-                        .disabled(!viewModel.canSave)
+                        .disabled(!viewModel.canClear)
                     }
                 }
                 .padding(.horizontal, 8)
@@ -200,6 +200,25 @@ struct MemoInputView: View {
             if newValue {
                 isTextEditorFocused = true
                 focusInput = false
+            }
+        }
+        // 自動保存: テキスト変更
+        .onChange(of: viewModel.inputText) { _, _ in
+            viewModel.onContentChanged(context: modelContext, tags: tags)
+        }
+        // 自動保存: タイトル変更
+        .onChange(of: viewModel.titleText) { _, _ in
+            viewModel.onTitleChanged()
+        }
+        // 自動保存: タグ変更
+        .onChange(of: viewModel.selectedTagID) { _, _ in
+            viewModel.onTagChanged(tags: tags)
+        }
+        // マークダウンメモ読み込み時にFullEditorを自動起動
+        .onChange(of: viewModel.openFullEditor) { _, newValue in
+            if newValue {
+                showFullEditor = true
+                viewModel.openFullEditor = false
             }
         }
     }

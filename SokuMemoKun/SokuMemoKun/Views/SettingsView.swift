@@ -5,6 +5,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage("defaultMarkdown") private var defaultMarkdown = false
     @AppStorage("markdownLayout") private var markdownLayout: String = MarkdownLayout.split.rawValue
+    @AppStorage("restoreLastMemo") private var restoreLastMemo = false
 
     var body: some View {
         NavigationStack {
@@ -14,6 +15,16 @@ struct SettingsView: View {
                     TagEditView()
                 } label: {
                     Label("タグ編集", systemImage: "tag")
+                }
+
+                // 起動時の動作
+                Section("起動時の動作") {
+                    Picker(selection: $restoreLastMemo) {
+                        Text("常に白紙で始める").tag(false)
+                        Text("前回のメモを続行").tag(true)
+                    } label: {
+                        Label("アプリ起動時の入力欄", systemImage: "doc.text")
+                    }
                 }
 
                 // マークダウン設定

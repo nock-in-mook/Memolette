@@ -7,6 +7,7 @@ struct MainView: View {
     @State private var showSettings = false
     @State private var focusInput = false
     @AppStorage("defaultMarkdown") private var defaultMarkdown = false
+    @Environment(\.modelContext) private var modelContext
 
     var body: some View {
         NavigationStack {
@@ -15,9 +16,25 @@ struct MainView: View {
                 MemoInputView(viewModel: viewModel, focusInput: $focusInput)
 
                 // 台形タブ付きメモ一覧
-                TabbedMemoListView(onAddMemo: {
-                    focusInput = true
-                })
+                TabbedMemoListView(
+                    onAddMemo: {
+                        viewModel.clearInput()
+                        focusInput = true
+                    },
+                    onEditMemo: { memo in
+                        viewModel.loadMemo(memo)
+                        if memo.isMarkdown {
+                            viewModel.openFullEditor = true
+                        }
+                        focusInput = true
+                    },
+                    onDeleteMemo: { memo in
+                        // 編集中のメモが削除された場合は入力欄をクリア
+                        if viewModel.editingMemo?.id == memo.id {
+                            viewModel.clearInput()
+                        }
+                    }
+                )
             }
             .navigationTitle("即メモ君")
             .navigationBarTitleDisplayMode(.inline)
@@ -66,6 +83,10 @@ struct MainView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
                 isKeyboardVisible = false
+            }
+            .onAppear {
+                // 起動時に前回のメモを復元（設定に応じて）
+                viewModel.restoreLastMemo(context: modelContext)
             }
         }
     }

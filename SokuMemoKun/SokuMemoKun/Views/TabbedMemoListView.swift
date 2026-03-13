@@ -97,14 +97,14 @@ struct TabbedMemoListView: View {
     @Query(sort: \Memo.createdAt, order: .reverse) private var allMemos: [Memo]
     @Environment(\.modelContext) private var modelContext
     @State private var selectedTabIndex: Int = 0
-    @State private var editingMemo: Memo?
-    @State private var markdownMemo: Memo?
     @State private var isSelectMode = false
     @State private var selectedMemoIDs: Set<UUID> = []
     // タグなし用のグリッドサイズ（UserDefaultsで保存）
     @AppStorage("noTagGridSize") private var noTagGridSize: Int = 2
-    // メモ追加コールバック
+    // コールバック
     var onAddMemo: (() -> Void)?
+    var onEditMemo: ((Memo) -> Void)?
+    var onDeleteMemo: ((Memo) -> Void)?
 
     private var tabItems: [(label: String, tag: Tag?, colorIndex: Int)] {
         var items: [(String, Tag?, Int)] = [("タグなし", nil, 0)]
@@ -205,10 +205,8 @@ struct TabbedMemoListView: View {
                                             } else {
                                                 selectedMemoIDs.insert(memo.id)
                                             }
-                                        } else if memo.isMarkdown {
-                                            markdownMemo = memo
                                         } else {
-                                            editingMemo = memo
+                                            onEditMemo?(memo)
                                         }
                                     }
                                     .contextMenu {
@@ -219,6 +217,7 @@ struct TabbedMemoListView: View {
                                                 Label("コピー", systemImage: "doc.on.doc")
                                             }
                                             Button(role: .destructive) {
+                                                onDeleteMemo?(memo)
                                                 modelContext.delete(memo)
                                             } label: {
                                                 Label("削除", systemImage: "trash")
@@ -303,21 +302,7 @@ struct TabbedMemoListView: View {
             .animation(.easeInOut(duration: 0.2), value: currentGridSize)
             } // GeometryReader
         }
-        .sheet(item: $editingMemo) { memo in
-            TagTitleSheetView(memo: memo)
-        }
-        .fullScreenCover(item: $markdownMemo) { memo in
-            FullEditorView(
-                text: Binding(
-                    get: { memo.content },
-                    set: { memo.content = $0 }
-                ),
-                isMarkdown: Binding(
-                    get: { memo.isMarkdown },
-                    set: { memo.isMarkdown = $0 }
-                )
-            )
-        }
+        // メモの編集はonEditMemoコールバックで入力欄に読み込む
     }
 
     // グリッドサイズ切替ボタン
@@ -350,6 +335,7 @@ struct TabbedMemoListView: View {
 
     private func deleteSelectedMemos() {
         for memo in allMemos where selectedMemoIDs.contains(memo.id) {
+            onDeleteMemo?(memo)
             modelContext.delete(memo)
         }
         selectedMemoIDs.removeAll()

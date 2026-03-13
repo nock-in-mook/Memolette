@@ -7,21 +7,17 @@ struct MainView: View {
     @State private var showSettings = false
     @State private var focusInput = false
     @State private var selectedTabIndex: Int = 0
-    // 閲覧中の既存メモ（nilなら新規入力モード）
-    @State private var previewingMemo: Memo?
     @AppStorage("defaultMarkdown") private var defaultMarkdown = false
     @Environment(\.modelContext) private var modelContext
 
     var body: some View {
         NavigationStack {
             GeometryReader { geo in
-                // キーボードでフォルダ一覧がせり上がらないようにする
                 VStack(spacing: 0) {
-                    // 上半分: 入力 / 閲覧 / 編集（統合ペイン）
+                    // 上半分: 入力欄（常に同じ画面）
                     MemoInputView(
                         viewModel: viewModel,
-                        focusInput: $focusInput,
-                        previewingMemo: $previewingMemo
+                        focusInput: $focusInput
                     )
                     .frame(height: geo.size.height * 0.48)
 
@@ -29,20 +25,16 @@ struct MainView: View {
                     TabbedMemoListView(
                         selectedTabIndex: $selectedTabIndex,
                         onAddMemo: {
-                            previewingMemo = nil  // 閲覧→入力に戻す
                             viewModel.clearInput()
                             focusInput = true
                         },
                         onEditMemo: { memo in
-                            // 上半分に閲覧表示
-                            previewingMemo = memo
+                            // 既存メモを入力欄に読み込む
+                            viewModel.loadMemo(memo)
                         },
                         onDeleteMemo: { memo in
                             if viewModel.editingMemo?.id == memo.id {
                                 viewModel.clearInput()
-                            }
-                            if previewingMemo?.id == memo.id {
-                                previewingMemo = nil
                             }
                         }
                     )
@@ -52,15 +44,14 @@ struct MainView: View {
             .navigationTitle("即メモ君")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                // 左: 戻るボタン（閲覧/編集中のみ）
+                // 左: ＋ボタン（新規メモ作成）
                 ToolbarItem(placement: .topBarLeading) {
-                    if previewingMemo != nil {
-                        Button {
-                            previewingMemo = nil
-                        } label: {
-                            Image(systemName: "arrow.backward")
-                                .font(.system(size: 15))
-                        }
+                    Button {
+                        viewModel.clearInput()
+                        focusInput = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 15))
                     }
                 }
                 // 右: 設定
@@ -81,7 +72,6 @@ struct MainView: View {
                     viewModel.isMarkdown = newValue
                 }
             }
-            // タブ切替通知を受信
             .onReceive(NotificationCenter.default.publisher(for: .switchToTab)) { notification in
                 if let tabIndex = notification.userInfo?["tabIndex"] as? Int {
                     selectedTabIndex = tabIndex

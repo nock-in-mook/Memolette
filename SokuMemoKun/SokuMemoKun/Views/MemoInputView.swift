@@ -5,25 +5,12 @@ extension Notification.Name {
     static let switchToTab = Notification.Name("switchToTab")
 }
 
-// 上半分ペインの表示モード
-enum TopPaneMode {
-    case newInput    // 新規メモ入力
-    case preview     // 既存メモ閲覧
-    case editing     // 既存メモ編集中
-}
-
 struct MemoInputView: View {
     @Bindable var viewModel: MemoInputViewModel
     @Binding var focusInput: Bool
-    @Binding var previewingMemo: Memo?
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Tag.name) private var tags: [Tag]
     @FocusState private var isTextEditorFocused: Bool
-
-    // 既存メモ編集中かどうか
-    @State private var isEditingExisting = false
-    @State private var editText: String = ""
-    @State private var editTitle: String = ""
 
     // 新規タグ作成シート
     @State private var showNewTagSheet = false
@@ -37,27 +24,6 @@ struct MemoInputView: View {
     @State private var showChildDial = false
     @State private var childExternalDragY: CGFloat? = nil
     @AppStorage("dialDefault") private var dialDefault: Int = 0
-
-    private var mode: TopPaneMode {
-        if previewingMemo != nil {
-            return isEditingExisting ? .editing : .preview
-        }
-        return .newInput
-    }
-
-    // 現在表示中のテキスト
-    private var currentText: String {
-        mode == .newInput ? viewModel.inputText : editText
-    }
-
-    // 保存ボタンが押せるか
-    private var canSave: Bool {
-        switch mode {
-        case .newInput: return viewModel.canClear
-        case .editing: return true
-        case .preview: return false
-        }
-    }
 
     private func tabIndex(for tagID: UUID?) -> Int {
         guard let tagID = tagID else { return 0 }
@@ -106,14 +72,33 @@ struct MemoInputView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // ヘッダー: タイトル + タグ（全モード共通レイアウト）
+            // ヘッダー: タイトル + タグ
             headerRow
             Divider()
-            // 本文 + ルーレット（最大化ボタンは本文右上にオーバーレイ）
+            // 本文 + ルーレット
             HStack(spacing: 0) {
                 ZStack(alignment: .topTrailing) {
-                    contentArea
-                    // 最大化ボタン（テキスト入力欄の右上、右端ぴったり）
+                    // 本文入力（常にTextEditor）
+                    ZStack(alignment: .topLeading) {
+                        TextEditor(text: $viewModel.inputText)
+                            .font(.system(size: 17))
+                            .padding(.horizontal, 4)
+                            .padding(.top, 4)
+                            .padding(.trailing, 24)
+                            .focused($isTextEditorFocused)
+
+                        if viewModel.inputText.isEmpty {
+                            Text(viewModel.isMarkdown ? "タップでマークダウン編集..." : "メモを入力...")
+                                .font(.system(size: 17))
+                                .foregroundStyle(.gray.opacity(0.5))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 12)
+                                .allowsHitTesting(false)
+                        }
+                    }
+                    .frame(maxHeight: .infinity)
+
+                    // 最大化ボタン（右上ぴったり）
                     Button {
                         showFullEditor = true
                     } label: {
@@ -129,7 +114,7 @@ struct MemoInputView: View {
                 dialArea
             }
             Divider()
-            // フッター: 全モード共通（左:削除 右:コピー+保存）
+            // フッター: 左=削除 右=コピー+保存
             footerRow
         }
         .background(
@@ -144,13 +129,7 @@ struct MemoInputView: View {
         .padding(.vertical, 6)
         .alert("このメモを削除します。よろしいですか？", isPresented: $showDeleteAlert) {
             Button("削除", role: .destructive) {
-                if mode == .newInput {
-                    viewModel.discardMemo(context: modelContext)
-                } else if let memo = previewingMemo {
-                    modelContext.delete(memo)
-                    previewingMemo = nil
-                    isEditingExisting = false
-                }
+                viewModel.discardMemo(context: modelContext)
             }
             Button("キャンセル", role: .cancel) {}
         }
@@ -174,56 +153,29 @@ struct MemoInputView: View {
             )
         }
         .fullScreenCover(isPresented: $showFullEditor) {
-            if mode == .newInput {
-                FullEditorView(text: $viewModel.inputText, isMarkdown: $viewModel.isMarkdown)
-            } else if let memo = previewingMemo {
+            if let memo = viewModel.editingMemo {
                 MemoDetailView(memo: memo)
+            } else {
+                FullEditorView(text: $viewModel.inputText, isMarkdown: $viewModel.isMarkdown)
             }
         }
         .onChange(of: focusInput) { _, newValue in
             if newValue { isTextEditorFocused = true; focusInput = false }
         }
         .onChange(of: viewModel.inputText) { _, _ in
-            if mode == .newInput { viewModel.onContentChanged(context: modelContext, tags: tags) }
+            viewModel.onContentChanged(context: modelContext, tags: tags)
         }
         .onChange(of: viewModel.titleText) { _, _ in
-            if mode == .newInput { viewModel.onTitleChanged() }
+            viewModel.onTitleChanged()
         }
         .onChange(of: viewModel.selectedTagID) { _, newTagID in
             if !viewModel.isLoadingMemo { viewModel.selectedChildTagID = nil }
-            if mode == .newInput { viewModel.onTagChanged(tags: tags) }
-            if mode == .editing, let memo = previewingMemo {
-                memo.tags.removeAll()
-                if let tagID = newTagID, let tag = tags.first(where: { $0.id == tagID }) {
-                    memo.tags.append(tag)
-                }
-                if let childID = viewModel.selectedChildTagID,
-                   let childTag = tags.first(where: { $0.id == childID }) {
-                    memo.tags.append(childTag)
-                }
-                memo.updatedAt = Date()
-            }
+            viewModel.onTagChanged(tags: tags)
             let idx = tabIndex(for: newTagID)
             NotificationCenter.default.post(name: .switchToTab, object: nil, userInfo: ["tabIndex": idx])
         }
-        .onChange(of: viewModel.selectedChildTagID) { _, newChildID in
-            if mode == .newInput { viewModel.onTagChanged(tags: tags) }
-            if mode == .editing, let memo = previewingMemo {
-                memo.tags.removeAll(where: { $0.parentTagID != nil })
-                if let childID = newChildID,
-                   let childTag = tags.first(where: { $0.id == childID }) {
-                    memo.tags.append(childTag)
-                }
-                memo.updatedAt = Date()
-            }
-        }
-        .onChange(of: previewingMemo) { _, newMemo in
-            isEditingExisting = false
-            if let memo = newMemo {
-                editText = memo.content
-                editTitle = memo.title
-                viewModel.loadMemo(memo)
-            }
+        .onChange(of: viewModel.selectedChildTagID) { _, _ in
+            viewModel.onTagChanged(tags: tags)
         }
         .onAppear {
             showParentDial = dialDefault >= 1
@@ -231,16 +183,16 @@ struct MemoInputView: View {
         }
     }
 
-    // MARK: - ヘッダー行（全モード共通レイアウト）
+    // MARK: - ヘッダー
 
     private var headerRow: some View {
         HStack(spacing: 6) {
-            // タイトル欄 — 常に同じ位置・サイズ
-            titleField
+            TextField("タイトル（任意）", text: $viewModel.titleText)
+                .font(.system(size: 15, design: .rounded))
 
             Spacer()
 
-            // 右: タグ表示（タップでルーレット展開）
+            // タグ表示（タップでルーレット展開）
             tagDisplay
                 .onTapGesture {
                     withAnimation(.spring(response: 0.3)) {
@@ -252,33 +204,6 @@ struct MemoInputView: View {
         .padding(.vertical, 6)
     }
 
-    // タイトル欄
-    @ViewBuilder
-    private var titleField: some View {
-        if mode == .newInput {
-            TextField("タイトル（任意）", text: $viewModel.titleText)
-                .font(.system(size: 15, design: .rounded))
-        } else if mode == .editing {
-            TextField("タイトル（任意）", text: $editTitle)
-                .font(.system(size: 15, weight: .semibold, design: .rounded))
-        } else {
-            // プレビュー — タイトルがあればText、なければプレースホルダー
-            let title = previewingMemo?.title ?? ""
-            if title.isEmpty {
-                Text("タイトル（任意）")
-                    .font(.system(size: 15, design: .rounded))
-                    .foregroundStyle(.gray.opacity(0.4))
-                    .onTapGesture { enterEditingMode() }
-            } else {
-                Text(title)
-                    .font(.system(size: 15, weight: .semibold, design: .rounded))
-                    .lineLimit(1)
-                    .onTapGesture { enterEditingMode() }
-            }
-        }
-    }
-
-    // タグ表示（ヘッダー右側）
     private var tagDisplay: some View {
         HStack(spacing: 3) {
             let info = selectedTagInfo
@@ -297,139 +222,49 @@ struct MemoInputView: View {
         }
     }
 
-    // プレビュー→編集モードへの移行
-    private func enterEditingMode() {
-        if let memo = previewingMemo {
-            editText = memo.content
-            editTitle = memo.title
-            viewModel.loadMemo(memo)
-            isEditingExisting = true
-        }
-    }
-
-    // MARK: - コンテンツ（全モード共通の枠内に表示）
-
-    @ViewBuilder
-    private var contentArea: some View {
-        switch mode {
-        case .newInput:
-            newInputContent
-        case .preview:
-            previewContent
-        case .editing:
-            editingContent
-        }
-    }
-
-    private var newInputContent: some View {
-        ZStack(alignment: .topLeading) {
-            TextEditor(text: $viewModel.inputText)
-                .font(.system(size: 17))
-                .padding(.horizontal, 4)
-                .padding(.top, 4)
-                .padding(.trailing, 24)
-                .focused($isTextEditorFocused)
-
-            if viewModel.inputText.isEmpty {
-                Text(viewModel.isMarkdown ? "タップでマークダウン編集..." : "メモを入力...")
-                    .font(.system(size: 17))
-                    .foregroundStyle(.gray.opacity(0.5))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 12)
-                    .allowsHitTesting(false)
-            }
-        }
-        .frame(maxHeight: .infinity)
-    }
-
-    private var previewContent: some View {
-        ScrollView {
-            Text(previewingMemo?.content ?? "（内容なし）")
-                .font(.system(size: 17))
-                .foregroundStyle(.primary)
-                .frame(maxWidth: .infinity, alignment: .topLeading)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
-                .padding(.trailing, 20)
-        }
-        .frame(maxHeight: .infinity)
-        .contentShape(Rectangle())
-        .onTapGesture { enterEditingMode() }
-    }
-
-    private var editingContent: some View {
-        TextEditor(text: $editText)
-            .font(.system(size: 17))
-            .padding(.horizontal, 4)
-            .padding(.top, 4)
-            .padding(.trailing, 24)
-            .focused($isTextEditorFocused)
-            .frame(maxHeight: .infinity)
-            .onChange(of: editText) { _, newValue in
-                previewingMemo?.content = newValue
-                previewingMemo?.updatedAt = Date()
-            }
-            .onChange(of: editTitle) { _, newValue in
-                previewingMemo?.title = newValue
-                previewingMemo?.updatedAt = Date()
-            }
-    }
-
-    // MARK: - フッター行（全モード共通: 左=削除 右=コピー+保存）
+    // MARK: - フッター（左=削除 右=コピー+保存）
 
     private var footerRow: some View {
         HStack(spacing: 8) {
-            // 左: 削除ボタン
+            // 左: 削除
             Button { showDeleteAlert = true } label: {
                 Image(systemName: "trash")
                     .font(.system(size: 13))
                     .foregroundStyle(.red.opacity(0.5))
             }
-            .disabled(mode == .newInput && !viewModel.canClear)
+            .disabled(!viewModel.canClear)
 
             Spacer()
 
             // 右: コピー
             Button {
-                UIPasteboard.general.string = currentText
+                UIPasteboard.general.string = viewModel.inputText
             } label: {
                 Label("コピー", systemImage: "doc.on.doc").font(.system(size: 14))
             }
-            .disabled(currentText.isEmpty)
+            .disabled(viewModel.inputText.isEmpty)
 
-            // 右: 保存
-            Button { performSave() } label: {
+            // 右: 保存（入力欄をクリアして新規待ち）
+            Button {
+                let targetTab = tabIndex(for: viewModel.selectedTagID)
+                viewModel.clearInput()
+                showParentDial = dialDefault >= 1
+                showChildDial = dialDefault >= 2
+                NotificationCenter.default.post(
+                    name: .switchToTab, object: nil,
+                    userInfo: ["tabIndex": targetTab]
+                )
+            } label: {
                 Label("保存", systemImage: "square.and.arrow.down.fill")
                     .font(.system(size: 14, weight: .bold))
             }
             .buttonStyle(.borderedProminent)
             .buttonBorderShape(.capsule)
             .controlSize(.small)
-            .disabled(!canSave)
+            .disabled(!viewModel.canClear)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 5)
-    }
-
-    // 保存アクション
-    private func performSave() {
-        switch mode {
-        case .newInput:
-            let targetTab = tabIndex(for: viewModel.selectedTagID)
-            viewModel.clearInput()
-            showParentDial = dialDefault >= 1
-            showChildDial = dialDefault >= 2
-            NotificationCenter.default.post(
-                name: .switchToTab, object: nil,
-                userInfo: ["tabIndex": targetTab]
-            )
-        case .editing:
-            // 編集内容はonChangeで既に保存済み、閲覧モードに戻る
-            isEditingExisting = false
-            isTextEditorFocused = false
-        case .preview:
-            break
-        }
     }
 
     // MARK: - ルーレット（収納式）

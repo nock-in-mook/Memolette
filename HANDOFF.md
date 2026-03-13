@@ -21,37 +21,44 @@
 - ルーレット↔タブ連動: ルーレット操作でタブが自動切替
 - 新規タグ追加→ルーレット同期＋対応タブへ自動切替
 - 保存ボタン→対応タブへ自動切替
-- サンプルデータ構造化（タグなし5, 仕事15, アイデア50, 買い物3, 趣味8, 健康20, MD3）
+- フォルダ左上にメモ枚数表示（背景に馴染む色でひっそり表示）
+- テストデータ生成関数を強化（sampleDataV4: 120枚、テキスト長/タグ/タイトル/MDランダム）
+- 子タグダイアルのドラッグ引出し＋回転をリアルタイム化（externalDragY）
+- 閉じるタブの矢印を右向き（›）に変更
 
 ## 主要ファイル
-- TabbedMemoListView.swift: グリッド切替(5段階)、メモ追加/選択削除、MemoCardView（M↓マーク対応）、tabItemsで親タグのみフィルタ
+- TabbedMemoListView.swift: グリッド切替(5段階)、メモ追加/選択削除、MemoCardView（M↓マーク対応）、tabItemsで親タグのみフィルタ、メモ枚数表示（darkenedColor）
 - FullEditorView.swift: LayoutIcon（カスタムアイコン）追加
 - SettingsView.swift: プレビュー表示形式ラベル＋カスタムアイコン
-- MemoInputView.swift: タグダイアル（親+子）、保存/タグ変更時のタブ同期（NotificationCenter）
+- MemoInputView.swift: タグダイアル（親+子）、保存/タグ変更時のタブ同期（NotificationCenter）、子ダイアル外部ドラッグ（childExternalDragY）
 - MainView.swift: selectedTabIndex管理、switchToTab通知受信
-- TagDialView.swift: Canvas描画ルーレット、syncRotationToSelection、isInternalChange guard
+- TagDialView.swift: Canvas描画ルーレット、syncRotationToSelection、isInternalChange guard、externalDragY対応
 - NewTagSheetView.swift: onTagCreatedコールバック追加
 - Tag.swift: gridSizeプロパティ、parentTagID追加
-- SokuMemoKunApp.swift: resetAndInsertSamples（構造化サンプルデータ投入、sampleDataV3）
+- SokuMemoKunApp.swift: テストデータ生成関数（createTags, generateVariedMemos, SeededRNG, sampleDataV4）
 
 ## 環境
 - Mac: MacBook Air M2, macOS
 - Xcode: 26.3
 - シミュレータ: iPhone 15 Pro Max (95C8A8C5-0972-4BB0-B793-5219096697DF) ← iOS 17.2
+- 実機: 15promax (26.3.1) (00008130-0006252E2E40001C) ← USB接続確認済み
 - ビルド後は毎回「Fit Screen」でウィンドウ縮小する
 
 ## 次のアクション
-1. タブ（バッグ）にメモ件数を表示する
-2. 書きかけのメモの扱い（自動保存？下書き？破棄確認？）
-3. マークダウン編集画面のテコ入れ（アイコンの説明表示、保存ボタンの配置・動作）
-4. 子タグのバッグ表示（タブに子タグも並べる or 親バッグ内で切替）
-5. バッグからの「新規追加」→入力欄フォーカス＋そのタグを自動選択済み
+1. **実機ビルド・テスト**（iPhone 15 Pro Max実機、署名設定が必要）
+2. 子タグダイアルのドラッグ引出し→回転が実機で動くか確認（シミュレータでは回転しなかった）
+3. 設定で「子タグルーレットを常に表示」のオンオフ切替
+4. 書きかけのメモの扱い（自動保存？下書き？破棄確認？）
+5. マークダウン編集画面のテコ入れ（アイコンの説明表示、保存ボタンの配置・動作）
+6. 子タグのバッグ表示（タブに子タグも並べる or 親バッグ内で切替）
+7. バッグからの「新規追加」→入力欄フォーカス＋そのタグを自動選択済み
 
 ## 注意点
 - DerivedData キャッシュ → `rm -rf ~/Library/Developer/Xcode/DerivedData/SokuMemoKun-*`
 - SwiftUIのButton内テキストが青くなる → `.buttonStyle(.plain)`
 - MemoInputViewModelは@Stateで一度だけ生成 → 設定変更はonChangeで反映
 - ModelContainerは共有必須
-- サンプルデータはUserDefaultsの"sampleDataV3"フラグで制御（再投入はアプリ再インストールで）
+- サンプルデータはUserDefaultsの"sampleDataV4"フラグで制御（再投入はアプリ再インストールで）
 - NotificationCenter(.switchToTab)でルーレット↔タブ間のクロスビュー通信
 - TagDialViewのsyncRotationToSelectionはisInternalChangeフラグでドラッグ中の干渉を防止
+- iOS 17.2では Color.mix(with:by:) が使えない → UIColor + getHue で手動計算

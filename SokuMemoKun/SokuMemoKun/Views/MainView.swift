@@ -9,12 +9,6 @@ struct MainView: View {
     @State private var selectedTabIndex: Int = 0
     @AppStorage("defaultMarkdown") private var defaultMarkdown = false
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Tag.name) private var tags: [Tag]
-
-    // 親タグのみ（タブ順序と一致させる）
-    private var parentTags: [Tag] {
-        tags.filter { $0.parentTagID == nil }
-    }
 
     var body: some View {
         NavigationStack {
@@ -63,7 +57,7 @@ struct MainView: View {
                     viewModel.isMarkdown = newValue
                 }
             }
-            // 保存時のタブ切替通知を受信
+            // タブ切替通知を受信（新規タグ追加時、保存時など）
             .onReceive(NotificationCenter.default.publisher(for: .switchToTab)) { notification in
                 if let tabIndex = notification.userInfo?["tabIndex"] as? Int {
                     selectedTabIndex = tabIndex

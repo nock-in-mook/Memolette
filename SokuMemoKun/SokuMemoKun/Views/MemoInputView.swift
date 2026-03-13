@@ -240,7 +240,6 @@ struct MemoInputView: View {
                             viewModel.clearInput()
                             showChildDial = false
                             triggerSaveAnimation()
-                            // NotificationCenterでタブ切替を通知
                             NotificationCenter.default.post(
                                 name: .switchToTab,
                                 object: nil,
@@ -381,6 +380,16 @@ struct MemoInputView: View {
                         viewModel.selectedChildTagID = newTagID
                     } else {
                         viewModel.selectedTagID = newTagID
+                        // 親タグ追加時は対応するバッグ（タブ）も開く
+                        // @Queryの更新を待ってからインデックスを算出
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            let idx = tabIndex(for: newTagID)
+                            NotificationCenter.default.post(
+                                name: .switchToTab,
+                                object: nil,
+                                userInfo: ["tabIndex": idx]
+                            )
+                        }
                     }
                 }
             )

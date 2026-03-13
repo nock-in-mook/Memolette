@@ -39,8 +39,8 @@ struct MainView: View {
                         }
                     )
                 }
-                .ignoresSafeArea(.keyboard)
             }
+            .ignoresSafeArea(.keyboard)
             .navigationTitle("即メモ君")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

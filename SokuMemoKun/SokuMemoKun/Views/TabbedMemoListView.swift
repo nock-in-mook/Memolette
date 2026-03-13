@@ -69,7 +69,7 @@ struct PaperTextureOverlay: View {
 enum GridSizeOption: Int, CaseIterable {
     case grid3x8 = 0   // 3×8
     case grid2x6 = 1   // 2×6
-    case grid2x2 = 2   // 2×2
+    case grid2x3 = 2   // 2×3
     case grid1x2 = 3   // 1×2
     case full = 4       // 1列・全文表示
 
@@ -77,7 +77,7 @@ enum GridSizeOption: Int, CaseIterable {
         switch self {
         case .grid3x8: return 3
         case .grid2x6: return 2
-        case .grid2x2: return 2
+        case .grid2x3: return 2
         case .grid1x2: return 1
         case .full: return 1
         }
@@ -87,7 +87,7 @@ enum GridSizeOption: Int, CaseIterable {
         switch self {
         case .grid3x8: return "3×8"
         case .grid2x6: return "2×6"
-        case .grid2x2: return "2×2"
+        case .grid2x3: return "2×3"
         case .grid1x2: return "1×2"
         case .full: return "1(全文)"
         }
@@ -192,7 +192,7 @@ struct TabbedMemoListView: View {
 
             // メモ一覧（縁取り付き）
             GeometryReader { geo in
-            ZStack(alignment: .topTrailing) {
+            ZStack {
                 // メモコンテンツ（タブごとにトランジション）
                 ZStack {
                     currentColor
@@ -235,6 +235,12 @@ struct TabbedMemoListView: View {
                                                 onEditMemo?(memo)
                                             }
                                         }
+                                        .draggable(memo.id.uuidString) {
+                                            // ドラッグ中のプレビュー
+                                            MemoCardView(memo: memo, gridSize: currentGridSize, availableHeight: geo.size.height)
+                                                .frame(width: 120, height: 60)
+                                                .opacity(0.8)
+                                        }
                                         .contextMenu {
                                             if !isSelectMode {
                                                 Button {
@@ -254,7 +260,7 @@ struct TabbedMemoListView: View {
                             }
                             .padding(.horizontal, 10)
                             .padding(.top, 50)
-                            .padding(.bottom, 20)
+                            .padding(.bottom, 40)
                         }
                     }
                 }
@@ -264,61 +270,22 @@ struct TabbedMemoListView: View {
                     removal: .move(edge: swipeDirection == .left ? .leading : .trailing)
                 ))
 
-                // ツールバー（左上: メモ枚数、右上: 操作ボタン）
-                HStack(spacing: 8) {
-                    // メモ枚数（左上・背景に馴染む色）
-                    Text("\(filteredMemos.count)枚のメモ")
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
-                        .foregroundStyle(darkenedColor)
-
-                    Spacer()
-                    // メモ追加ボタン
-                    Button {
-                        if isSelectMode { isSelectMode = false; selectedMemoIDs.removeAll() }
-                        onAddMemo?()
-                    } label: {
-                        Label("メモ追加", systemImage: "plus")
+                // 上部ツールバー（メモ枚数・メモ追加・グリッドサイズ）
+                VStack {
+                    HStack(spacing: 8) {
+                        // メモ枚数（左上・背景に馴染む色）
+                        Text("\(filteredMemos.count)枚のメモ")
                             .font(.system(size: 13, weight: .medium, design: .rounded))
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(
-                                Capsule()
-                                    .fill(Color(uiColor: .systemBackground).opacity(0.85))
-                            )
-                    }
-                    .buttonStyle(.plain)
+                            .foregroundStyle(darkenedColor)
 
-                    // 選択削除ボタン
-                    Button {
-                        if isSelectMode {
-                            // 確認ダイアログ表示
-                            showDeleteConfirm = true
-                        } else {
-                            isSelectMode = true
-                            selectedMemoIDs.removeAll()
-                        }
-                    } label: {
-                        Label(isSelectMode ? "削除" : "選択削除", systemImage: "trash")
-                            .font(.system(size: 13, weight: .medium, design: .rounded))
-                            .foregroundStyle(isSelectMode && !selectedMemoIDs.isEmpty ? .red : .secondary)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(
-                                Capsule()
-                                    .fill(Color(uiColor: .systemBackground).opacity(0.85))
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(isSelectMode && selectedMemoIDs.isEmpty)
+                        Spacer()
 
-                    // 選択モード中はキャンセルボタン
-                    if isSelectMode {
+                        // メモ追加ボタン
                         Button {
-                            isSelectMode = false
-                            selectedMemoIDs.removeAll()
+                            if isSelectMode { isSelectMode = false; selectedMemoIDs.removeAll() }
+                            onAddMemo?()
                         } label: {
-                            Text("取消")
+                            Label("メモ追加", systemImage: "plus")
                                 .font(.system(size: 13, weight: .medium, design: .rounded))
                                 .foregroundStyle(.secondary)
                                 .padding(.horizontal, 8)
@@ -329,22 +296,70 @@ struct TabbedMemoListView: View {
                                 )
                         }
                         .buttonStyle(.plain)
-                    }
 
-                    gridSizeButton
-                }
-                .padding(.horizontal, 10)
-                .padding(.top, 6)
-                .padding(.bottom, 8)
-                .background(
-                    // ツールバー背景（メモがスクロールで透けないように）
-                    LinearGradient(
-                        colors: [currentColor, currentColor, currentColor.opacity(0.95), currentColor.opacity(0.0)],
-                        startPoint: .top,
-                        endPoint: .bottom
+                        gridSizeButton
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.top, 6)
+                    .padding(.bottom, 8)
+                    .background(
+                        LinearGradient(
+                            colors: [currentColor, currentColor, currentColor.opacity(0.95), currentColor.opacity(0.0)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                        .padding(.bottom, -16)
                     )
-                    .padding(.bottom, -16) // グラデーションを下に伸ばす
-                )
+
+                    Spacer()
+
+                    // 右下: 選択削除ボタン
+                    HStack {
+                        Spacer()
+                        if isSelectMode {
+                            // 取消ボタン
+                            Button {
+                                isSelectMode = false
+                                selectedMemoIDs.removeAll()
+                            } label: {
+                                Text("取消")
+                                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                                    .foregroundStyle(.secondary)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(
+                                        Capsule()
+                                            .fill(Color(uiColor: .systemBackground).opacity(0.9))
+                                            .shadow(color: .black.opacity(0.1), radius: 2, y: 1)
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        Button {
+                            if isSelectMode {
+                                showDeleteConfirm = true
+                            } else {
+                                isSelectMode = true
+                                selectedMemoIDs.removeAll()
+                            }
+                        } label: {
+                            Label(isSelectMode ? "削除" : "選択削除", systemImage: "trash")
+                                .font(.system(size: 13, weight: .medium, design: .rounded))
+                                .foregroundStyle(isSelectMode && !selectedMemoIDs.isEmpty ? .red : .secondary)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(
+                                    Capsule()
+                                        .fill(Color(uiColor: .systemBackground).opacity(0.9))
+                                        .shadow(color: .black.opacity(0.1), radius: 2, y: 1)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isSelectMode && selectedMemoIDs.isEmpty)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.bottom, 8)
+                }
             }
             // タブ切替は瞬時（アニメーションなし）
             .animation(.easeInOut(duration: 0.2), value: currentGridSize)
@@ -464,7 +479,7 @@ struct MemoCardView: View {
         switch gridSize {
         case .grid3x8: return 14
         case .grid2x6: return 15
-        case .grid2x2: return 16
+        case .grid2x3: return 16
         case .grid1x2: return 17
         case .full: return 18
         }
@@ -474,7 +489,7 @@ struct MemoCardView: View {
         switch gridSize {
         case .grid3x8: return 12
         case .grid2x6: return 13
-        case .grid2x2: return 14
+        case .grid2x3: return 14
         case .grid1x2: return 15
         case .full: return 16
         }
@@ -484,7 +499,7 @@ struct MemoCardView: View {
         switch gridSize {
         case .grid3x8: return 2
         case .grid2x6: return 3
-        case .grid2x2: return 5
+        case .grid2x3: return 5
         case .grid1x2: return 4
         case .full: return 0  // 0 = 無制限
         }
@@ -494,7 +509,7 @@ struct MemoCardView: View {
         switch gridSize {
         case .grid3x8: return 6
         case .grid2x6: return 8
-        case .grid2x2: return 10
+        case .grid2x3: return 10
         case .grid1x2: return 12
         case .full: return 12
         }
@@ -512,7 +527,7 @@ struct MemoCardView: View {
             switch gridSize {
             case .grid3x8: return 56
             case .grid2x6: return 72
-            case .grid2x2: return 180
+            case .grid2x3: return 120
             case .grid1x2: return 180
             case .full: return nil
             }
@@ -521,7 +536,7 @@ struct MemoCardView: View {
         switch gridSize {
         case .grid3x8: rows = 8
         case .grid2x6: rows = 6
-        case .grid2x2: rows = 2
+        case .grid2x3: rows = 3
         case .grid1x2: rows = 2
         case .full: return nil
         }

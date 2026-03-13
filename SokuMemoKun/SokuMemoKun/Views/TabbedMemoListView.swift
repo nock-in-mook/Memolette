@@ -67,23 +67,29 @@ struct PaperTextureOverlay: View {
 
 // グリッドサイズ定義（列数×行数）
 enum GridSizeOption: Int, CaseIterable {
-    case small = 0   // 1×6
-    case medium = 1  // 2×6
-    case large = 2   // 3×8
+    case grid3x8 = 0   // 3×8
+    case grid2x6 = 1   // 2×6
+    case grid2x2 = 2   // 2×2
+    case grid1x2 = 3   // 1×2
+    case full = 4       // 1列・全文表示
 
     var columns: Int {
         switch self {
-        case .small: return 1
-        case .medium: return 2
-        case .large: return 3
+        case .grid3x8: return 3
+        case .grid2x6: return 2
+        case .grid2x2: return 2
+        case .grid1x2: return 1
+        case .full: return 1
         }
     }
 
     var label: String {
         switch self {
-        case .small: return "1×6枚"
-        case .medium: return "2×6枚"
-        case .large: return "3×8枚"
+        case .grid3x8: return "3×8"
+        case .grid2x6: return "2×6"
+        case .grid2x2: return "2×2"
+        case .grid1x2: return "1×2"
+        case .full: return "1(全文)"
         }
     }
 }
@@ -119,9 +125,9 @@ struct TabbedMemoListView: View {
     private var currentGridSize: GridSizeOption {
         let item = tabItems[selectedTabIndex]
         if let tag = item.tag {
-            return GridSizeOption(rawValue: tag.gridSize) ?? .large
+            return GridSizeOption(rawValue: tag.gridSize) ?? .grid3x8
         }
-        return GridSizeOption(rawValue: noTagGridSize) ?? .large
+        return GridSizeOption(rawValue: noTagGridSize) ?? .grid3x8
     }
 
     private var currentColumns: [GridItem] {
@@ -379,58 +385,73 @@ struct TabbedMemoListView: View {
 // メモカード（グリッドサイズ対応）
 struct MemoCardView: View {
     let memo: Memo
-    var gridSize: GridSizeOption = .large
+    var gridSize: GridSizeOption = .grid3x8
 
     // グリッドサイズに応じたスタイル
     private var titleFont: CGFloat {
         switch gridSize {
-        case .small: return 14
-        case .medium: return 13
-        case .large: return 12
+        case .grid3x8: return 12
+        case .grid2x6: return 13
+        case .grid2x2: return 14
+        case .grid1x2: return 15
+        case .full: return 16
         }
     }
 
     private var bodyFont: CGFloat {
         switch gridSize {
-        case .small: return 12
-        case .medium: return 11
-        case .large: return 10
+        case .grid3x8: return 10
+        case .grid2x6: return 11
+        case .grid2x2: return 12
+        case .grid1x2: return 13
+        case .full: return 14
         }
     }
 
     private var bodyLines: Int {
         switch gridSize {
-        case .small: return 2
-        case .medium: return 3
-        case .large: return 2
+        case .grid3x8: return 2
+        case .grid2x6: return 3
+        case .grid2x2: return 5
+        case .grid1x2: return 4
+        case .full: return 0  // 0 = 無制限
         }
     }
 
     private var cardPadding: CGFloat {
         switch gridSize {
-        case .small: return 10
-        case .medium: return 8
-        case .large: return 6
+        case .grid3x8: return 6
+        case .grid2x6: return 8
+        case .grid2x2: return 10
+        case .grid1x2: return 12
+        case .full: return 12
         }
     }
 
     // GeometryReaderから渡される利用可能な高さで計算
     var availableHeight: CGFloat = 0
 
-    private var cardHeight: CGFloat {
+    // 全文モードでは高さ固定しない
+    private var isFullMode: Bool { gridSize == .full }
+
+    private var cardHeight: CGFloat? {
+        if isFullMode { return nil }  // 全文モードは高さ自動
         guard availableHeight > 0 else {
-            // フォールバック
             switch gridSize {
-            case .small: return 80
-            case .medium: return 72
-            case .large: return 56
+            case .grid3x8: return 56
+            case .grid2x6: return 72
+            case .grid2x2: return 180
+            case .grid1x2: return 180
+            case .full: return nil
             }
         }
         let rows: CGFloat
         switch gridSize {
-        case .small: rows = 6
-        case .medium: rows = 6
-        case .large: rows = 8
+        case .grid3x8: rows = 8
+        case .grid2x6: rows = 6
+        case .grid2x2: rows = 2
+        case .grid1x2: rows = 2
+        case .full: return nil
         }
         let spacing: CGFloat = 8
         let topPadding: CGFloat = 34
@@ -450,10 +471,10 @@ struct MemoCardView: View {
                 Text(memo.content)
                     .font(.system(size: bodyFont))
                     .foregroundStyle(.secondary)
-                    .lineLimit(bodyLines)
+                    .lineLimit(bodyLines == 0 ? nil : bodyLines)
                     .truncationMode(.tail)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .frame(maxWidth: .infinity, maxHeight: isFullMode ? nil : .infinity, alignment: .topLeading)
             .padding(cardPadding)
 
             // マークダウンマーク（右上）

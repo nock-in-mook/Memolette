@@ -92,25 +92,19 @@ struct MemoInputView: View {
         return nil
     }
 
-    private var previewParentTag: Tag? {
-        previewingMemo?.tags.first(where: { $0.parentTagID == nil })
-    }
-    private var previewChildTag: Tag? {
-        previewingMemo?.tags.first(where: { $0.parentTagID != nil })
-    }
-
     var body: some View {
         ZStack(alignment: .topLeading) {
-            // メインコンテンツ
-            HStack(spacing: 0) {
-                VStack(spacing: 0) {
-                    headerRow
-                    Divider() // 右端まで伸びる
+            // メインコンテンツ — ヘッダー/フッターはフル幅、本文のみルーレットで縮む
+            VStack(spacing: 0) {
+                headerRow
+                Divider()
+                // 本文 + ルーレットの横並び
+                HStack(spacing: 0) {
                     contentArea
-                    Divider()
-                    footerRow
+                    dialArea
                 }
-                dialArea
+                Divider()
+                footerRow
             }
             .background(
                 RoundedRectangle(cornerRadius: 10)
@@ -202,7 +196,6 @@ struct MemoInputView: View {
             if mode == .newInput { viewModel.onTagChanged(tags: tags) }
             // 編集モードではルーレットのタグ変更を既存メモに反映
             if mode == .editing, let memo = previewingMemo {
-                // 既存タグを全削除して新しいタグを設定
                 memo.tags.removeAll()
                 if let tagID = newTagID, let tag = tags.first(where: { $0.id == tagID }) {
                     memo.tags.append(tag)
@@ -218,9 +211,7 @@ struct MemoInputView: View {
         }
         .onChange(of: viewModel.selectedChildTagID) { _, newChildID in
             if mode == .newInput { viewModel.onTagChanged(tags: tags) }
-            // 編集モードでは子タグ変更を既存メモに反映
             if mode == .editing, let memo = previewingMemo {
-                // 子タグだけ差し替え（親は維持）
                 memo.tags.removeAll(where: { $0.parentTagID != nil })
                 if let childID = newChildID,
                    let childTag = tags.first(where: { $0.id == childID }) {
@@ -234,7 +225,6 @@ struct MemoInputView: View {
             if let memo = newMemo {
                 editText = memo.content
                 editTitle = memo.title
-                // 閲覧モードでもルーレットにタグを反映
                 viewModel.loadMemo(memo)
             }
         }
@@ -250,17 +240,21 @@ struct MemoInputView: View {
         HStack(spacing: 6) {
             // 左: 戻るボタン分のスペース（閲覧/編集時）
             if mode != .newInput {
-                Spacer().frame(width: 20) // 戻るボタンの幅分
+                Spacer().frame(width: 20)
             }
 
-            // タイトル
+            // タイトル — プレビュー時もタップで編集モードへ
             if mode == .editing {
                 TextField("タイトル（任意）", text: $editTitle)
                     .font(.system(size: 15, weight: .semibold, design: .rounded))
             } else if mode == .preview {
-                Text(previewingMemo?.title.isEmpty == true ? "無題" : (previewingMemo?.title ?? ""))
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .lineLimit(1)
+                // タイトルがあれば表示、なければ空（「無題」表示なし）
+                if let title = previewingMemo?.title, !title.isEmpty {
+                    Text(title)
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .lineLimit(1)
+                        .onTapGesture { enterEditingMode() }
+                }
             } else {
                 TextField("タイトル（任意）", text: $viewModel.titleText)
                     .font(.system(size: 15, design: .rounded))
@@ -268,8 +262,13 @@ struct MemoInputView: View {
 
             Spacer()
 
-            // 右: タグ表示
+            // 右: タグ表示（タップでルーレット展開）
             tagDisplay
+                .onTapGesture {
+                    withAnimation(.spring(response: 0.3)) {
+                        showParentDial = true
+                    }
+                }
 
             // 最大化ボタン（右端寄せ）
             Button {
@@ -302,6 +301,16 @@ struct MemoInputView: View {
                     .padding(.vertical, 1)
                     .background(RoundedRectangle(cornerRadius: 4).fill(childInfo.color))
             }
+        }
+    }
+
+    // プレビュー→編集モードへの移行
+    private func enterEditingMode() {
+        if let memo = previewingMemo {
+            editText = memo.content
+            editTitle = memo.title
+            viewModel.loadMemo(memo)
+            isEditingExisting = true
         }
     }
 
@@ -351,14 +360,7 @@ struct MemoInputView: View {
         }
         .frame(maxHeight: .infinity)
         .contentShape(Rectangle())
-        .onTapGesture {
-            if let memo = previewingMemo {
-                editText = memo.content
-                editTitle = memo.title
-                viewModel.loadMemo(memo)
-                isEditingExisting = true
-            }
-        }
+        .onTapGesture { enterEditingMode() }
     }
 
     private var editingContent: some View {
@@ -383,7 +385,6 @@ struct MemoInputView: View {
     private var footerRow: some View {
         HStack(spacing: 8) {
             if mode == .preview {
-                // 閲覧モード
                 if let memo = previewingMemo {
                     Text(memo.updatedAt.formatted(date: .abbreviated, time: .shortened))
                         .font(.system(size: 11))
@@ -395,7 +396,6 @@ struct MemoInputView: View {
                 } label: {
                     Label("コピー", systemImage: "doc.on.doc").font(.system(size: 14))
                 }
-                // 削除ボタン
                 Button { showDeleteAlert = true } label: {
                     Image(systemName: "trash")
                         .font(.system(size: 13))
@@ -435,7 +435,6 @@ struct MemoInputView: View {
                 } label: {
                     Label("コピー", systemImage: "doc.on.doc").font(.system(size: 14))
                 }
-                // 削除ボタン
                 Button { showDeleteAlert = true } label: {
                     Image(systemName: "trash")
                         .font(.system(size: 13))

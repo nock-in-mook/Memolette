@@ -535,10 +535,13 @@ struct MemoCardView: View {
     var body: some View {
         ZStack(alignment: .topTrailing) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(memo.title.isEmpty ? "無題" : memo.title)
-                    .font(.system(size: titleFont, weight: .semibold, design: .rounded))
-                    .lineLimit(1)
-                    .truncationMode(.tail)
+                // タイトルがあれば表示、なければスキップ
+                if !memo.title.isEmpty {
+                    Text(memo.title)
+                        .font(.system(size: titleFont, weight: .semibold, design: .rounded))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
 
                 Text(memo.content)
                     .font(.system(size: bodyFont))

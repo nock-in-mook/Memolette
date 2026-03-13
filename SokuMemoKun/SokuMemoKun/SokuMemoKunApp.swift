@@ -23,7 +23,7 @@ struct SokuMemoKunApp: App {
 
     // 全データ削除→バリエーション豊富なサンプル投入
     private static func resetAndInsertSamples(container: ModelContainer) {
-        let key = "sampleDataV4"
+        let key = "sampleDataV5"
         guard !UserDefaults.standard.bool(forKey: key) else { return }
 
         let context = ModelContext(container)
@@ -503,6 +503,46 @@ struct SokuMemoKunApp: App {
             memo.updatedAt = memo.createdAt
 
             context.insert(memo)
+        }
+
+        // ── 検索テスト用「Claude」メモ（各タグにランダム個数）──
+        let claudeTexts = [
+            "Claudeに聞いてみた: SwiftUIのベストプラクティス",
+            "Claude曰く「シンプルが正義」",
+            "Claudeとペアプロした結果がこれ",
+            "Claudeメモ: エラーハンドリングのコツ",
+            "Claudeに設計レビューしてもらった",
+            "Claude先生の教え: テストを書け",
+            "Claudeと一緒にデバッグした夜",
+            "Claude推薦図書リスト",
+            "Claudeのアドバイス: まず動くものを作れ",
+            "Claude「過剰な抽象化はやめとけ」",
+            "Claudeに相談: このUI、どう思う？",
+            "Claude式リファクタリング手順",
+            "Claudeとブレストしたアプリアイデア",
+            "Claude「コミットは小さく、頻繁に」",
+            "Claudeが教えてくれたSwiftDataの裏技",
+        ]
+        let claudeTitles = [
+            "Claude語録", "Claudeメモ", "Claude相談", "Claudeレビュー",
+            "Claude tips", "", "", // タイトルなしも混ぜる
+        ]
+
+        // タグなし + 各親タグにそれぞれ1〜4個ランダムに配置
+        let tagOptions: [Tag?] = [nil] + tags.parents
+        for tagOption in tagOptions {
+            let count = rng.nextInt(4) + 1 // 1〜4個
+            for _ in 0..<count {
+                let m = Memo(content: rng.pick(claudeTexts), isMarkdown: false)
+                m.title = rng.pick(claudeTitles)
+                if let tag = tagOption {
+                    m.tags.append(tag)
+                }
+                let daysAgo = Double(rng.nextInt(30))
+                m.createdAt = Date().addingTimeInterval(-(daysAgo * 86400))
+                m.updatedAt = m.createdAt
+                context.insert(m)
+            }
         }
     }
 }

@@ -459,34 +459,21 @@ struct TabbedMemoListView: View {
 
                         Spacer()
 
-                        // メモ追加ボタン（タグバッジ付き）
+                        // メモ追加ボタン
                         Button {
                             if isSelectMode { isSelectMode = false; selectedMemoIDs.removeAll() }
                             let currentTag = tabItems[selectedTabIndex].tag
                             onAddMemo?(currentTag?.id)
                         } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "plus")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundStyle(.secondary)
-                                Text(tabItems[selectedTabIndex].label)
-                                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 5)
-                                            .fill(currentColor.opacity(0.7))
-                                    )
-                                Text("にメモ追加")
-                                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                                    .foregroundStyle(.secondary)
-                            }
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(
-                                Capsule()
-                                    .fill(Color(uiColor: .systemBackground).opacity(0.85))
-                            )
+                            Label("フォルダにメモ追加", systemImage: "plus")
+                                .font(.system(size: 13, weight: .medium, design: .rounded))
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(
+                                    Capsule()
+                                        .fill(Color(uiColor: .systemBackground).opacity(0.85))
+                                )
                         }
                         .buttonStyle(.plain)
 

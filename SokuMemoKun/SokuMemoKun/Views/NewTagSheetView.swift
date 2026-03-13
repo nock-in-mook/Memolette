@@ -3,6 +3,9 @@ import SwiftData
 
 // 新規タグ作成シート
 struct NewTagSheetView: View {
+    // nil = 親タグ追加、UUID = その親の子タグ追加
+    var parentTagID: UUID? = nil
+
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
@@ -52,7 +55,7 @@ struct NewTagSheetView: View {
                 Spacer()
             }
             .padding(20)
-            .navigationTitle("新規タグ")
+            .navigationTitle(parentTagID != nil ? "新規子タグ" : "新規タグ")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -73,7 +76,7 @@ struct NewTagSheetView: View {
     private func saveTag() {
         let trimmed = tagName.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
-        let tag = Tag(name: trimmed, colorIndex: selectedColorIndex)
+        let tag = Tag(name: trimmed, colorIndex: selectedColorIndex, parentTagID: parentTagID)
         modelContext.insert(tag)
         dismiss()
     }

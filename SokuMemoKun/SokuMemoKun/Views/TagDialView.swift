@@ -5,11 +5,13 @@ import SwiftData
 // Canvas1本で描画。rotation値から直接全て計算し、ワープを防ぐ。
 // 親ダイアル・子ダイアル両方で再利用可能。
 struct TagDialView: View {
-    // 外部から渡されるオプションリスト
+    // 外部から渡されるオプションリスト（末尾に "add" を含められる）
     var options: [(id: String, name: String, color: Color)]
     @Binding var selectedID: UUID?
     // ダイアルの幅（親子並列表示時に狭める）
     var width: CGFloat = 100
+    // 「＋タグ追加」がセンターに来た時のコールバック
+    var onAddTap: (() -> Void)?
 
     // 円の半径
     private let wheelRadius: CGFloat = 300
@@ -131,30 +133,42 @@ struct TagDialView: View {
                 let textX = cx + midR * cos(cgMid)
                 let textY = cy + midR * sin(cgMid)
 
-                // 幅に応じて省略文字数を調整
-                let maxChars = width < 80 ? 3 : 5
-                let displayName: String = {
-                    if option.name.count > maxChars {
-                        return String(option.name.prefix(maxChars)) + "…"
-                    }
-                    return option.name
-                }()
+                if option.id == "add" {
+                    // 「＋タグ追加」特別描画
+                    let plusIcon = context.resolve(
+                        Text("＋")
+                            .font(.system(size: isSelected ? 16 : 11, weight: .bold, design: .rounded))
+                            .foregroundColor(isSelected ? .blue : Color(white: 0.45))
+                    )
+                    context.draw(plusIcon, at: CGPoint(x: textX, y: textY - 4), anchor: .center)
+                    let label = context.resolve(
+                        Text("追加")
+                            .font(.system(size: isSelected ? 8 : 6, weight: .medium, design: .rounded))
+                            .foregroundColor(isSelected ? .blue.opacity(0.7) : Color(white: 0.5))
+                    )
+                    context.draw(label, at: CGPoint(x: textX, y: textY + 8), anchor: .center)
+                } else {
+                    // 通常タグ描画
+                    let maxChars = width < 80 ? 3 : 5
+                    let displayName: String = {
+                        if option.name.count > maxChars {
+                            return String(option.name.prefix(maxChars)) + "…"
+                        }
+                        return option.name
+                    }()
 
-                let fontSize: CGFloat = isSelected ? 13 : 9
-                let resolved = context.resolve(
-                    Text(displayName)
-                        .font(.system(
-                            size: fontSize,
-                            weight: isSelected ? .bold : .medium,
-                            design: .rounded
-                        ))
-                        .foregroundColor(Color(white: isSelected ? 0.1 : 0.3))
-                )
-                context.draw(
-                    resolved,
-                    at: CGPoint(x: textX, y: textY),
-                    anchor: .center
-                )
+                    let fontSize: CGFloat = isSelected ? 13 : 9
+                    let resolved = context.resolve(
+                        Text(displayName)
+                            .font(.system(
+                                size: fontSize,
+                                weight: isSelected ? .bold : .medium,
+                                design: .rounded
+                            ))
+                            .foregroundColor(Color(white: isSelected ? 0.1 : 0.3))
+                    )
+                    context.draw(resolved, at: CGPoint(x: textX, y: textY), anchor: .center)
+                }
 
                 context.opacity = 1.0
             }
@@ -263,7 +277,17 @@ struct TagDialView: View {
         let index = snappedIndex
         if index < options.count {
             let option = options[index]
-            selectedID = option.id == "none" ? nil : UUID(uuidString: option.id)
+            if option.id == "add" {
+                // 「＋タグ追加」→ コールバック呼んで1つ前にスナップバック
+                let prevSnap = rotation - itemAngle
+                withAnimation(.easeOut(duration: 0.2)) {
+                    rotation = prevSnap
+                }
+                dragStart = prevSnap
+                onAddTap?()
+            } else {
+                selectedID = option.id == "none" ? nil : UUID(uuidString: option.id)
+            }
         }
     }
 }

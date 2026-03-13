@@ -72,7 +72,7 @@ struct MemoInputView: View {
                             }
                     }
 
-                    // 拡大ボタン（右上）
+                    // オーバーレイボタン（右上: 拡大、右下: 破棄）
                     VStack {
                         HStack {
                             Spacer()
@@ -92,6 +92,25 @@ struct MemoInputView: View {
                             .padding(.top, 4)
                         }
                         Spacer()
+                        HStack {
+                            Spacer()
+                            if viewModel.canClear {
+                                Button {
+                                    showDiscardAlert = true
+                                } label: {
+                                    Image(systemName: "trash")
+                                        .font(.system(size: 10))
+                                        .foregroundStyle(.red.opacity(0.5))
+                                        .padding(5)
+                                        .background(
+                                            Circle()
+                                                .fill(Color(uiColor: .systemBackground).opacity(0.8))
+                                        )
+                                }
+                                .padding(.trailing, 4)
+                                .padding(.bottom, 4)
+                            }
+                        }
                     }
                 }
                 .frame(maxHeight: .infinity)
@@ -143,16 +162,6 @@ struct MemoInputView: View {
                         Rectangle()
                             .fill(Color.gray.opacity(0.25))
                             .frame(width: 1, height: 18)
-
-                        // 破棄ボタン
-                        Button {
-                            showDiscardAlert = true
-                        } label: {
-                            Image(systemName: "trash")
-                                .font(.system(size: 12))
-                                .foregroundStyle(.red.opacity(0.6))
-                        }
-                        .disabled(!viewModel.canClear)
 
                         Button {
                             UIPasteboard.general.string = viewModel.inputText

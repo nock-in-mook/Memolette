@@ -170,7 +170,12 @@ struct MemoDetailView: View {
                     .font(.system(size: 18, weight: .semibold, design: .rounded))
                     .focused($isTitleFocused)
             } else {
-                if !memo.title.isEmpty {
+                if memo.title.isEmpty {
+                    Text("タイトル（任意）")
+                        .font(.system(size: 18, design: .rounded))
+                        .foregroundStyle(.gray.opacity(0.4))
+                        .onTapGesture { startEditing() }
+                } else {
                     Text(memo.title)
                         .font(.system(size: 20, weight: .bold, design: .rounded))
                         .lineLimit(1)

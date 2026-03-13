@@ -15,6 +15,7 @@ struct MainView: View {
     var body: some View {
         NavigationStack {
             GeometryReader { geo in
+                // キーボードでフォルダ一覧がせり上がらないようにする
                 VStack(spacing: 0) {
                     // 上半分: 入力 / 閲覧 / 編集（統合ペイン）
                     MemoInputView(
@@ -46,6 +47,7 @@ struct MainView: View {
                         }
                     )
                 }
+                .ignoresSafeArea(.keyboard)
             }
             .navigationTitle("即メモ君")
             .navigationBarTitleDisplayMode(.inline)

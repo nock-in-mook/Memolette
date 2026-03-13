@@ -16,16 +16,25 @@ class MemoInputViewModel {
     // loadMemo中フラグ（onChangeでの子タグリセットを防止）
     var isLoadingMemo: Bool = false
 
-    // 入力欄にテキストがあるか（保存=クリア ボタンの有効/無効）
+    // 入力欄にテキストがあるか（保存ボタンの有効/無効）— 本文かタイトルがあれば保存可
     var canClear: Bool {
-        !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+        !titleText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     // テキスト変更時の自動保存
     func onContentChanged(context: ModelContext, tags: [Tag]) {
         let trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let titleTrimmed = titleText.trimmingCharacters(in: .whitespacesAndNewlines)
 
         if let memo = editingMemo {
+            if trimmed.isEmpty && titleTrimmed.isEmpty {
+                // 本文もタイトルも空 → 白紙メモは削除
+                context.delete(memo)
+                editingMemo = nil
+                UserDefaults.standard.removeObject(forKey: "lastEditingMemoID")
+                return
+            }
             // 既存メモを更新
             memo.content = trimmed
             memo.updatedAt = Date()

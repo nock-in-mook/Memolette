@@ -7,35 +7,45 @@ struct MainView: View {
     @State private var showSettings = false
     @State private var focusInput = false
     @State private var selectedTabIndex: Int = 0
+    // 閲覧中の既存メモ（nilなら新規入力モード）
+    @State private var previewingMemo: Memo?
     @AppStorage("defaultMarkdown") private var defaultMarkdown = false
     @Environment(\.modelContext) private var modelContext
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // 入力エリア
-                MemoInputView(viewModel: viewModel, focusInput: $focusInput)
+            GeometryReader { geo in
+                VStack(spacing: 0) {
+                    // 上半分: 入力 / 閲覧 / 編集（統合ペイン）
+                    MemoInputView(
+                        viewModel: viewModel,
+                        focusInput: $focusInput,
+                        previewingMemo: $previewingMemo
+                    )
+                    .frame(height: geo.size.height * 0.48)
 
-                // 台形タブ付きメモ一覧
-                TabbedMemoListView(
-                    selectedTabIndex: $selectedTabIndex,
-                    onAddMemo: {
-                        viewModel.clearInput()
-                        focusInput = true
-                    },
-                    onEditMemo: { memo in
-                        viewModel.loadMemo(memo)
-                        if memo.isMarkdown {
-                            viewModel.openFullEditor = true
-                        }
-                        focusInput = true
-                    },
-                    onDeleteMemo: { memo in
-                        if viewModel.editingMemo?.id == memo.id {
+                    // 下半分: フォルダ付きメモ一覧
+                    TabbedMemoListView(
+                        selectedTabIndex: $selectedTabIndex,
+                        onAddMemo: {
+                            previewingMemo = nil  // 閲覧→入力に戻す
                             viewModel.clearInput()
+                            focusInput = true
+                        },
+                        onEditMemo: { memo in
+                            // 上半分に閲覧表示
+                            previewingMemo = memo
+                        },
+                        onDeleteMemo: { memo in
+                            if viewModel.editingMemo?.id == memo.id {
+                                viewModel.clearInput()
+                            }
+                            if previewingMemo?.id == memo.id {
+                                previewingMemo = nil
+                            }
                         }
-                    }
-                )
+                    )
+                }
             }
             .navigationTitle("即メモ君")
             .navigationBarTitleDisplayMode(.inline)
@@ -57,7 +67,7 @@ struct MainView: View {
                     viewModel.isMarkdown = newValue
                 }
             }
-            // タブ切替通知を受信（新規タグ追加時、保存時など）
+            // タブ切替通知を受信
             .onReceive(NotificationCenter.default.publisher(for: .switchToTab)) { notification in
                 if let tabIndex = notification.userInfo?["tabIndex"] as? Int {
                     selectedTabIndex = tabIndex

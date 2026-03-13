@@ -105,6 +105,8 @@ struct TabbedMemoListView: View {
     @Binding var selectedTabIndex: Int
     @State private var isSelectMode = false
     @State private var selectedMemoIDs: Set<UUID> = []
+    // 選択削除確認ダイアログ
+    @State private var showDeleteConfirm = false
     // スワイプ方向追跡（トランジション用）
     @State private var swipeDirection: SwipeDirection = .none
     enum SwipeDirection { case none, left, right }
@@ -213,15 +215,15 @@ struct TabbedMemoListView: View {
                         ScrollView {
                             LazyVGrid(columns: currentColumns, spacing: 8) {
                                 ForEach(filteredMemos) { memo in
-                                    MemoCardView(memo: memo, gridSize: currentGridSize, availableHeight: geo.size.height)
-                                        .overlay(alignment: .topLeading) {
-                                            if isSelectMode {
-                                                Image(systemName: selectedMemoIDs.contains(memo.id) ? "checkmark.circle.fill" : "circle")
-                                                    .font(.system(size: 18))
-                                                    .foregroundStyle(selectedMemoIDs.contains(memo.id) ? .red : .gray)
-                                                    .padding(4)
-                                            }
+                                    HStack(spacing: 4) {
+                                        // 選択チェック（選択モード時のみ表示、カード外に配置）
+                                        if isSelectMode {
+                                            Image(systemName: selectedMemoIDs.contains(memo.id) ? "checkmark.circle.fill" : "circle")
+                                                .font(.system(size: 20))
+                                                .foregroundStyle(selectedMemoIDs.contains(memo.id) ? .red : .gray.opacity(0.6))
                                         }
+                                        MemoCardView(memo: memo, gridSize: currentGridSize, availableHeight: geo.size.height)
+                                    }
                                         .onTapGesture {
                                             if isSelectMode {
                                                 if selectedMemoIDs.contains(memo.id) {
@@ -251,7 +253,7 @@ struct TabbedMemoListView: View {
                                 }
                             }
                             .padding(.horizontal, 10)
-                            .padding(.top, 44)
+                            .padding(.top, 50)
                             .padding(.bottom, 20)
                         }
                     }
@@ -290,8 +292,8 @@ struct TabbedMemoListView: View {
                     // 選択削除ボタン
                     Button {
                         if isSelectMode {
-                            // 削除実行
-                            deleteSelectedMemos()
+                            // 確認ダイアログ表示
+                            showDeleteConfirm = true
                         } else {
                             isSelectMode = true
                             selectedMemoIDs.removeAll()
@@ -333,6 +335,16 @@ struct TabbedMemoListView: View {
                 }
                 .padding(.horizontal, 10)
                 .padding(.top, 6)
+                .padding(.bottom, 8)
+                .background(
+                    // ツールバー背景（メモがスクロールで透けないように）
+                    LinearGradient(
+                        colors: [currentColor, currentColor, currentColor.opacity(0.95), currentColor.opacity(0.0)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .padding(.bottom, -16) // グラデーションを下に伸ばす
+                )
             }
             // タブ切替は瞬時（アニメーションなし）
             .animation(.easeInOut(duration: 0.2), value: currentGridSize)
@@ -362,6 +374,12 @@ struct TabbedMemoListView: View {
                     }
             )
             } // GeometryReader
+        }
+        .alert("\(selectedMemoIDs.count)件のメモを削除します。よろしいですか？", isPresented: $showDeleteConfirm) {
+            Button("削除", role: .destructive) {
+                deleteSelectedMemos()
+            }
+            Button("キャンセル", role: .cancel) {}
         }
         // メモの編集はonEditMemoコールバックで入力欄に読み込む
     }

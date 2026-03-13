@@ -60,7 +60,7 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		C1000000000000000000A1 /* root */ = {
+		C1000000000000000000A1 = {
 			isa = PBXGroup;
 			children = (
 				C1000000000000000000A2 /* SokuMemoKun */,
@@ -169,7 +169,7 @@
 				Base,
 				ja,
 			);
-			mainGroup = C1000000000000000000A1 /* root */;
+			mainGroup = C1000000000000000000A1;
 			productRefGroup = C1000000000000000000A6 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -344,7 +344,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = CF34X3P59Y;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "即メモ君";
@@ -373,7 +373,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = CF34X3P59Y;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "即メモ君";

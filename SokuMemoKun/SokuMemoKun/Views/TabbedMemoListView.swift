@@ -105,6 +105,9 @@ struct TabbedMemoListView: View {
     @Binding var selectedTabIndex: Int
     @State private var isSelectMode = false
     @State private var selectedMemoIDs: Set<UUID> = []
+    // スワイプ方向追跡（トランジション用）
+    @State private var swipeDirection: SwipeDirection = .none
+    enum SwipeDirection { case none, left, right }
     // タグなし用のグリッドサイズ（UserDefaultsで保存）
     @AppStorage("noTagGridSize") private var noTagGridSize: Int = 2
     // コールバック
@@ -171,7 +174,11 @@ struct TabbedMemoListView: View {
                     .padding(.horizontal, 8)
                     .padding(.top, 4)
                 }
-                .onChange(of: selectedTabIndex) { _, newValue in
+                .onChange(of: selectedTabIndex) { oldValue, newValue in
+                    // スワイプ以外（タブタップ・ルーレット）の切替時もdirectionセット
+                    if swipeDirection == .none {
+                        swipeDirection = newValue > oldValue ? .left : .right
+                    }
                     withAnimation(.easeInOut(duration: 0.2)) {
                         proxy.scrollTo(newValue, anchor: .center)
                     }
@@ -184,74 +191,82 @@ struct TabbedMemoListView: View {
             // メモ一覧（縁取り付き）
             GeometryReader { geo in
             ZStack(alignment: .topTrailing) {
-                currentColor
-                    .ignoresSafeArea(edges: .bottom)
+                // メモコンテンツ（タブごとにトランジション）
+                ZStack {
+                    currentColor
+                        .ignoresSafeArea(edges: .bottom)
 
-                PaperTextureOverlay()
-                    .ignoresSafeArea(edges: .bottom)
+                    PaperTextureOverlay()
+                        .ignoresSafeArea(edges: .bottom)
 
-                if filteredMemos.isEmpty {
-                    VStack(spacing: 8) {
-                        Image(systemName: "note.text")
-                            .font(.title2)
-                            .foregroundStyle(.secondary)
-                        Text("メモがありません")
-                            .font(.system(size: 14, design: .rounded))
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    ScrollView {
-                        LazyVGrid(columns: currentColumns, spacing: 8) {
-                            ForEach(filteredMemos) { memo in
-                                MemoCardView(memo: memo, gridSize: currentGridSize, availableHeight: geo.size.height)
-                                    .overlay(alignment: .topLeading) {
-                                        if isSelectMode {
-                                            Image(systemName: selectedMemoIDs.contains(memo.id) ? "checkmark.circle.fill" : "circle")
-                                                .font(.system(size: 18))
-                                                .foregroundStyle(selectedMemoIDs.contains(memo.id) ? .red : .gray)
-                                                .padding(4)
-                                        }
-                                    }
-                                    .onTapGesture {
-                                        if isSelectMode {
-                                            if selectedMemoIDs.contains(memo.id) {
-                                                selectedMemoIDs.remove(memo.id)
-                                            } else {
-                                                selectedMemoIDs.insert(memo.id)
-                                            }
-                                        } else {
-                                            onEditMemo?(memo)
-                                        }
-                                    }
-                                    .contextMenu {
-                                        if !isSelectMode {
-                                            Button {
-                                                UIPasteboard.general.string = memo.content
-                                            } label: {
-                                                Label("コピー", systemImage: "doc.on.doc")
-                                            }
-                                            Button(role: .destructive) {
-                                                onDeleteMemo?(memo)
-                                                modelContext.delete(memo)
-                                            } label: {
-                                                Label("削除", systemImage: "trash")
-                                            }
-                                        }
-                                    }
-                            }
+                    if filteredMemos.isEmpty {
+                        VStack(spacing: 8) {
+                            Image(systemName: "note.text")
+                                .font(.title2)
+                                .foregroundStyle(.secondary)
+                            Text("メモがありません")
+                                .font(.system(size: 14, design: .rounded))
+                                .foregroundStyle(.secondary)
                         }
-                        .padding(.horizontal, 10)
-                        .padding(.top, 34)
-                        .padding(.bottom, 20)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        ScrollView {
+                            LazyVGrid(columns: currentColumns, spacing: 8) {
+                                ForEach(filteredMemos) { memo in
+                                    MemoCardView(memo: memo, gridSize: currentGridSize, availableHeight: geo.size.height)
+                                        .overlay(alignment: .topLeading) {
+                                            if isSelectMode {
+                                                Image(systemName: selectedMemoIDs.contains(memo.id) ? "checkmark.circle.fill" : "circle")
+                                                    .font(.system(size: 18))
+                                                    .foregroundStyle(selectedMemoIDs.contains(memo.id) ? .red : .gray)
+                                                    .padding(4)
+                                            }
+                                        }
+                                        .onTapGesture {
+                                            if isSelectMode {
+                                                if selectedMemoIDs.contains(memo.id) {
+                                                    selectedMemoIDs.remove(memo.id)
+                                                } else {
+                                                    selectedMemoIDs.insert(memo.id)
+                                                }
+                                            } else {
+                                                onEditMemo?(memo)
+                                            }
+                                        }
+                                        .contextMenu {
+                                            if !isSelectMode {
+                                                Button {
+                                                    UIPasteboard.general.string = memo.content
+                                                } label: {
+                                                    Label("コピー", systemImage: "doc.on.doc")
+                                                }
+                                                Button(role: .destructive) {
+                                                    onDeleteMemo?(memo)
+                                                    modelContext.delete(memo)
+                                                } label: {
+                                                    Label("削除", systemImage: "trash")
+                                                }
+                                            }
+                                        }
+                                }
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.top, 44)
+                            .padding(.bottom, 20)
+                        }
                     }
                 }
+                .id(selectedTabIndex)
+                .transition(.asymmetric(
+                    insertion: .move(edge: swipeDirection == .left ? .trailing : .leading),
+                    removal: .move(edge: swipeDirection == .left ? .leading : .trailing)
+                ))
 
                 // ツールバー（左上: メモ枚数、右上: 操作ボタン）
                 HStack(spacing: 8) {
                     // メモ枚数（左上・背景に馴染む色）
                     Text("\(filteredMemos.count)枚のメモ")
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
                         .foregroundStyle(darkenedColor)
 
                     Spacer()
@@ -261,7 +276,7 @@ struct TabbedMemoListView: View {
                         onAddMemo?()
                     } label: {
                         Label("メモ追加", systemImage: "plus")
-                            .font(.system(size: 10, weight: .medium, design: .rounded))
+                            .font(.system(size: 13, weight: .medium, design: .rounded))
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
@@ -283,7 +298,7 @@ struct TabbedMemoListView: View {
                         }
                     } label: {
                         Label(isSelectMode ? "削除" : "選択削除", systemImage: "trash")
-                            .font(.system(size: 10, weight: .medium, design: .rounded))
+                            .font(.system(size: 13, weight: .medium, design: .rounded))
                             .foregroundStyle(isSelectMode && !selectedMemoIDs.isEmpty ? .red : .secondary)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
@@ -302,7 +317,7 @@ struct TabbedMemoListView: View {
                             selectedMemoIDs.removeAll()
                         } label: {
                             Text("取消")
-                                .font(.system(size: 10, weight: .medium, design: .rounded))
+                                .font(.system(size: 13, weight: .medium, design: .rounded))
                                 .foregroundStyle(.secondary)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
@@ -321,6 +336,31 @@ struct TabbedMemoListView: View {
             }
             // タブ切替は瞬時（アニメーションなし）
             .animation(.easeInOut(duration: 0.2), value: currentGridSize)
+            // 左右スワイプでフォルダ（タブ）切替
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 50)
+                    .onEnded { value in
+                        // 横方向が縦方向より大きい場合のみ（スクロールと干渉しないように）
+                        let horizontal = abs(value.translation.width)
+                        let vertical = abs(value.translation.height)
+                        guard horizontal > vertical * 1.5 else { return }
+
+                        let count = tabItems.count
+                        if value.translation.width < -50, selectedTabIndex < count - 1 {
+                            // 左スワイプ → 次のタブ
+                            swipeDirection = .left
+                            withAnimation(.easeOut(duration: 0.25)) {
+                                selectedTabIndex += 1
+                            }
+                        } else if value.translation.width > 50, selectedTabIndex > 0 {
+                            // 右スワイプ → 前のタブ
+                            swipeDirection = .right
+                            withAnimation(.easeOut(duration: 0.25)) {
+                                selectedTabIndex -= 1
+                            }
+                        }
+                    }
+            )
             } // GeometryReader
         }
         // メモの編集はonEditMemoコールバックで入力欄に読み込む
@@ -343,7 +383,7 @@ struct TabbedMemoListView: View {
             }
         } label: {
             Text(currentGridSize.label)
-                .font(.system(size: 10, weight: .medium, design: .rounded))
+                .font(.system(size: 13, weight: .medium, design: .rounded))
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
@@ -380,7 +420,7 @@ struct TabbedMemoListView: View {
             selectedTabIndex = index
         } label: {
             Text(label)
-                .font(.system(size: 12, weight: isSelected ? .bold : .medium, design: .rounded))
+                .font(.system(size: 14, weight: isSelected ? .bold : .medium, design: .rounded))
                 .foregroundStyle(isSelected ? .primary : .secondary)
                 .lineLimit(1)
                 .frame(width: tabWidth)
@@ -404,21 +444,21 @@ struct MemoCardView: View {
     // グリッドサイズに応じたスタイル
     private var titleFont: CGFloat {
         switch gridSize {
-        case .grid3x8: return 12
-        case .grid2x6: return 13
-        case .grid2x2: return 14
-        case .grid1x2: return 15
-        case .full: return 16
+        case .grid3x8: return 14
+        case .grid2x6: return 15
+        case .grid2x2: return 16
+        case .grid1x2: return 17
+        case .full: return 18
         }
     }
 
     private var bodyFont: CGFloat {
         switch gridSize {
-        case .grid3x8: return 10
-        case .grid2x6: return 11
-        case .grid2x2: return 12
-        case .grid1x2: return 13
-        case .full: return 14
+        case .grid3x8: return 12
+        case .grid2x6: return 13
+        case .grid2x2: return 14
+        case .grid1x2: return 15
+        case .full: return 16
         }
     }
 
@@ -494,7 +534,7 @@ struct MemoCardView: View {
             // マークダウンマーク（右上）
             if memo.isMarkdown {
                 Text("M↓")
-                    .font(.system(size: 7, weight: .bold, design: .monospaced))
+                    .font(.system(size: 9, weight: .bold, design: .monospaced))
                     .foregroundStyle(.gray.opacity(0.5))
                     .padding(3)
             }

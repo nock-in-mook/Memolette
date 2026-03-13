@@ -13,6 +13,8 @@ class MemoInputViewModel {
     var editingMemo: Memo?
     // マークダウンメモ読み込み時にFullEditorを自動起動するフラグ
     var openFullEditor: Bool = false
+    // loadMemo中フラグ（onChangeでの子タグリセットを防止）
+    var isLoadingMemo: Bool = false
 
     // 入力欄にテキストがあるか（保存=クリア ボタンの有効/無効）
     var canClear: Bool {
@@ -93,6 +95,7 @@ class MemoInputViewModel {
 
     // 既存メモを入力欄に読み込む
     func loadMemo(_ memo: Memo) {
+        isLoadingMemo = true
         editingMemo = memo
         inputText = memo.content
         titleText = memo.title
@@ -103,6 +106,7 @@ class MemoInputViewModel {
         selectedTagID = parentTag?.id
         selectedChildTagID = childTag?.id
         saveLastMemoID(memo.id)
+        isLoadingMemo = false
     }
 
     // アプリ起動時に前回のメモを復元

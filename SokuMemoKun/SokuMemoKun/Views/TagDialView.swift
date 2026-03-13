@@ -143,13 +143,13 @@ struct TagDialView: View {
                     // 「＋タグ追加」特別描画
                     let plusIcon = context.resolve(
                         Text("＋")
-                            .font(.system(size: isSelected ? 16 : 11, weight: .bold, design: .rounded))
+                            .font(.system(size: isSelected ? 20 : 14, weight: .bold, design: .rounded))
                             .foregroundColor(isSelected ? .blue : Color(white: 0.45))
                     )
-                    context.draw(plusIcon, at: CGPoint(x: textX, y: textY - 4), anchor: .center)
+                    context.draw(plusIcon, at: CGPoint(x: textX, y: textY - 5), anchor: .center)
                     let label = context.resolve(
                         Text("追加")
-                            .font(.system(size: isSelected ? 8 : 6, weight: .medium, design: .rounded))
+                            .font(.system(size: isSelected ? 10 : 8, weight: .medium, design: .rounded))
                             .foregroundColor(isSelected ? .blue.opacity(0.7) : Color(white: 0.5))
                     )
                     context.draw(label, at: CGPoint(x: textX, y: textY + 8), anchor: .center)
@@ -163,7 +163,7 @@ struct TagDialView: View {
                         return option.name
                     }()
 
-                    let fontSize: CGFloat = isSelected ? 13 : 9
+                    let fontSize: CGFloat = isSelected ? 16 : 12
                     let resolved = context.resolve(
                         Text(displayName)
                             .font(.system(

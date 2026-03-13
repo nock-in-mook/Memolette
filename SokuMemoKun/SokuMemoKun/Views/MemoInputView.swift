@@ -103,7 +103,7 @@ struct MemoInputView: View {
                 // メモ入力欄
                 ZStack(alignment: .topLeading) {
                     TextEditor(text: $viewModel.inputText)
-                        .font(.system(size: 14))
+                        .font(.system(size: 17))
                         .padding(.leading, 4)
                         .padding(.trailing, 28) // 右側ボタン(拡大・破棄)との重なり防止
                         .padding(.top, 4)
@@ -113,10 +113,10 @@ struct MemoInputView: View {
                     if viewModel.inputText.isEmpty {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(viewModel.isMarkdown ? "タップでマークダウン編集..." : "メモを入力...")
-                                .font(.system(size: 14))
+                                .font(.system(size: 17))
                             if viewModel.isMarkdown {
                                 Text("(設定でオンオフ切替できます)")
-                                    .font(.system(size: 10))
+                                    .font(.system(size: 12))
                             }
                         }
                         .foregroundStyle(.gray.opacity(0.5))
@@ -142,7 +142,7 @@ struct MemoInputView: View {
                                 showFullEditor = true
                             } label: {
                                 Image(systemName: "arrow.up.left.and.arrow.down.right")
-                                    .font(.system(size: 11))
+                                    .font(.system(size: 14))
                                     .foregroundStyle(.gray.opacity(0.5))
                                     .padding(5)
                                     .background(
@@ -161,7 +161,7 @@ struct MemoInputView: View {
                                     showDiscardAlert = true
                                 } label: {
                                     Image(systemName: "trash")
-                                        .font(.system(size: 10))
+                                        .font(.system(size: 13))
                                         .foregroundStyle(.red.opacity(0.5))
                                         .padding(5)
                                         .background(
@@ -182,9 +182,9 @@ struct MemoInputView: View {
 
                 // タイトル入力
                 TextField("タイトル（任意）", text: $viewModel.titleText)
-                    .font(.system(size: 12, design: .rounded))
+                    .font(.system(size: 15, design: .rounded))
                     .padding(.horizontal, 8)
-                    .padding(.vertical, 6)
+                    .padding(.vertical, 8)
 
                 Divider()
                     .padding(.horizontal, 6)
@@ -196,7 +196,7 @@ struct MemoInputView: View {
                         VStack(alignment: .leading, spacing: 1) {
                             // 親タグ
                             Text(truncatedTagName)
-                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .font(.system(size: 14, weight: .bold, design: .rounded))
                                 .foregroundStyle(.primary)
                                 .lineLimit(1)
                                 .padding(.horizontal, 8)
@@ -211,10 +211,10 @@ struct MemoInputView: View {
                                let childInfo = selectedChildTagInfo {
                                 HStack(spacing: 2) {
                                     Text("└")
-                                        .font(.system(size: 8))
+                                        .font(.system(size: 10))
                                         .foregroundStyle(.tertiary)
                                     Text(childName)
-                                        .font(.system(size: 9, weight: .semibold, design: .rounded))
+                                        .font(.system(size: 12, weight: .semibold, design: .rounded))
                                         .foregroundStyle(.primary)
                                         .lineLimit(1)
                                         .padding(.horizontal, 5)
@@ -233,7 +233,7 @@ struct MemoInputView: View {
                             UIPasteboard.general.string = viewModel.inputText
                         } label: {
                             Label("コピー", systemImage: "doc.on.doc")
-                                .font(.system(size: 11))
+                                .font(.system(size: 14))
                         }
                         .disabled(viewModel.inputText.isEmpty)
 
@@ -249,7 +249,7 @@ struct MemoInputView: View {
                             )
                         } label: {
                             Label("保存", systemImage: "square.and.arrow.down.fill")
-                                .font(.system(size: 11, weight: .bold))
+                                .font(.system(size: 14, weight: .bold))
                         }
                         .buttonStyle(.borderedProminent)
                         .buttonBorderShape(.capsule)
@@ -281,89 +281,97 @@ struct MemoInputView: View {
                     externalDragY: .constant(nil)
                 )
 
-                // 子タグエリア（常時表示）
-                if showChildDial {
-                    // 仕切り線
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.2))
-                        .frame(width: 1)
+                // 子タグエリア（ドラッグジェスチャーは永続コンテナに配置）
+                // コンテナが常に存在するのでドラッグ中にビューが切り替わっても途切れない
+                ZStack {
+                    if showChildDial {
+                        HStack(spacing: 0) {
+                            // 仕切り線
+                            Rectangle()
+                                .fill(Color.gray.opacity(0.2))
+                                .frame(width: 1)
 
-                    // 子タグダイアル
-                    TagDialView(
-                        options: childOptions,
-                        selectedID: $viewModel.selectedChildTagID,
-                        width: 70,
-                        onAddTap: {
-                            newTagIsChild = true
-                            showNewTagSheet = true
-                        },
-                        externalDragY: $childExternalDragY
-                    )
+                            // 子タグダイアル
+                            TagDialView(
+                                options: childOptions,
+                                selectedID: $viewModel.selectedChildTagID,
+                                width: 70,
+                                onAddTap: {
+                                    newTagIsChild = true
+                                    showNewTagSheet = true
+                                },
+                                externalDragY: $childExternalDragY
+                            )
 
-                    // 閉じるタブ（右端、タップ or 右スワイプで閉じる）
-                    Text("›")
-                        .font(.system(size: 14, weight: .bold))
+                            // 閉じるタブ（右端、タップ or 右スワイプで閉じる）
+                            Text("›")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 14, height: 60)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .fill(Color.gray.opacity(0.1))
+                                )
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    withAnimation(.spring(response: 0.3)) {
+                                        showChildDial = false
+                                    }
+                                }
+                                .simultaneousGesture(
+                                    DragGesture(minimumDistance: 10)
+                                        .onEnded { value in
+                                            if value.translation.width > 20 {
+                                                withAnimation(.spring(response: 0.3)) {
+                                                    showChildDial = false
+                                                }
+                                            }
+                                        }
+                                )
+                        }
+                    } else {
+                        // 「子」タブ突起（タップで展開）
+                        VStack(spacing: 2) {
+                            Text("子")
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                            Text("‹")
+                                .font(.system(size: 13, weight: .bold))
+                        }
                         .foregroundStyle(.secondary)
-                        .frame(width: 14, height: 60)
+                        .frame(width: 22, height: 70)
                         .background(
                             RoundedRectangle(cornerRadius: 4)
-                                .fill(Color.gray.opacity(0.1))
+                                .fill(Color.gray.opacity(0.15))
                         )
                         .contentShape(Rectangle())
                         .onTapGesture {
                             withAnimation(.spring(response: 0.3)) {
-                                showChildDial = false
+                                showChildDial = true
                             }
                         }
-                        .simultaneousGesture(
-                            DragGesture(minimumDistance: 10)
-                                .onEnded { value in
-                                    if value.translation.width > 20 {
-                                        withAnimation(.spring(response: 0.3)) {
-                                            showChildDial = false
-                                        }
-                                    }
-                                }
-                        )
-                } else {
-                    // 「子」タブ突起（タップ or ドラッグで展開→そのまま回転）
-                    VStack(spacing: 2) {
-                        Text("子")
-                            .font(.system(size: 9, weight: .bold, design: .rounded))
-                        Text("‹")
-                            .font(.system(size: 10, weight: .bold))
                     }
-                    .foregroundStyle(.secondary)
-                    .frame(width: 18, height: 60)
-                    .background(
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(Color.gray.opacity(0.15))
-                    )
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        withAnimation(.spring(response: 0.3)) {
-                            showChildDial = true
-                        }
-                    }
-                    .simultaneousGesture(
-                        DragGesture(minimumDistance: 5)
-                            .onChanged { value in
-                                // ドラッグ開始でダイアルをリアルタイム展開
-                                if !showChildDial {
-                                    showChildDial = true
-                                }
-                                // 垂直成分を子ダイアルに転送
-                                childExternalDragY = value.translation.height
-                            }
-                            .onEnded { _ in
-                                // ドラッグ終了 → 子ダイアルにスナップさせる
-                                childExternalDragY = nil
-                            }
-                    )
                 }
+                // ドラッグジェスチャーはZStack（永続コンテナ）に配置
+                // ビュー切替が起きてもジェスチャーがキャンセルされない
+                .contentShape(Rectangle())
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 5)
+                        .onChanged { value in
+                            // 閉じた状態ならドラッグで展開
+                            if !showChildDial {
+                                showChildDial = true
+                            }
+                            // 垂直成分を子ダイアルに転送
+                            childExternalDragY = value.translation.height
+                        }
+                        .onEnded { _ in
+                            // ドラッグ終了 → 子ダイアルにスナップ
+                            childExternalDragY = nil
+                        }
+                )
             }
         }
-        .frame(height: 160)
+        .frame(height: 200)
         .background(
             RoundedRectangle(cornerRadius: 10)
                 .fill(Color(uiColor: .systemBackground))
@@ -374,7 +382,7 @@ struct MemoInputView: View {
         )
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .alert("書きかけのメモを破棄します。よろしいですか？", isPresented: $showDiscardAlert) {
+        .alert("このメモを破棄します。よろしいですか？", isPresented: $showDiscardAlert) {
             Button("破棄", role: .destructive) {
                 viewModel.discardMemo(context: modelContext)
             }
@@ -425,8 +433,10 @@ struct MemoInputView: View {
         }
         // 自動保存: 親タグ変更 + タブ同期
         .onChange(of: viewModel.selectedTagID) { _, newTagID in
-            // 親タグが変わったら子タグをリセット
-            viewModel.selectedChildTagID = nil
+            // 親タグが変わったら子タグをリセット（loadMemo中は除く）
+            if !viewModel.isLoadingMemo {
+                viewModel.selectedChildTagID = nil
+            }
             viewModel.onTagChanged(tags: tags)
             // 下のタブも連動して切替
             let idx = tabIndex(for: newTagID)

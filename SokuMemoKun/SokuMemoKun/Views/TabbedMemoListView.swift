@@ -312,20 +312,23 @@ struct TabbedMemoListView: View {
                             ForEach(resultSections, id: \.name) { section in
                                 let sectionColor = tagColor(for: section.colorIndex)
                                 VStack(alignment: .leading, spacing: 8) {
-                                    // セクションヘッダー（タグ名 + 件数）
-                                    HStack(spacing: 6) {
-                                        Circle()
-                                            .fill(sectionColor)
-                                            .frame(width: 10, height: 10)
+                                    // セクションヘッダー（タグバッジ + 件数）
+                                    HStack(spacing: 8) {
                                         Text(section.name)
-                                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 3)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 6)
+                                                    .fill(sectionColor)
+                                            )
                                         Text("\(section.memos.count)件")
-                                            .font(.system(size: 12, design: .rounded))
+                                            .font(.system(size: 13, weight: .medium, design: .rounded))
                                             .foregroundStyle(.secondary)
                                         Spacer()
                                     }
                                     .padding(.horizontal, 10)
-                                    .padding(.top, 8)
+                                    .padding(.top, 10)
 
                                     // メモグリッド（2列）
                                     LazyVGrid(columns: searchColumns, spacing: 8) {

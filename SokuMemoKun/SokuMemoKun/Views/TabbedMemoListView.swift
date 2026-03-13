@@ -118,13 +118,22 @@ struct TabbedMemoListView: View {
     var onEditMemo: ((Memo) -> Void)?
     var onDeleteMemo: ((Memo) -> Void)?
 
+    // タグなしの並び順（UserDefaultsで保存）
+    @AppStorage("noTagSortOrder") private var noTagSortOrder: Int = 0
+    // ドラッグ中のタブ
+    @State private var draggingTabIndex: Int? = nil
+
     private var tabItems: [(label: String, tag: Tag?, colorIndex: Int)] {
-        var items: [(String, Tag?, Int)] = [("タグなし", nil, 0)]
+        var items: [(label: String, tag: Tag?, colorIndex: Int, order: Int)] = []
+        // タグなし
+        items.append(("タグなし", nil, 0, noTagSortOrder))
         // 親タグのみ表示（子タグはタブに出さない）
         for tag in tags where tag.parentTagID == nil {
-            items.append((tag.name, tag, tag.colorIndex))
+            items.append((tag.name, tag, tag.colorIndex, tag.sortOrder))
         }
-        return items
+        // sortOrder順にソート
+        items.sort { $0.order < $1.order }
+        return items.map { ($0.label, $0.tag, $0.colorIndex) }
     }
 
     // 現在のタブのグリッドサイズ
@@ -549,15 +558,17 @@ struct TabbedMemoListView: View {
                         guard horizontal > vertical * 1.5 else { return }
 
                         let count = tabItems.count
-                        if value.translation.width < -50, selectedTabIndex < count - 1 {
+                        if value.translation.width < -50 {
+                            // 左スワイプ → 次のタブ（末尾→先頭にループ）
                             swipeDirection = .left
                             withAnimation(.easeOut(duration: 0.25)) {
-                                selectedTabIndex += 1
+                                selectedTabIndex = (selectedTabIndex + 1) % count
                             }
-                        } else if value.translation.width > 50, selectedTabIndex > 0 {
+                        } else if value.translation.width > 50 {
+                            // 右スワイプ → 前のタブ（先頭→末尾にループ）
                             swipeDirection = .right
                             withAnimation(.easeOut(duration: 0.25)) {
-                                selectedTabIndex -= 1
+                                selectedTabIndex = (selectedTabIndex - 1 + count) % count
                             }
                         }
                     }
@@ -614,6 +625,7 @@ struct TabbedMemoListView: View {
     private func tabButton(label: String, index: Int) -> some View {
         let isSelected = selectedTabIndex == index
         let color = tagColor(for: tabItems[index].colorIndex)
+        let isDragging = draggingTabIndex == index
 
         return Button {
             selectedTabIndex = index
@@ -629,9 +641,57 @@ struct TabbedMemoListView: View {
                         .fill(color)
                 )
                 .offset(y: isSelected ? 2 : 0)
+                .opacity(isDragging ? 0.5 : 1.0)
         }
         .buttonStyle(.plain)
         .zIndex(isSelected ? 1 : 0)
+        .onDrag {
+            draggingTabIndex = index
+            return NSItemProvider(object: "\(index)" as NSString)
+        }
+        .onDrop(of: [.text], delegate: TabDropDelegate(
+            targetIndex: index,
+            draggingIndex: $draggingTabIndex,
+            reorderAction: { from, to in
+                reorderTabs(from: from, to: to)
+            }
+        ))
+    }
+
+    // タブの並び替え処理
+    private func reorderTabs(from sourceIndex: Int, to destIndex: Int) {
+        guard sourceIndex != destIndex else { return }
+
+        // 現在の tabItems の順序を取得
+        let items = tabItems
+        var ordered = items.map { $0.tag }  // [Tag?] 順
+
+        // 移動
+        let moving = ordered.remove(at: sourceIndex)
+        ordered.insert(moving, at: destIndex)
+
+        // sortOrder を振り直す
+        for (i, tagOpt) in ordered.enumerated() {
+            if let tag = tagOpt {
+                tag.sortOrder = i
+            } else {
+                // タグなし
+                noTagSortOrder = i
+            }
+        }
+
+        // 選択タブを追従
+        if selectedTabIndex == sourceIndex {
+            selectedTabIndex = destIndex
+        } else if sourceIndex < destIndex {
+            if selectedTabIndex > sourceIndex && selectedTabIndex <= destIndex {
+                selectedTabIndex -= 1
+            }
+        } else {
+            if selectedTabIndex >= destIndex && selectedTabIndex < sourceIndex {
+                selectedTabIndex += 1
+            }
+        }
     }
 }
 
@@ -834,5 +894,27 @@ struct MemoCardView: View {
         .background(Color(uiColor: .systemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 6))
         .shadow(color: .black.opacity(0.08), radius: 2, x: 0, y: 1)
+    }
+}
+
+// タブのドラッグ＆ドロップ並び替え用デリゲート
+struct TabDropDelegate: DropDelegate {
+    let targetIndex: Int
+    @Binding var draggingIndex: Int?
+    let reorderAction: (Int, Int) -> Void
+
+    func dropEntered(info: DropInfo) {
+        guard let from = draggingIndex, from != targetIndex else { return }
+        reorderAction(from, targetIndex)
+        draggingIndex = targetIndex
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        draggingIndex = nil
+        return true
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: .move)
     }
 }

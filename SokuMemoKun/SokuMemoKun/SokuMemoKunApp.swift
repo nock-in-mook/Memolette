@@ -23,7 +23,7 @@ struct SokuMemoKunApp: App {
 
     // 全データ削除→バリエーション豊富なサンプル投入
     private static func resetAndInsertSamples(container: ModelContainer) {
-        let key = "sampleDataV5"
+        let key = "sampleDataV6"
         guard !UserDefaults.standard.bool(forKey: key) else { return }
 
         let context = ModelContext(container)
@@ -58,7 +58,10 @@ struct SokuMemoKunApp: App {
         let shumi = Tag(name: "趣味", colorIndex: 2)
         let kenkou = Tag(name: "健康", colorIndex: 5)
         let parents = [shigoto, idea, kaimono, shumi, kenkou]
-        for tag in parents { context.insert(tag) }
+        for (i, tag) in parents.enumerated() {
+            tag.sortOrder = i + 1  // 1始まり（0はタグなし用に空けておく）
+            context.insert(tag)
+        }
 
         // 子タグ
         var children: [UUID: [Tag]] = [:]

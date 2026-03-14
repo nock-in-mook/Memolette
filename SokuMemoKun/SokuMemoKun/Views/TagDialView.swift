@@ -202,13 +202,14 @@ struct TagDialView: View {
                 lineWidth: 2.5
             )
 
-            // 内周の縁取り
+            // 内周の縁取り（Canvas内に見える範囲を広めに描画）
+            let innerVisibleAngle: Double = acos(min(1.0, Double(cx / innerR))) * 180.0 / .pi
             var innerEdge = Path()
             innerEdge.addArc(
                 center: CGPoint(x: cx, y: cy),
                 radius: innerR,
-                startAngle: .degrees(150),
-                endAngle: .degrees(210),
+                startAngle: .degrees(180 - innerVisibleAngle + 2),
+                endAngle: .degrees(180 + innerVisibleAngle - 2),
                 clockwise: false
             )
             context.stroke(

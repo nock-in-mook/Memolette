@@ -46,6 +46,22 @@ struct NewTagSheetView: View {
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
 
+                // プレビュー（タグ名と色選択の間、中央寄せ・大きめ）
+                if !trimmedName.isEmpty {
+                    Text(trimmedName)
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundStyle(tagTextColor(for: selectedColorIndex))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(tagColor(for: selectedColorIndex))
+                        )
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .animation(.easeOut(duration: 0.15), value: selectedColorIndex)
+                        .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                }
+
                 // カラー選択
                 VStack(alignment: .leading, spacing: 6) {
                     Text("カラー")
@@ -53,23 +69,6 @@ struct NewTagSheetView: View {
                         .foregroundStyle(.secondary)
 
                     ColorPaletteGrid(selectedIndex: $selectedColorIndex)
-                }
-
-                // プレビュー（入力中のみ表示）
-                if !trimmedName.isEmpty {
-                    HStack {
-                        Text(trimmedName)
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
-                            .foregroundStyle(tagTextColor(for: selectedColorIndex))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(tagColor(for: selectedColorIndex))
-                            )
-                        Spacer()
-                    }
-                    .animation(.easeOut(duration: 0.15), value: selectedColorIndex)
                 }
 
                 Spacer()

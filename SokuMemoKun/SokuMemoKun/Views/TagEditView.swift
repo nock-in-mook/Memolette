@@ -256,6 +256,22 @@ struct TagDetailEditView: View {
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
 
+                // プレビュー（タグ名と色選択の間、中央寄せ・大きめ）
+                if !editName.trimmingCharacters(in: .whitespaces).isEmpty {
+                    Text(editName.trimmingCharacters(in: .whitespaces))
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundStyle(tagTextColor(for: editColorIndex))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(tagColor(for: editColorIndex))
+                        )
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .animation(.easeOut(duration: 0.15), value: editColorIndex)
+                        .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                }
+
                 // カラー選択（コンパクト）
                 VStack(alignment: .leading, spacing: 6) {
                     Text("カラー")
@@ -263,22 +279,6 @@ struct TagDetailEditView: View {
                         .foregroundStyle(.secondary)
 
                     ColorPaletteGrid(selectedIndex: $editColorIndex)
-                }
-
-                // プレビュー（入力中のみ表示）
-                if !editName.trimmingCharacters(in: .whitespaces).isEmpty {
-                    HStack {
-                        Text(editName.trimmingCharacters(in: .whitespaces))
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
-                            .foregroundStyle(tagTextColor(for: editColorIndex))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(tagColor(for: editColorIndex))
-                            )
-                        Spacer()
-                    }
                 }
 
                 Spacer()

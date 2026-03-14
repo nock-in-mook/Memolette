@@ -127,8 +127,8 @@ struct TabbedMemoListView: View {
     // タグなし・すべての並び順（UserDefaultsで保存）
     @AppStorage("noTagSortOrder") private var noTagSortOrder: Int = 1
     @AppStorage("allTagSortOrder") private var allTagSortOrder: Int = -1
-    // ドラッグ中のタブ
-    @State private var draggingTabIndex: Int? = nil
+    // 並び替えシート表示
+    @State private var showReorderSheet = false
 
     // colorIndex == -1 は「すべて」タブを示す特別な値
     private let allTabColorIndex = -1
@@ -254,14 +254,12 @@ struct TabbedMemoListView: View {
                 InfiniteTabBarView(
                     tabItems: tabItems,
                     selectedTabIndex: $selectedTabIndex,
-                    draggingTabIndex: $draggingTabIndex,
-                    noTagSortOrder: $noTagSortOrder,
                     onSelectModeReset: {
                         isSelectMode = false
                         selectedMemoIDs.removeAll()
                     },
-                    onReorder: { from, to in
-                        reorderTabs(from: from, to: to)
+                    onShowReorderSheet: {
+                        showReorderSheet = true
                     }
                 )
 
@@ -274,6 +272,16 @@ struct TabbedMemoListView: View {
                 deleteSelectedMemos()
             }
             Button("キャンセル", role: .cancel) {}
+        }
+        .sheet(isPresented: $showReorderSheet) {
+            TabReorderSheet(
+                tabItems: tabItems,
+                allTabColorIndex: allTabColorIndex,
+                onReorder: { newOrder in
+                    applyTabOrder(newOrder)
+                }
+            )
+            .presentationDetents([.medium, .large])
         }
     }
 
@@ -638,81 +646,33 @@ struct TabbedMemoListView: View {
         }
     }
 
-    private func tabButton(label: String, index: Int) -> some View {
-        let isSelected = selectedTabIndex == index
-        let color = tagColor(for: tabItems[index].colorIndex)
-        let isDragging = draggingTabIndex == index
-
-        return Button {
-            selectedTabIndex = index
-        } label: {
-            Text(label)
-                .font(.system(size: 14, weight: isSelected ? .bold : .medium, design: .rounded))
-                .foregroundStyle(isSelected ? .primary : .secondary)
-                .lineLimit(1)
-                .frame(width: tabWidth)
-                .padding(.vertical, 9)
-                .background(
-                    TrapezoidTabShape()
-                        .fill(color)
-                )
-                .offset(y: isSelected ? 2 : 0)
-                .opacity(isDragging ? 0.5 : 1.0)
-        }
-        .buttonStyle(.plain)
-        .zIndex(isSelected ? 1 : 0)
-        .onDrag {
-            draggingTabIndex = index
-            return NSItemProvider(object: "\(index)" as NSString)
-        }
-        .onDrop(of: [.text], delegate: TabDropDelegate(
-            targetIndex: index,
-            draggingIndex: $draggingTabIndex,
-            reorderAction: { from, to in
-                reorderTabs(from: from, to: to)
-            }
-        ))
-    }
-
-    // タブの並び替え処理
-    private func reorderTabs(from sourceIndex: Int, to destIndex: Int) {
-        guard sourceIndex != destIndex else { return }
-
-        // 現在の tabItems の順序を取得
-        let items = tabItems
-        // (tag, colorIndex) のペアで管理（「すべて」と「タグなし」を区別するため）
-        var ordered = items.map { (tag: $0.tag, colorIndex: $0.colorIndex) }
-
-        // 移動
-        let moving = ordered.remove(at: sourceIndex)
-        ordered.insert(moving, at: destIndex)
+    // 並び替えシートからの新しい順序を適用
+    private func applyTabOrder(_ newOrder: [(label: String, tag: Tag?, colorIndex: Int)]) {
+        // 現在選択中のタブの情報を記憶
+        let currentItem = tabItems[selectedTabIndex]
 
         // sortOrder を振り直す
-        for (i, item) in ordered.enumerated() {
+        for (i, item) in newOrder.enumerated() {
             if item.colorIndex == allTabColorIndex {
-                // すべて
                 allTagSortOrder = i
             } else if let tag = item.tag {
                 tag.sortOrder = i
             } else {
-                // タグなし
                 noTagSortOrder = i
             }
         }
 
-        // 選択タブを追従
-        withAnimation(.easeInOut(duration: 0.25)) {
-            if selectedTabIndex == sourceIndex {
-                selectedTabIndex = destIndex
-            } else if sourceIndex < destIndex {
-                if selectedTabIndex > sourceIndex && selectedTabIndex <= destIndex {
-                    selectedTabIndex -= 1
-                }
+        // 選択タブを追従（同じタブを選択し直す）
+        if let newIndex = newOrder.firstIndex(where: { item in
+            if currentItem.colorIndex == allTabColorIndex {
+                return item.colorIndex == allTabColorIndex
+            } else if let currentTag = currentItem.tag {
+                return item.tag?.id == currentTag.id
             } else {
-                if selectedTabIndex >= destIndex && selectedTabIndex < sourceIndex {
-                    selectedTabIndex += 1
-                }
+                return item.tag == nil && item.colorIndex != allTabColorIndex
             }
+        }) {
+            selectedTabIndex = newIndex
         }
     }
 }
@@ -919,41 +879,64 @@ struct MemoCardView: View {
     }
 }
 
-// タブのドラッグ＆ドロップ並び替え用デリゲート
-struct TabDropDelegate: DropDelegate {
-    let targetIndex: Int
-    @Binding var draggingIndex: Int?
-    let reorderAction: (Int, Int) -> Void
+// フォルダ並び替えシート
+struct TabReorderSheet: View {
+    let tabItems: [(label: String, tag: Tag?, colorIndex: Int)]
+    let allTabColorIndex: Int
+    let onReorder: ([(label: String, tag: Tag?, colorIndex: Int)]) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var orderedItems: [(label: String, tag: Tag?, colorIndex: Int)] = []
 
-    func dropEntered(info: DropInfo) {
-        guard let from = draggingIndex, from != targetIndex else { return }
-        withAnimation(.easeInOut(duration: 0.25)) {
-            reorderAction(from, targetIndex)
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(Array(orderedItems.enumerated()), id: \.offset) { index, item in
+                    HStack(spacing: 10) {
+                        // タグ色の角丸正方形
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(tagColor(for: item.colorIndex))
+                            .frame(width: 22, height: 22)
+                        Text(item.label)
+                            .font(.system(size: 16, weight: .medium, design: .rounded))
+                    }
+                    .padding(.vertical, 2)
+                }
+                .onMove { from, to in
+                    orderedItems.move(fromOffsets: from, toOffset: to)
+                }
+            }
+            .environment(\.editMode, .constant(.active))
+            .navigationTitle("フォルダの並び替え")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("キャンセル") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("完了") {
+                        onReorder(orderedItems)
+                        dismiss()
+                    }
+                    .fontWeight(.bold)
+                }
+            }
         }
-        draggingIndex = targetIndex
-    }
-
-    func performDrop(info: DropInfo) -> Bool {
-        draggingIndex = nil
-        return true
-    }
-
-    func dropUpdated(info: DropInfo) -> DropProposal? {
-        DropProposal(operation: .move)
+        .onAppear {
+            orderedItems = tabItems
+        }
     }
 }
 
-// 無限ループするタブバー（大量セット繰り返しで実質無限）
+// 無限ループするタブバー（大量セット繰り返しで実質無限＋長押しメニュー）
 struct InfiniteTabBarView: View {
     let tabItems: [(label: String, tag: Tag?, colorIndex: Int)]
     @Binding var selectedTabIndex: Int
-    @Binding var draggingTabIndex: Int?
-    @Binding var noTagSortOrder: Int
     var onSelectModeReset: () -> Void
-    var onReorder: (Int, Int) -> Void
+    var onShowReorderSheet: () -> Void
 
     private let tabW: CGFloat = 76
-    // 大量セットで実質無限（中央から左右50セット分 = 事実上到達不可能）
     private let setCount = 101
     private let centerSet = 50
 
@@ -1007,11 +990,10 @@ struct InfiniteTabBarView: View {
     private func loopTabButton(label: String, realIndex: Int, loopID: String, setIndex: Int, proxy: ScrollViewProxy) -> some View {
         let isSelected = selectedTabIndex == realIndex
         let color = tagColor(for: tabItems[realIndex].colorIndex)
-        let isDragging = draggingTabIndex == realIndex
 
         return Button {
             selectedTabIndex = realIndex
-            // タップしたのが中央セット以外なら、アニメーションなしで中央にリセット
+            // タップしたのが中央セット以外なら、中央にリセット
             if setIndex != centerSet {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                     proxy.scrollTo("s\(centerSet)_\(realIndex)", anchor: .center)
@@ -1029,19 +1011,16 @@ struct InfiniteTabBarView: View {
                         .fill(color)
                 )
                 .offset(y: isSelected ? 2 : 0)
-                .opacity(isDragging ? 0.5 : 1.0)
         }
         .buttonStyle(.plain)
         .zIndex(isSelected ? 1 : 0)
         .id(loopID)
-        .onDrag {
-            draggingTabIndex = realIndex
-            return NSItemProvider(object: "\(realIndex)" as NSString)
+        .contextMenu {
+            Button {
+                onShowReorderSheet()
+            } label: {
+                Label("並び替え", systemImage: "arrow.up.arrow.down")
+            }
         }
-        .onDrop(of: [.text], delegate: TabDropDelegate(
-            targetIndex: realIndex,
-            draggingIndex: $draggingTabIndex,
-            reorderAction: onReorder
-        ))
     }
 }

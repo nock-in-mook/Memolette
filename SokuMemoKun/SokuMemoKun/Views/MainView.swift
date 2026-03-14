@@ -99,6 +99,8 @@ struct MainView: View {
                 // 設定画面を閉じた時にマスタースイッチの状態を反映
                 if !markdownEnabled {
                     viewModel.isMarkdown = false
+                } else if viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    viewModel.isMarkdown = defaultMarkdown
                 }
             }) {
                 SettingsView()

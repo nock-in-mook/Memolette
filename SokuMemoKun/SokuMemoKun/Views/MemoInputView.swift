@@ -137,6 +137,8 @@ struct MemoInputView: View {
                     }
                 }
                 .frame(maxHeight: .infinity)
+                .padding(.trailing, showParentDial ? 70 : 0)
+                .animation(.spring(response: 0.3), value: showParentDial)
 
             }
             .overlay(alignment: .bottomTrailing) {

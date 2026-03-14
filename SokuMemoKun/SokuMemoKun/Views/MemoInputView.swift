@@ -60,7 +60,6 @@ struct MemoInputView: View {
         for tag in tags where tag.parentTagID == nil {
             list.append((tag.id.uuidString, tag.name, tagColor(for: tag.colorIndex)))
         }
-        list.append(("add", "＋追加", Color.blue.opacity(0.15)))
         return list
     }
 
@@ -71,7 +70,6 @@ struct MemoInputView: View {
                 list.append((tag.id.uuidString, tag.name, tagColor(for: tag.colorIndex)))
             }
         }
-        list.append(("add", "＋追加", Color.blue.opacity(0.15)))
         return list
     }
 
@@ -334,6 +332,31 @@ struct MemoInputView: View {
         VStack(spacing: 0) {
             dialContent
                 .frame(height: showParentDial ? dialFixedHeight : nil)
+            // ルーレット下の追加ボタン
+            if showParentDial {
+                HStack(spacing: 6) {
+                    Button {
+                        newTagIsChild = false
+                        showNewTagSheet = true
+                    } label: {
+                        Label("親タグ追加", systemImage: "plus.circle.fill")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(.blue)
+                    }
+                    if showChildDial {
+                        Button {
+                            newTagIsChild = true
+                            showNewTagSheet = true
+                        } label: {
+                            Label("子タグ追加", systemImage: "plus.circle")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(.blue.opacity(0.7))
+                        }
+                    }
+                }
+                .padding(.vertical, 6)
+                .padding(.horizontal, 4)
+            }
             Spacer(minLength: 0)
         }
         .fixedSize(horizontal: true, vertical: false)
@@ -347,10 +370,8 @@ struct MemoInputView: View {
                 TagDialView(
                     parentOptions: parentOptions,
                     parentSelectedID: $viewModel.selectedTagID,
-                    onParentAddTap: { newTagIsChild = false; showNewTagSheet = true },
                     childOptions: childOptions,
                     childSelectedID: $viewModel.selectedChildTagID,
-                    onChildAddTap: { newTagIsChild = true; showNewTagSheet = true },
                     showChild: $showChildDial,
                     childExternalDragY: $childExternalDragY
                 )

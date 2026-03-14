@@ -52,7 +52,7 @@ struct MemoDetailView: View {
         for tag in allTags where tag.parentTagID == nil {
             list.append((tag.id.uuidString, tag.name, tagColor(for: tag.colorIndex)))
         }
-        list.append(("add", "＋追加", Color.blue.opacity(0.15)))
+
         return list
     }
 
@@ -63,7 +63,7 @@ struct MemoDetailView: View {
                 list.append((tag.id.uuidString, tag.name, tagColor(for: tag.colorIndex)))
             }
         }
-        list.append(("add", "＋追加", Color.blue.opacity(0.15)))
+
         return list
     }
 
@@ -270,10 +270,8 @@ struct MemoDetailView: View {
                     TagDialView(
                         parentOptions: parentOptions,
                         parentSelectedID: $selectedTagID,
-                        onParentAddTap: { newTagIsChild = false; showNewTagSheet = true },
                         childOptions: childOptions,
                         childSelectedID: $selectedChildTagID,
-                        onChildAddTap: { newTagIsChild = true; showNewTagSheet = true },
                         showChild: $showChildDial,
                         childExternalDragY: $childExternalDragY
                     )

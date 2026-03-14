@@ -6,12 +6,10 @@ struct TagDialView: View {
     // 親オプション
     var parentOptions: [(id: String, name: String, color: Color)]
     @Binding var parentSelectedID: UUID?
-    var onParentAddTap: (() -> Void)?
 
     // 子オプション
     var childOptions: [(id: String, name: String, color: Color)]
     @Binding var childSelectedID: UUID?
-    var onChildAddTap: (() -> Void)?
 
     // 子ダイアル表示
     @Binding var showChild: Bool
@@ -276,38 +274,23 @@ struct TagDialView: View {
             let textX = cx + midR * CGFloat(cos(cgMid))
             let textY = cy + midR * CGFloat(sin(cgMid))
 
-            if option.id == "add" {
-                let plusIcon = context.resolve(
-                    Text("＋")
-                        .font(.system(size: isSelected ? 20 : 14, weight: .bold, design: .rounded))
-                        .foregroundColor(isSelected ? .blue : Color(white: 0.45))
-                )
-                context.draw(plusIcon, at: CGPoint(x: textX, y: textY - 5), anchor: .center)
-                let label = context.resolve(
-                    Text("追加")
-                        .font(.system(size: isSelected ? 10 : 8, weight: .medium, design: .rounded))
-                        .foregroundColor(isSelected ? .blue.opacity(0.7) : Color(white: 0.5))
-                )
-                context.draw(label, at: CGPoint(x: textX, y: textY + 8), anchor: .center)
-            } else {
-                let displayName: String = {
-                    if option.name.count > maxChars {
-                        return String(option.name.prefix(maxChars)) + "…"
-                    }
-                    return option.name
-                }()
-                let fontSize: CGFloat = isSelected ? 16 : 12
-                let resolved = context.resolve(
-                    Text(displayName)
-                        .font(.system(
-                            size: fontSize,
-                            weight: isSelected ? .bold : .medium,
-                            design: .rounded
-                        ))
-                        .foregroundColor(Color(white: isSelected ? 0.1 : 0.3))
-                )
-                context.draw(resolved, at: CGPoint(x: textX, y: textY), anchor: .center)
-            }
+            let displayName: String = {
+                if option.name.count > maxChars {
+                    return String(option.name.prefix(maxChars)) + "…"
+                }
+                return option.name
+            }()
+            let fontSize: CGFloat = isSelected ? 16 : 12
+            let resolved = context.resolve(
+                Text(displayName)
+                    .font(.system(
+                        size: fontSize,
+                        weight: isSelected ? .bold : .medium,
+                        design: .rounded
+                    ))
+                    .foregroundColor(Color(white: isSelected ? 0.1 : 0.3))
+            )
+            context.draw(resolved, at: CGPoint(x: textX, y: textY), anchor: .center)
 
             context.opacity = 1.0
         }
@@ -412,11 +395,7 @@ struct TagDialView: View {
         let index = snappedIndex(rotation: parentRotation, count: parentOptions.count)
         if index < parentOptions.count {
             let option = parentOptions[index]
-            if option.id == "add" {
-                onParentAddTap?()
-            } else {
-                parentSelectedID = option.id == "none" ? nil : UUID(uuidString: option.id)
-            }
+            parentSelectedID = option.id == "none" ? nil : UUID(uuidString: option.id)
         }
     }
 
@@ -424,11 +403,7 @@ struct TagDialView: View {
         let index = snappedIndex(rotation: childRotation, count: childOptions.count)
         if index < childOptions.count {
             let option = childOptions[index]
-            if option.id == "add" {
-                onChildAddTap?()
-            } else {
-                childSelectedID = option.id == "none" ? nil : UUID(uuidString: option.id)
-            }
+            childSelectedID = option.id == "none" ? nil : UUID(uuidString: option.id)
         }
     }
 }

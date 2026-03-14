@@ -133,19 +133,19 @@ struct TabbedMemoListView: View {
     // colorIndex == -1 は「すべて」タブを示す特別な値
     private let allTabColorIndex = -1
 
-    // 並び順: すべて → タグ（sortOrder順）→ タグなし
+    // タブの並び順（sortOrder順、すべて=-1、タグなし=sortOrder）
+    @AppStorage("allTagSortOrder") private var allTagSortOrder: Int = -1
+    @AppStorage("noTagSortOrder") private var noTagSortOrder: Int = 9999
+
     private var tabItems: [(label: String, tag: Tag?, colorIndex: Int)] {
-        var items: [(label: String, tag: Tag?, colorIndex: Int)] = []
-        // 先頭: すべて
-        items.append(("すべて", nil, allTabColorIndex))
-        // 中間: 親タグ（sortOrder順）
-        let parentTags = tags.filter { $0.parentTagID == nil }.sorted { $0.sortOrder < $1.sortOrder }
-        for tag in parentTags {
-            items.append((tag.name, tag, tag.colorIndex))
+        var items: [(label: String, tag: Tag?, colorIndex: Int, order: Int)] = []
+        items.append(("すべて", nil, allTabColorIndex, allTagSortOrder))
+        items.append(("タグなし", nil, 0, noTagSortOrder))
+        for tag in tags where tag.parentTagID == nil {
+            items.append((tag.name, tag, tag.colorIndex, tag.sortOrder))
         }
-        // 末尾: タグなし
-        items.append(("タグなし", nil, 0))
-        return items
+        items.sort { $0.order < $1.order }
+        return items.map { ($0.label, $0.tag, $0.colorIndex) }
     }
 
     // 「すべて」タブかどうか
@@ -278,9 +278,10 @@ struct TabbedMemoListView: View {
         }
         .sheet(isPresented: $showReorderSheet) {
             TabReorderSheet(
-                tags: tags.filter { $0.parentTagID == nil }.sorted { $0.sortOrder < $1.sortOrder },
-                onReorder: { newTagOrder in
-                    applyTabOrder(newTagOrder)
+                tabItems: tabItems,
+                allTabColorIndex: allTabColorIndex,
+                onReorder: { newOrder in
+                    applyTabOrder(newOrder)
                 }
             )
             .presentationDetents([.medium, .large])
@@ -655,20 +656,22 @@ struct TabbedMemoListView: View {
         }
     }
 
-    // 並び替えシートからの新しい順序を適用
-    // シートでは「すべて」「タグなし」を除いたタグだけ並び替える
-    private func applyTabOrder(_ newTagOrder: [Tag]) {
-        // 現在選択中のタブの情報を記憶
+    // 並び替えシートからの新しい順序を適用（全タブ対象）
+    private func applyTabOrder(_ newOrder: [(label: String, tag: Tag?, colorIndex: Int)]) {
         let currentItem = tabItems[selectedTabIndex]
 
-        // タグのsortOrderを振り直す
-        for (i, tag) in newTagOrder.enumerated() {
-            tag.sortOrder = i
+        for (i, item) in newOrder.enumerated() {
+            if item.colorIndex == allTabColorIndex {
+                allTagSortOrder = i
+            } else if let tag = item.tag {
+                tag.sortOrder = i
+            } else {
+                noTagSortOrder = i
+            }
         }
 
         // 選択タブを追従
-        let newItems = tabItems  // 再計算される
-        if let newIndex = newItems.firstIndex(where: { item in
+        if let newIndex = newOrder.firstIndex(where: { item in
             if currentItem.colorIndex == allTabColorIndex {
                 return item.colorIndex == allTabColorIndex
             } else if let currentTag = currentItem.tag {
@@ -896,56 +899,41 @@ struct MemoCardView: View {
     }
 }
 
-// フォルダ並び替えシート（タグのみ対象、「すべて」「タグなし」は固定）
+// フォルダ並び替えシート（全タブ対象）
 struct TabReorderSheet: View {
-    let tags: [Tag]
-    let onReorder: ([Tag]) -> Void
+    let tabItems: [(label: String, tag: Tag?, colorIndex: Int)]
+    let allTabColorIndex: Int
+    let onReorder: ([(label: String, tag: Tag?, colorIndex: Int)]) -> Void
     @Environment(\.dismiss) private var dismiss
-    @State private var orderedTags: [Tag] = []
+    @State private var orderedItems: [(label: String, tag: Tag?, colorIndex: Int)] = []
 
     var body: some View {
         NavigationStack {
-            List {
-                // 固定: すべて（並び替え不可）
-                HStack(spacing: 10) {
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(allTabColor)
-                        .frame(width: 22, height: 22)
-                    Text("すべて")
-                        .font(.system(size: 16, weight: .medium, design: .rounded))
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 2)
-                .listRowBackground(Color(uiColor: .secondarySystemBackground).opacity(0.5))
+            VStack(spacing: 0) {
+                // ヒントテキスト
+                Text("長押しで移動できます")
+                    .font(.system(size: 13, design: .rounded))
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 8)
+                    .padding(.bottom, 4)
 
-                // 並び替え可能: タグ一覧
-                ForEach(orderedTags, id: \.id) { tag in
-                    HStack(spacing: 10) {
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(tagColor(for: tag.colorIndex))
-                            .frame(width: 22, height: 22)
-                        Text(tag.name)
-                            .font(.system(size: 16, weight: .medium, design: .rounded))
+                List {
+                    ForEach(Array(orderedItems.enumerated()), id: \.offset) { index, item in
+                        HStack(spacing: 10) {
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(tagColor(for: item.colorIndex))
+                                .frame(width: 22, height: 22)
+                            Text(item.label)
+                                .font(.system(size: 16, weight: .medium, design: .rounded))
+                        }
+                        .padding(.vertical, 2)
                     }
-                    .padding(.vertical, 2)
+                    .onMove { from, to in
+                        orderedItems.move(fromOffsets: from, toOffset: to)
+                    }
                 }
-                .onMove { from, to in
-                    orderedTags.move(fromOffsets: from, toOffset: to)
-                }
-
-                // 固定: タグなし（並び替え不可）
-                HStack(spacing: 10) {
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(tagColor(for: 0))
-                        .frame(width: 22, height: 22)
-                    Text("タグなし")
-                        .font(.system(size: 16, weight: .medium, design: .rounded))
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 2)
-                .listRowBackground(Color(uiColor: .secondarySystemBackground).opacity(0.5))
+                .environment(\.editMode, .constant(.active))
             }
-            .environment(\.editMode, .constant(.active))
             .navigationTitle("フォルダの並び替え")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -956,7 +944,7 @@ struct TabReorderSheet: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("完了") {
-                        onReorder(orderedTags)
+                        onReorder(orderedItems)
                         dismiss()
                     }
                     .fontWeight(.bold)
@@ -964,7 +952,7 @@ struct TabReorderSheet: View {
             }
         }
         .onAppear {
-            orderedTags = tags
+            orderedItems = tabItems
         }
     }
 }

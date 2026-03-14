@@ -134,15 +134,6 @@ struct MemoInputView: View {
                 }
                 .frame(maxHeight: .infinity)
                 .padding(.trailing, 20)
-                .background(
-                    GeometryReader { geo in
-                        Color.clear
-                            .onAppear { baseTextAreaHeight = geo.size.height }
-                            .onChange(of: geo.size.height) { _, h in
-                                if !isExpanded { baseTextAreaHeight = h }
-                            }
-                    }
-                )
 
                 // 展開/縮小ボタン（ルーレット展開中は非表示）
                 if !showParentDial {
@@ -161,6 +152,11 @@ struct MemoInputView: View {
                     .padding(.top, 2)
                 }
             }
+            .overlay(alignment: .topTrailing) {
+                // 仕切り線直下・右端からタグタブを生やす
+                dialArea
+                    .padding(.trailing, -10)
+            }
             Divider()
             // フッター: 左=削除 右=コピー+保存
             footerRow
@@ -173,11 +169,6 @@ struct MemoInputView: View {
             RoundedRectangle(cornerRadius: 10)
                 .stroke(Color.gray.opacity(0.25), lineWidth: 1)
         )
-        .overlay(alignment: .trailing) {
-            // 枠線の外（右端）からタグを生やす
-            dialArea
-                .padding(.trailing, -10)
-        }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .alert("このメモを削除します。よろしいですか？", isPresented: $showDeleteAlert) {
@@ -321,18 +312,11 @@ struct MemoInputView: View {
 
     // ルーレットの固定高さ
     private let dialFixedHeight: CGFloat = 160
-    // 画面上端からの割合（テキストエリア内での位置）
-    private let dialTopRatio: CGFloat = 0.5
-
-    // 縮小時のテキストエリア高さを記録（展開時は更新しない）
-    @State private var baseTextAreaHeight: CGFloat = 0
 
     private var dialArea: some View {
-        let topOffset = max(0, baseTextAreaHeight * dialTopRatio - dialFixedHeight / 2)
-        return VStack(spacing: 0) {
-            Spacer().frame(height: topOffset)
+        VStack(spacing: 0) {
             dialContent
-                .frame(height: dialFixedHeight)
+                .frame(height: showParentDial ? dialFixedHeight : nil)
             Spacer(minLength: 0)
         }
         .fixedSize(horizontal: true, vertical: false)
@@ -417,13 +401,13 @@ struct MemoInputView: View {
                             }
                     )
             } else {
-                VStack(spacing: 3) {
+                HStack(spacing: 2) {
+                    Text("◀").font(.system(size: 10))
                     Text("タグ").font(.system(size: 11, weight: .bold, design: .rounded))
-                    Text("‹").font(.system(size: 14, weight: .bold))
                 }
                 .foregroundStyle(.secondary)
-                .frame(width: 28, height: 80)
-                .background(RoundedRectangle(cornerRadius: 6).fill(Color(uiColor: .systemGray5)))
+                .frame(width: 60, height: 22)
+                .background(RoundedRectangle(cornerRadius: 4).fill(Color(uiColor: .systemGray5)))
                 .contentShape(Rectangle())
                 .gesture(
                     DragGesture(minimumDistance: 5)

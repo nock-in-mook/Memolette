@@ -121,12 +121,12 @@ struct TagDialView: View {
                     let touchX = value.startLocation.x
                     // 親内周のCanvas上のx座標（180°方向の最左端）
                     let borderX = cx - parentInnerR  // ≈84pt
-                    if showChild && touchX < borderX {
-                        // 子エリア（内周より左）
+                    if showChild && touchX > borderX {
+                        // 子エリア（内周より右＝内側）
                         childIsDragging = true
                         childRotation = childDragStart + value.translation.height * -0.3
                     } else {
-                        // 親エリア（内周より右）
+                        // 親エリア（内周より左＝外側）
                         parentIsDragging = true
                         parentRotation = parentDragStart + value.translation.height * -0.3
                     }

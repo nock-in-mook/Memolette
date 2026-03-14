@@ -104,7 +104,8 @@ struct MemoInputView: View {
                         TextEditor(text: $viewModel.inputText)
                             .font(.system(size: 17))
                             .padding(.leading, 4)
-                            .padding(.top, 4)
+                            .padding(.trailing, 4)
+                            .padding(.top, 12)
                             .focused($isTextEditorFocused)
                     } else {
                         ScrollView {
@@ -113,8 +114,8 @@ struct MemoInputView: View {
                                 .foregroundStyle(viewModel.inputText.isEmpty ? .clear : .primary)
                                 .frame(maxWidth: .infinity, alignment: .topLeading)
                                 .padding(.leading, 9)
-                                .padding(.trailing, 5)
-                                .padding(.top, 12)
+                                .padding(.trailing, 9)
+                                .padding(.top, 20)
                         }
                         .contentShape(Rectangle())
                         .onTapGesture {
@@ -128,12 +129,11 @@ struct MemoInputView: View {
                             .font(.system(size: 17))
                             .foregroundStyle(.gray.opacity(0.5))
                             .padding(.horizontal, 8)
-                            .padding(.vertical, 12)
+                            .padding(.vertical, 20)
                             .allowsHitTesting(false)
                     }
                 }
                 .frame(maxHeight: .infinity)
-                .padding(.trailing, 20)
 
             }
             .overlay(alignment: .bottomTrailing) {

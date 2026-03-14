@@ -248,18 +248,27 @@ struct MemoInputView: View {
 
     private var tagDisplay: some View {
         HStack(spacing: 3) {
-            let info = selectedTagInfo
-            Text(info.name.prefix(4) + (info.name.count > 4 ? "…" : ""))
-                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(RoundedRectangle(cornerRadius: 5).fill(info.color))
-            if let childInfo = selectedChildTagInfo {
-                Text(childInfo.name.prefix(3) + (childInfo.name.count > 3 ? "…" : ""))
-                    .font(.system(size: 10, weight: .medium, design: .rounded))
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 1)
-                    .background(RoundedRectangle(cornerRadius: 4).fill(childInfo.color))
+            if viewModel.selectedTagID == nil {
+                // タグ未選択時はプレースホルダー
+                Text("タグ")
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+            } else {
+                let info = selectedTagInfo
+                Text(info.name.prefix(4) + (info.name.count > 4 ? "…" : ""))
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(RoundedRectangle(cornerRadius: 5).fill(info.color))
+                if let childInfo = selectedChildTagInfo {
+                    Text(childInfo.name.prefix(3) + (childInfo.name.count > 3 ? "…" : ""))
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 1)
+                        .background(RoundedRectangle(cornerRadius: 4).fill(childInfo.color))
+                }
             }
         }
     }

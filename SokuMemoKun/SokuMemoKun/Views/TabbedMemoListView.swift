@@ -126,9 +126,8 @@ struct TabbedMemoListView: View {
 
     // 並び替えシート表示
     @State private var showReorderSheet = false
-    // タグ追加アラート
-    @State private var showAddTagAlert = false
-    @State private var newTagName = ""
+    // タグ追加シート
+    @State private var showAddTagSheet = false
 
     // colorIndex == -1 は「すべて」タブを示す特別な値
     private let allTabColorIndex = -1
@@ -262,7 +261,7 @@ struct TabbedMemoListView: View {
                         showReorderSheet = true
                     },
                     onAddTag: {
-                        showAddTagAlert = true
+                        showAddTagSheet = true
                     }
                 )
 
@@ -286,12 +285,8 @@ struct TabbedMemoListView: View {
             )
             .presentationDetents([.medium, .large])
         }
-        .alert("新しいフォルダ", isPresented: $showAddTagAlert) {
-            TextField("フォルダ名", text: $newTagName)
-            Button("追加") { addNewTag() }
-            Button("キャンセル", role: .cancel) { newTagName = "" }
-        } message: {
-            Text("フォルダ（タグ）の名前を入力してください")
+        .sheet(isPresented: $showAddTagSheet) {
+            NewTagSheetView()
         }
     }
 
@@ -684,17 +679,6 @@ struct TabbedMemoListView: View {
         }
     }
 
-    // タグ追加処理
-    private func addNewTag() {
-        let name = newTagName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty else { return }
-        // 最大のsortOrderの次の値を設定
-        let maxOrder = tags.filter { $0.parentTagID == nil }.map { $0.sortOrder }.max() ?? 0
-        let tag = Tag(name: name, colorIndex: Int.random(in: 1...28))
-        tag.sortOrder = maxOrder + 1
-        modelContext.insert(tag)
-        newTagName = ""
-    }
 }
 
 // 検索結果用メモカード（ハイライト＋マッチ行中心表示）

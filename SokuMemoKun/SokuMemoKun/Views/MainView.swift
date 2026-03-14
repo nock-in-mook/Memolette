@@ -95,7 +95,12 @@ struct MainView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showSettings) {
+            .sheet(isPresented: $showSettings, onDismiss: {
+                // 設定画面を閉じた時にマスタースイッチの状態を反映
+                if !markdownEnabled {
+                    viewModel.isMarkdown = false
+                }
+            }) {
                 SettingsView()
             }
             .onChange(of: defaultMarkdown) { _, newValue in
@@ -146,6 +151,10 @@ struct MainView: View {
             }
             .onAppear {
                 viewModel.restoreLastMemo(context: modelContext)
+                // マスタースイッチOFFなら起動時もマークダウン解除
+                if !markdownEnabled {
+                    viewModel.isMarkdown = false
+                }
             }
         }
     }

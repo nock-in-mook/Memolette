@@ -106,6 +106,7 @@ struct MemoInputView: View {
                             .padding(.leading, 10)
                             .padding(.trailing, 4)
                             .padding(.top, 16)
+                            .contentMargins(.bottom, 40, for: .scrollContent)
                             .focused($isTextEditorFocused)
                     } else {
                         ScrollView {

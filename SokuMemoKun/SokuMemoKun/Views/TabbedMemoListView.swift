@@ -39,7 +39,11 @@ private let tabColors: [Color] = [
     Color(red: 0.50, green: 0.65, blue: 0.85),  // スレートブルー
 ]
 
+// 「すべて」タブ用の色（薄い白系）
+private let allTabColor = Color(red: 0.92, green: 0.92, blue: 0.92)
+
 func tagColor(for index: Int) -> Color {
+    if index == -1 { return allTabColor }
     guard index >= 0 && index < tabColors.count else {
         return tabColors[0]
     }
@@ -113,18 +117,26 @@ struct TabbedMemoListView: View {
     enum SwipeDirection { case none, left, right }
     // タグなし用のグリッドサイズ（UserDefaultsで保存）
     @AppStorage("noTagGridSize") private var noTagGridSize: Int = 2
+    // すべて用のグリッドサイズ
+    @AppStorage("allTagGridSize") private var allTagGridSize: Int = 2
     // コールバック
     var onAddMemo: ((UUID?) -> Void)?
     var onEditMemo: ((Memo) -> Void)?
     var onDeleteMemo: ((Memo) -> Void)?
 
-    // タグなしの並び順（UserDefaultsで保存）
-    @AppStorage("noTagSortOrder") private var noTagSortOrder: Int = 0
+    // タグなし・すべての並び順（UserDefaultsで保存）
+    @AppStorage("noTagSortOrder") private var noTagSortOrder: Int = 1
+    @AppStorage("allTagSortOrder") private var allTagSortOrder: Int = -1
     // ドラッグ中のタブ
     @State private var draggingTabIndex: Int? = nil
 
+    // colorIndex == -1 は「すべて」タブを示す特別な値
+    private let allTabColorIndex = -1
+
     private var tabItems: [(label: String, tag: Tag?, colorIndex: Int)] {
         var items: [(label: String, tag: Tag?, colorIndex: Int, order: Int)] = []
+        // すべて
+        items.append(("すべて", nil, allTabColorIndex, allTagSortOrder))
         // タグなし
         items.append(("タグなし", nil, 0, noTagSortOrder))
         // 親タグのみ表示（子タグはタブに出さない）
@@ -136,9 +148,17 @@ struct TabbedMemoListView: View {
         return items.map { ($0.label, $0.tag, $0.colorIndex) }
     }
 
+    // 「すべて」タブかどうか
+    private var isAllTab: Bool {
+        tabItems[selectedTabIndex].colorIndex == allTabColorIndex
+    }
+
     // 現在のタブのグリッドサイズ
     private var currentGridSize: GridSizeOption {
         let item = tabItems[selectedTabIndex]
+        if item.colorIndex == allTabColorIndex {
+            return GridSizeOption(rawValue: allTagGridSize) ?? .grid3x8
+        }
         if let tag = item.tag {
             return GridSizeOption(rawValue: tag.gridSize) ?? .grid3x8
         }
@@ -162,6 +182,10 @@ struct TabbedMemoListView: View {
     // 通常タブ用フィルタ
     private var filteredMemos: [Memo] {
         let item = tabItems[selectedTabIndex]
+        // 「すべて」タブ
+        if item.colorIndex == allTabColorIndex {
+            return allMemos
+        }
         if let tag = item.tag {
             return allMemos.filter { memo in
                 memo.tags.contains { $0.id == tag.id }
@@ -605,7 +629,9 @@ struct TabbedMemoListView: View {
 
     private func setGridSize(_ option: GridSizeOption) {
         let item = tabItems[selectedTabIndex]
-        if let tag = item.tag {
+        if item.colorIndex == allTabColorIndex {
+            allTagGridSize = option.rawValue
+        } else if let tag = item.tag {
             tag.gridSize = option.rawValue
         } else {
             noTagGridSize = option.rawValue
@@ -654,15 +680,19 @@ struct TabbedMemoListView: View {
 
         // 現在の tabItems の順序を取得
         let items = tabItems
-        var ordered = items.map { $0.tag }  // [Tag?] 順
+        // (tag, colorIndex) のペアで管理（「すべて」と「タグなし」を区別するため）
+        var ordered = items.map { (tag: $0.tag, colorIndex: $0.colorIndex) }
 
         // 移動
         let moving = ordered.remove(at: sourceIndex)
         ordered.insert(moving, at: destIndex)
 
         // sortOrder を振り直す
-        for (i, tagOpt) in ordered.enumerated() {
-            if let tag = tagOpt {
+        for (i, item) in ordered.enumerated() {
+            if item.colorIndex == allTabColorIndex {
+                // すべて
+                allTagSortOrder = i
+            } else if let tag = item.tag {
                 tag.sortOrder = i
             } else {
                 // タグなし
@@ -671,15 +701,17 @@ struct TabbedMemoListView: View {
         }
 
         // 選択タブを追従
-        if selectedTabIndex == sourceIndex {
-            selectedTabIndex = destIndex
-        } else if sourceIndex < destIndex {
-            if selectedTabIndex > sourceIndex && selectedTabIndex <= destIndex {
-                selectedTabIndex -= 1
-            }
-        } else {
-            if selectedTabIndex >= destIndex && selectedTabIndex < sourceIndex {
-                selectedTabIndex += 1
+        withAnimation(.easeInOut(duration: 0.25)) {
+            if selectedTabIndex == sourceIndex {
+                selectedTabIndex = destIndex
+            } else if sourceIndex < destIndex {
+                if selectedTabIndex > sourceIndex && selectedTabIndex <= destIndex {
+                    selectedTabIndex -= 1
+                }
+            } else {
+                if selectedTabIndex >= destIndex && selectedTabIndex < sourceIndex {
+                    selectedTabIndex += 1
+                }
             }
         }
     }
@@ -895,7 +927,9 @@ struct TabDropDelegate: DropDelegate {
 
     func dropEntered(info: DropInfo) {
         guard let from = draggingIndex, from != targetIndex else { return }
-        reorderAction(from, targetIndex)
+        withAnimation(.easeInOut(duration: 0.25)) {
+            reorderAction(from, targetIndex)
+        }
         draggingIndex = targetIndex
     }
 

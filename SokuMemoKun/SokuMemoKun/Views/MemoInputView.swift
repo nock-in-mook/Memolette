@@ -105,7 +105,7 @@ struct MemoInputView: View {
                             .font(.system(size: 17))
                             .padding(.leading, 4)
                             .padding(.trailing, 4)
-                            .padding(.top, 12)
+                            .padding(.top, 16)
                             .focused($isTextEditorFocused)
                     } else {
                         ScrollView {
@@ -115,7 +115,7 @@ struct MemoInputView: View {
                                 .frame(maxWidth: .infinity, alignment: .topLeading)
                                 .padding(.leading, 9)
                                 .padding(.trailing, 9)
-                                .padding(.top, 20)
+                                .padding(.top, 24)
                         }
                         .contentShape(Rectangle())
                         .onTapGesture {
@@ -129,7 +129,7 @@ struct MemoInputView: View {
                             .font(.system(size: 17))
                             .foregroundStyle(.gray.opacity(0.5))
                             .padding(.horizontal, 8)
-                            .padding(.vertical, 20)
+                            .padding(.vertical, 24)
                             .allowsHitTesting(false)
                     }
                 }

@@ -268,35 +268,28 @@ struct MemoDetailView: View {
                     Rectangle().fill(Color.gray.opacity(0.2)).frame(width: 1)
 
                     TagDialView(
-                        options: parentOptions,
-                        selectedID: $selectedTagID,
-                        width: showChildDial ? 80 : 100,
-                        onAddTap: { newTagIsChild = false; showNewTagSheet = true },
-                        externalDragY: .constant(nil)
+                        parentOptions: parentOptions,
+                        parentSelectedID: $selectedTagID,
+                        onParentAddTap: { newTagIsChild = false; showNewTagSheet = true },
+                        childOptions: childOptions,
+                        childSelectedID: $selectedChildTagID,
+                        onChildAddTap: { newTagIsChild = true; showNewTagSheet = true },
+                        showChild: $showChildDial,
+                        childExternalDragY: $childExternalDragY
                     )
 
-                    // 子タグエリア
+                    // 子タブ開閉ボタン
                     ZStack {
                         if showChildDial {
-                            HStack(spacing: 0) {
-                                Rectangle().fill(Color.gray.opacity(0.2)).frame(width: 1)
-                                TagDialView(
-                                    options: childOptions,
-                                    selectedID: $selectedChildTagID,
-                                    width: 75,
-                                    onAddTap: { newTagIsChild = true; showNewTagSheet = true },
-                                    externalDragY: $childExternalDragY
-                                )
-                                Text("›")
-                                    .font(.system(size: 14, weight: .bold))
-                                    .foregroundStyle(.secondary)
-                                    .frame(width: 14, height: 60)
-                                    .background(RoundedRectangle(cornerRadius: 4).fill(Color.gray.opacity(0.1)))
-                                    .contentShape(Rectangle())
-                                    .onTapGesture {
-                                        withAnimation(.spring(response: 0.3)) { showChildDial = false }
-                                    }
-                            }
+                            Text("›")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 14, height: 60)
+                                .background(RoundedRectangle(cornerRadius: 4).fill(Color.gray.opacity(0.1)))
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    withAnimation(.spring(response: 0.3)) { showChildDial = false }
+                                }
                         } else {
                             VStack(spacing: 2) {
                                 Text("子").font(.system(size: 11, weight: .bold, design: .rounded))

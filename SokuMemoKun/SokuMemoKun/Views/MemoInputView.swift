@@ -345,34 +345,28 @@ struct MemoInputView: View {
                 Rectangle().fill(Color.gray.opacity(0.2)).frame(width: 1)
 
                 TagDialView(
-                    options: parentOptions,
-                    selectedID: $viewModel.selectedTagID,
-                    width: showChildDial ? 85 : 110,
-                    onAddTap: { newTagIsChild = false; showNewTagSheet = true },
-                    externalDragY: .constant(nil)
+                    parentOptions: parentOptions,
+                    parentSelectedID: $viewModel.selectedTagID,
+                    onParentAddTap: { newTagIsChild = false; showNewTagSheet = true },
+                    childOptions: childOptions,
+                    childSelectedID: $viewModel.selectedChildTagID,
+                    onChildAddTap: { newTagIsChild = true; showNewTagSheet = true },
+                    showChild: $showChildDial,
+                    childExternalDragY: $childExternalDragY
                 )
 
+                // 子タブ開閉ボタン
                 ZStack {
                     if showChildDial {
-                        HStack(spacing: 0) {
-                            Rectangle().fill(Color.gray.opacity(0.2)).frame(width: 1)
-                            TagDialView(
-                                options: childOptions,
-                                selectedID: $viewModel.selectedChildTagID,
-                                width: 80,
-                                onAddTap: { newTagIsChild = true; showNewTagSheet = true },
-                                externalDragY: $childExternalDragY
-                            )
-                            Text("›")
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundStyle(.secondary)
-                                .frame(width: 14, height: 60)
-                                .background(RoundedRectangle(cornerRadius: 4).fill(Color.gray.opacity(0.1)))
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    withAnimation(.spring(response: 0.3)) { showChildDial = false }
-                                }
-                        }
+                        Text("›")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 14, height: 60)
+                            .background(RoundedRectangle(cornerRadius: 4).fill(Color.gray.opacity(0.1)))
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                withAnimation(.spring(response: 0.3)) { showChildDial = false }
+                            }
                     } else {
                         VStack(spacing: 2) {
                             Text("子").font(.system(size: 11, weight: .bold, design: .rounded))
@@ -400,6 +394,7 @@ struct MemoInputView: View {
                         .onEnded { _ in childExternalDragY = nil }
                 )
 
+                // 全閉じボタン
                 Text("›")
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(.tertiary)

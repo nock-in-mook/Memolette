@@ -21,31 +21,11 @@ struct NewTagSheetView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
-                // タグ名ラベル + プレビュー（同じ行）
+                // タグ名入力
                 VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text("タグ名")
-                            .font(.system(size: 13, weight: .medium, design: .rounded))
-                            .foregroundStyle(.secondary)
-
-                        Spacer()
-
-                        // プレビュー（1文字以上入力で表示）
-                        if !trimmedName.isEmpty {
-                            Text(trimmedName)
-                                .font(.system(size: 11, weight: .bold, design: .rounded))
-                                .foregroundStyle(tagTextColor(for: selectedColorIndex))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 3)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(tagColor(for: selectedColorIndex))
-                                )
-                                .transition(.opacity.combined(with: .scale(scale: 0.8)))
-                        }
-                    }
-                    .animation(.easeOut(duration: 0.2), value: trimmedName.isEmpty)
-                    .animation(.easeOut(duration: 0.15), value: selectedColorIndex)
+                    Text("タグ名")
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundStyle(.secondary)
 
                     TextField("タグ名を入力（20文字まで）", text: $tagName)
                         .font(.system(size: 16, design: .rounded))
@@ -73,6 +53,23 @@ struct NewTagSheetView: View {
                         .foregroundStyle(.secondary)
 
                     ColorPaletteGrid(selectedIndex: $selectedColorIndex)
+                }
+
+                // プレビュー（入力中のみ表示）
+                if !trimmedName.isEmpty {
+                    HStack {
+                        Text(trimmedName)
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundStyle(tagTextColor(for: selectedColorIndex))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(tagColor(for: selectedColorIndex))
+                            )
+                        Spacer()
+                    }
+                    .animation(.easeOut(duration: 0.15), value: selectedColorIndex)
                 }
 
                 Spacer()

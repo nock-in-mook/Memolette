@@ -124,28 +124,28 @@ struct TabbedMemoListView: View {
     var onEditMemo: ((Memo) -> Void)?
     var onDeleteMemo: ((Memo) -> Void)?
 
-    // タグなし・すべての並び順（UserDefaultsで保存）
-    @AppStorage("noTagSortOrder") private var noTagSortOrder: Int = 1
-    @AppStorage("allTagSortOrder") private var allTagSortOrder: Int = -1
     // 並び替えシート表示
     @State private var showReorderSheet = false
+    // タグ追加アラート
+    @State private var showAddTagAlert = false
+    @State private var newTagName = ""
 
     // colorIndex == -1 は「すべて」タブを示す特別な値
     private let allTabColorIndex = -1
 
+    // 並び順: すべて → タグ（sortOrder順）→ タグなし
     private var tabItems: [(label: String, tag: Tag?, colorIndex: Int)] {
-        var items: [(label: String, tag: Tag?, colorIndex: Int, order: Int)] = []
-        // すべて
-        items.append(("すべて", nil, allTabColorIndex, allTagSortOrder))
-        // タグなし
-        items.append(("タグなし", nil, 0, noTagSortOrder))
-        // 親タグのみ表示（子タグはタブに出さない）
-        for tag in tags where tag.parentTagID == nil {
-            items.append((tag.name, tag, tag.colorIndex, tag.sortOrder))
+        var items: [(label: String, tag: Tag?, colorIndex: Int)] = []
+        // 先頭: すべて
+        items.append(("すべて", nil, allTabColorIndex))
+        // 中間: 親タグ（sortOrder順）
+        let parentTags = tags.filter { $0.parentTagID == nil }.sorted { $0.sortOrder < $1.sortOrder }
+        for tag in parentTags {
+            items.append((tag.name, tag, tag.colorIndex))
         }
-        // sortOrder順にソート
-        items.sort { $0.order < $1.order }
-        return items.map { ($0.label, $0.tag, $0.colorIndex) }
+        // 末尾: タグなし
+        items.append(("タグなし", nil, 0))
+        return items
     }
 
     // 「すべて」タブかどうか
@@ -250,8 +250,8 @@ struct TabbedMemoListView: View {
                 searchResultTabBar
                 searchResultContent
             } else {
-                // ── 通常モード: タブ行（無限ループ）──
-                InfiniteTabBarView(
+                // ── 通常モード: タブ行 ──
+                TabBarView(
                     tabItems: tabItems,
                     selectedTabIndex: $selectedTabIndex,
                     onSelectModeReset: {
@@ -260,6 +260,9 @@ struct TabbedMemoListView: View {
                     },
                     onShowReorderSheet: {
                         showReorderSheet = true
+                    },
+                    onAddTag: {
+                        showAddTagAlert = true
                     }
                 )
 
@@ -275,13 +278,19 @@ struct TabbedMemoListView: View {
         }
         .sheet(isPresented: $showReorderSheet) {
             TabReorderSheet(
-                tabItems: tabItems,
-                allTabColorIndex: allTabColorIndex,
-                onReorder: { newOrder in
-                    applyTabOrder(newOrder)
+                tags: tags.filter { $0.parentTagID == nil }.sorted { $0.sortOrder < $1.sortOrder },
+                onReorder: { newTagOrder in
+                    applyTabOrder(newTagOrder)
                 }
             )
             .presentationDetents([.medium, .large])
+        }
+        .alert("新しいフォルダ", isPresented: $showAddTagAlert) {
+            TextField("フォルダ名", text: $newTagName)
+            Button("追加") { addNewTag() }
+            Button("キャンセル", role: .cancel) { newTagName = "" }
+        } message: {
+            Text("フォルダ（タグ）の名前を入力してください")
         }
     }
 
@@ -647,23 +656,19 @@ struct TabbedMemoListView: View {
     }
 
     // 並び替えシートからの新しい順序を適用
-    private func applyTabOrder(_ newOrder: [(label: String, tag: Tag?, colorIndex: Int)]) {
+    // シートでは「すべて」「タグなし」を除いたタグだけ並び替える
+    private func applyTabOrder(_ newTagOrder: [Tag]) {
         // 現在選択中のタブの情報を記憶
         let currentItem = tabItems[selectedTabIndex]
 
-        // sortOrder を振り直す
-        for (i, item) in newOrder.enumerated() {
-            if item.colorIndex == allTabColorIndex {
-                allTagSortOrder = i
-            } else if let tag = item.tag {
-                tag.sortOrder = i
-            } else {
-                noTagSortOrder = i
-            }
+        // タグのsortOrderを振り直す
+        for (i, tag) in newTagOrder.enumerated() {
+            tag.sortOrder = i
         }
 
-        // 選択タブを追従（同じタブを選択し直す）
-        if let newIndex = newOrder.firstIndex(where: { item in
+        // 選択タブを追従
+        let newItems = tabItems  // 再計算される
+        if let newIndex = newItems.firstIndex(where: { item in
             if currentItem.colorIndex == allTabColorIndex {
                 return item.colorIndex == allTabColorIndex
             } else if let currentTag = currentItem.tag {
@@ -674,6 +679,18 @@ struct TabbedMemoListView: View {
         }) {
             selectedTabIndex = newIndex
         }
+    }
+
+    // タグ追加処理
+    private func addNewTag() {
+        let name = newTagName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return }
+        // 最大のsortOrderの次の値を設定
+        let maxOrder = tags.filter { $0.parentTagID == nil }.map { $0.sortOrder }.max() ?? 0
+        let tag = Tag(name: name, colorIndex: Int.random(in: 1...28))
+        tag.sortOrder = maxOrder + 1
+        modelContext.insert(tag)
+        newTagName = ""
     }
 }
 
@@ -879,31 +896,54 @@ struct MemoCardView: View {
     }
 }
 
-// フォルダ並び替えシート
+// フォルダ並び替えシート（タグのみ対象、「すべて」「タグなし」は固定）
 struct TabReorderSheet: View {
-    let tabItems: [(label: String, tag: Tag?, colorIndex: Int)]
-    let allTabColorIndex: Int
-    let onReorder: ([(label: String, tag: Tag?, colorIndex: Int)]) -> Void
+    let tags: [Tag]
+    let onReorder: ([Tag]) -> Void
     @Environment(\.dismiss) private var dismiss
-    @State private var orderedItems: [(label: String, tag: Tag?, colorIndex: Int)] = []
+    @State private var orderedTags: [Tag] = []
 
     var body: some View {
         NavigationStack {
             List {
-                ForEach(Array(orderedItems.enumerated()), id: \.offset) { index, item in
+                // 固定: すべて（並び替え不可）
+                HStack(spacing: 10) {
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(allTabColor)
+                        .frame(width: 22, height: 22)
+                    Text("すべて")
+                        .font(.system(size: 16, weight: .medium, design: .rounded))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 2)
+                .listRowBackground(Color(uiColor: .secondarySystemBackground).opacity(0.5))
+
+                // 並び替え可能: タグ一覧
+                ForEach(orderedTags, id: \.id) { tag in
                     HStack(spacing: 10) {
-                        // タグ色の角丸正方形
                         RoundedRectangle(cornerRadius: 4)
-                            .fill(tagColor(for: item.colorIndex))
+                            .fill(tagColor(for: tag.colorIndex))
                             .frame(width: 22, height: 22)
-                        Text(item.label)
+                        Text(tag.name)
                             .font(.system(size: 16, weight: .medium, design: .rounded))
                     }
                     .padding(.vertical, 2)
                 }
                 .onMove { from, to in
-                    orderedItems.move(fromOffsets: from, toOffset: to)
+                    orderedTags.move(fromOffsets: from, toOffset: to)
                 }
+
+                // 固定: タグなし（並び替え不可）
+                HStack(spacing: 10) {
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(tagColor(for: 0))
+                        .frame(width: 22, height: 22)
+                    Text("タグなし")
+                        .font(.system(size: 16, weight: .medium, design: .rounded))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 2)
+                .listRowBackground(Color(uiColor: .secondarySystemBackground).opacity(0.5))
             }
             .environment(\.editMode, .constant(.active))
             .navigationTitle("フォルダの並び替え")
@@ -916,7 +956,7 @@ struct TabReorderSheet: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("完了") {
-                        onReorder(orderedItems)
+                        onReorder(orderedTags)
                         dismiss()
                     }
                     .fontWeight(.bold)
@@ -924,21 +964,20 @@ struct TabReorderSheet: View {
             }
         }
         .onAppear {
-            orderedItems = tabItems
+            orderedTags = tags
         }
     }
 }
 
-// 無限ループするタブバー（大量セット繰り返しで実質無限＋長押しメニュー）
-struct InfiniteTabBarView: View {
+// タブバー（長押しメニュー＋右端に＋ボタン）
+struct TabBarView: View {
     let tabItems: [(label: String, tag: Tag?, colorIndex: Int)]
     @Binding var selectedTabIndex: Int
     var onSelectModeReset: () -> Void
     var onShowReorderSheet: () -> Void
+    var onAddTag: () -> Void
 
     private let tabW: CGFloat = 76
-    private let setCount = 101
-    private let centerSet = 50
 
     var body: some View {
         let count = tabItems.count
@@ -948,25 +987,25 @@ struct InfiniteTabBarView: View {
             ScrollViewReader { proxy in
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: -1) {
-                        ForEach(0..<setCount, id: \.self) { setIndex in
-                            // セット間の区切り線
-                            if setIndex > 0 {
-                                Rectangle()
-                                    .fill(Color.primary.opacity(0.12))
-                                    .frame(width: 1.5, height: 22)
-                                    .padding(.horizontal, 4)
-                            }
-
-                            ForEach(0..<count, id: \.self) { i in
-                                loopTabButton(
-                                    label: tabItems[i].label,
-                                    realIndex: i,
-                                    loopID: "s\(setIndex)_\(i)",
-                                    setIndex: setIndex,
-                                    proxy: proxy
-                                )
-                            }
+                        ForEach(0..<count, id: \.self) { i in
+                            tabButton(index: i)
                         }
+                        // 右端の「＋」タブ
+                        Button {
+                            onAddTag()
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 40)
+                                .padding(.vertical, 9)
+                                .background(
+                                    TrapezoidTabShape()
+                                        .fill(Color(uiColor: .secondarySystemBackground))
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .id("addTab")
                     }
                     .padding(.horizontal, 8)
                     .padding(.top, 4)
@@ -974,12 +1013,7 @@ struct InfiniteTabBarView: View {
                 .onChange(of: selectedTabIndex) { oldValue, newValue in
                     onSelectModeReset()
                     withAnimation(.easeInOut(duration: 0.2)) {
-                        proxy.scrollTo("s\(centerSet)_\(newValue)", anchor: .center)
-                    }
-                }
-                .onAppear {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                        proxy.scrollTo("s\(centerSet)_\(selectedTabIndex)", anchor: .center)
+                        proxy.scrollTo("tab_\(newValue)", anchor: .center)
                     }
                 }
             }
@@ -987,20 +1021,14 @@ struct InfiniteTabBarView: View {
         )
     }
 
-    private func loopTabButton(label: String, realIndex: Int, loopID: String, setIndex: Int, proxy: ScrollViewProxy) -> some View {
-        let isSelected = selectedTabIndex == realIndex
-        let color = tagColor(for: tabItems[realIndex].colorIndex)
+    private func tabButton(index: Int) -> some View {
+        let isSelected = selectedTabIndex == index
+        let color = tagColor(for: tabItems[index].colorIndex)
 
         return Button {
-            selectedTabIndex = realIndex
-            // タップしたのが中央セット以外なら、中央にリセット
-            if setIndex != centerSet {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    proxy.scrollTo("s\(centerSet)_\(realIndex)", anchor: .center)
-                }
-            }
+            selectedTabIndex = index
         } label: {
-            Text(label)
+            Text(tabItems[index].label)
                 .font(.system(size: 14, weight: isSelected ? .bold : .medium, design: .rounded))
                 .foregroundStyle(isSelected ? .primary : .secondary)
                 .lineLimit(1)
@@ -1014,7 +1042,7 @@ struct InfiniteTabBarView: View {
         }
         .buttonStyle(.plain)
         .zIndex(isSelected ? 1 : 0)
-        .id(loopID)
+        .id("tab_\(index)")
         .contextMenu {
             Button {
                 onShowReorderSheet()

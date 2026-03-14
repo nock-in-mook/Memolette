@@ -329,7 +329,26 @@ struct TabbedMemoListView: View {
             .presentationDetents([.medium, .large])
         }
         .sheet(isPresented: $showAddTagSheet) {
-            NewTagSheetView()
+            NewTagSheetView(onTagCreated: { newTagID in
+                // 新タグのsortOrderを既存タグの最大+1に設定（タグなしの前に入る）
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    if let newTag = tags.first(where: { $0.id == newTagID }) {
+                        let maxTagOrder = tags
+                            .filter { $0.parentTagID == nil && $0.id != newTagID }
+                            .map { $0.sortOrder }
+                            .max() ?? 0
+                        newTag.sortOrder = maxTagOrder + 1
+                        // noTagSortOrderが新タグより小さければ押し出す
+                        if noTagSortOrder <= maxTagOrder + 1 {
+                            noTagSortOrder = maxTagOrder + 2
+                        }
+                    }
+                    // 作成したタグのタブを選択
+                    if let newIndex = tabItems.firstIndex(where: { $0.tag?.id == newTagID }) {
+                        selectedTabIndex = newIndex
+                    }
+                }
+            })
         }
     }
 

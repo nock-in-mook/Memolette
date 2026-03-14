@@ -75,7 +75,7 @@ struct NewTagSheetView: View {
                 Spacer()
             }
             .padding(20)
-            .navigationTitle(parentTagID != nil ? "新規子タグの追加" : "新規タグ(フォルダ)の追加")
+            .navigationTitle(parentTagID != nil ? "子タグの追加" : "タグ（フォルダ）の追加")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

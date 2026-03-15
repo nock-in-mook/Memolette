@@ -549,7 +549,7 @@ struct TabbedMemoListView: View {
                 ))
 
                 // 上部ツールバー（メモ枚数・メモ追加・グリッドサイズ）
-                VStack(spacing: 0) {
+                ZStack(alignment: .top) {
                     HStack(spacing: 8) {
                         Text("\(filteredMemos.count)枚のメモ")
                             .font(.system(size: 13, weight: .medium, design: .rounded))
@@ -588,11 +588,11 @@ struct TabbedMemoListView: View {
                         .padding(.bottom, -8)
                     )
 
-                    Spacer()
-
                     // 右下: 選択削除ボタン
-                    HStack {
+                    VStack {
                         Spacer()
+                        HStack {
+                            Spacer()
                         if isSelectMode {
                             Button {
                                 isSelectMode = false
@@ -635,6 +635,7 @@ struct TabbedMemoListView: View {
                     }
                     .padding(.horizontal, 10)
                     .padding(.bottom, 8)
+                    }
                 }
             }
             .animation(.easeInOut(duration: 0.2), value: currentGridSize)

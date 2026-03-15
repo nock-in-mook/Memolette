@@ -809,3 +809,12 @@ Mac環境でのビルド＆シミュレータ動作確認。
 - 子タグ連打フリーズ修正
 - グラデーション→ベタ塗り変更
 - ROADMAPにSpecialメニュー追記
+---
+## 即メモ_019_mainマージとグリッド高さ修正 (2026-03-16)
+
+- feature/input-area-expand-and-view-mode → mainにマージ
+- feature/roulette-redesign → mainにマージ
+- 入力欄とフォルダ間の30ptスペーサー復元
+- グリッドカード高さをハードコードで修正（3×8=36, 2×6=48, 2×3=104, 1×2=160）
+- 3×8フォント調整（title 13pt, body 11pt, bodyLines 1）
+- ROADMAP追記: マークダウン編集リニューアル、画像/地図挿入、メモ一覧最大化

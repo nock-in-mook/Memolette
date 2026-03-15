@@ -1196,7 +1196,7 @@ struct MemoCardView: View {
     // グリッドサイズに応じたスタイル
     private var titleFont: CGFloat {
         switch gridSize {
-        case .grid3x8: return 14
+        case .grid3x8: return 13
         case .grid2x6: return 15
         case .grid2x3: return 16
         case .grid1x2: return 17
@@ -1206,7 +1206,7 @@ struct MemoCardView: View {
 
     private var bodyFont: CGFloat {
         switch gridSize {
-        case .grid3x8: return 12
+        case .grid3x8: return 11
         case .grid2x6: return 13
         case .grid2x3: return 14
         case .grid1x2: return 15
@@ -1216,7 +1216,7 @@ struct MemoCardView: View {
 
     private var bodyLines: Int {
         switch gridSize {
-        case .grid3x8: return 2
+        case .grid3x8: return 1
         case .grid2x6: return 3
         case .grid2x3: return 5
         case .grid1x2: return 4
@@ -1226,7 +1226,7 @@ struct MemoCardView: View {
 
     private var cardPadding: CGFloat {
         switch gridSize {
-        case .grid3x8: return 6
+        case .grid3x8: return 4
         case .grid2x6: return 8
         case .grid2x3: return 10
         case .grid1x2: return 12
@@ -1243,7 +1243,7 @@ struct MemoCardView: View {
         if isFullMode { return nil }  // 全文モードは高さ自動
         guard availableHeight > 0 else {
             switch gridSize {
-            case .grid3x8: return 56
+            case .grid3x8: return 40
             case .grid2x6: return 72
             case .grid2x3: return 120
             case .grid1x2: return 180
@@ -1259,8 +1259,8 @@ struct MemoCardView: View {
         case .full: return nil
         }
         let spacing: CGFloat = 8
-        let topPadding: CGFloat = 34
-        let bottomPadding: CGFloat = 20
+        let topPadding: CGFloat = 58
+        let bottomPadding: CGFloat = 70
         let usable = availableHeight - topPadding - bottomPadding - (spacing * (rows - 1))
         return max(40, usable / rows)
     }
@@ -1282,7 +1282,7 @@ struct MemoCardView: View {
                     .lineLimit(bodyLines == 0 ? nil : bodyLines)
                     .truncationMode(.tail)
             }
-            .frame(maxWidth: .infinity, maxHeight: isFullMode ? nil : .infinity, alignment: .topLeading)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
             .padding(cardPadding)
 
             // マークダウンマーク（右上）
@@ -1293,7 +1293,7 @@ struct MemoCardView: View {
                     .padding(3)
             }
         }
-        .frame(height: cardHeight)
+        .frame(height: gridSize == .grid3x8 ? 36 : gridSize == .grid2x6 ? 48 : gridSize == .grid2x3 ? 104 : gridSize == .grid1x2 ? 160 : cardHeight)
         .background(Color(uiColor: .systemBackground))
         .contentShape(RoundedRectangle(cornerRadius: 6))
         .onTapGesture { onTap?() }

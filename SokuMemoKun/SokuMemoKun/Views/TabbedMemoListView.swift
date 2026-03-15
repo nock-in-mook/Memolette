@@ -614,14 +614,14 @@ struct TabbedMemoListView: View {
 
                 // 上部ツールバー
                 if isCompact {
-                    // コンパクト時: 「記入中のメモをここに保存」ボタンだけ
+                    // コンパクト時: 「＋このタグにメモ作成」ボタン
                     HStack {
                         Spacer()
                         Button {
                             let currentTag = tabItems[selectedTabIndex].tag
-                            onAddToCurrentTab?(currentTag?.id)
+                            onAddMemo?(currentTag?.id)
                         } label: {
-                            Label("記入中のメモをここに保存", systemImage: "arrow.down.doc")
+                            Label("＋このタグにメモ作成", systemImage: "plus.circle")
                                 .font(.system(size: 13, weight: .medium, design: .rounded))
                                 .foregroundStyle(.secondary)
                                 .padding(.horizontal, 8)
@@ -657,9 +657,9 @@ struct TabbedMemoListView: View {
                             Button {
                                 if isSelectMode { isSelectMode = false; selectedMemoIDs.removeAll() }
                                 let currentTag = tabItems[selectedTabIndex].tag
-                                onAddToCurrentTab?(currentTag?.id)
+                                onAddMemo?(currentTag?.id)
                             } label: {
-                                Label("記入中のメモをここに保存", systemImage: "arrow.down.doc")
+                                Label("＋このタグにメモ作成", systemImage: "plus.circle")
                                     .font(.system(size: 13, weight: .medium, design: .rounded))
                                     .foregroundStyle(.secondary)
                                     .padding(.horizontal, 2)

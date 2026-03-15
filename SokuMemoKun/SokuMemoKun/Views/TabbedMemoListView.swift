@@ -702,15 +702,15 @@ struct TabbedMemoListView: View {
                                 Label("記入中のメモをここに保存", systemImage: "arrow.down.doc")
                                     .font(.system(size: 13, weight: .medium, design: .rounded))
                                     .foregroundStyle(.secondary)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
+                                    .padding(.horizontal, 2)
+                                    .padding(.vertical, 0)
                             }
                             .buttonStyle(.plain)
                             .padding(.horizontal, 6)
-                            .padding(.vertical, 6)
+                            .padding(.vertical, 4)
                             .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color(uiColor: .systemBackground).opacity(0.7))
+                                Capsule()
+                                    .fill(Color(uiColor: .systemBackground).opacity(0.85))
                             )
                         }
                         .padding(.horizontal, 10)

@@ -28,6 +28,7 @@ struct MainView: View {
                         isExpanded: $isInputExpanded
                     )
                     .frame(height: geo.size.height * (isInputExpanded ? 0.92 : 0.48))
+                    .padding(.bottom, isInputExpanded ? 0 : 30)
 
                     // 下: フォルダ付きメモ一覧
                     TabbedMemoListView(

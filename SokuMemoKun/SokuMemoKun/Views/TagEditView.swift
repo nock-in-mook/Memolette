@@ -155,21 +155,21 @@ struct TagEditView: View {
     }
 }
 
-// カラーパレット（28色、コンパクト表示）
+// カラーパレット（56色、コンパクト表示）
 struct ColorPaletteGrid: View {
     @Binding var selectedIndex: Int
 
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 7)
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 5), count: 8)
 
     var body: some View {
-        LazyVGrid(columns: columns, spacing: 6) {
-            ForEach(1...28, id: \.self) { index in
+        LazyVGrid(columns: columns, spacing: 5) {
+            ForEach(1...56, id: \.self) { index in
                 Button {
                     selectedIndex = index
                 } label: {
                     RoundedRectangle(cornerRadius: 5)
                         .fill(tagColor(for: index))
-                        .frame(height: 28)
+                        .frame(height: 26)
                         .overlay(
                             RoundedRectangle(cornerRadius: 5)
                                 .stroke(
@@ -256,6 +256,19 @@ struct TagDetailEditView: View {
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
 
+                // プレビュー（常にスペース確保、入力中のみ表示）
+                Text(editName.trimmingCharacters(in: .whitespaces).isEmpty ? " " : editName.trimmingCharacters(in: .whitespaces))
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundStyle(editName.trimmingCharacters(in: .whitespaces).isEmpty ? .clear : tagTextColor(for: editColorIndex))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(editName.trimmingCharacters(in: .whitespaces).isEmpty ? Color.clear : tagColor(for: editColorIndex))
+                    )
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .animation(.easeOut(duration: 0.15), value: editColorIndex)
+
                 // カラー選択（コンパクト）
                 VStack(alignment: .leading, spacing: 6) {
                     Text("カラー")
@@ -264,9 +277,6 @@ struct TagDetailEditView: View {
 
                     ColorPaletteGrid(selectedIndex: $editColorIndex)
                 }
-
-                // プレビュー枠（コンパクト）
-                TagPreviewBox(name: editName, colorIndex: editColorIndex)
 
                 Spacer()
             }

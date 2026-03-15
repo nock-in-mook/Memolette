@@ -15,17 +15,28 @@ class MemoInputViewModel {
     var openFullEditor: Bool = false
     // loadMemo中フラグ（onChangeでの子タグリセットを防止）
     var isLoadingMemo: Bool = false
+    // loadMemoが呼ばれた回数（Viewが閲覧モードに切り替えるトリガー）
+    var loadMemoCounter: Int = 0
 
-    // 入力欄にテキストがあるか（保存=クリア ボタンの有効/無効）
+    // 入力欄にテキストがあるか（保存ボタンの有効/無効）— 本文かタイトルがあれば保存可
     var canClear: Bool {
-        !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+        !titleText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     // テキスト変更時の自動保存
     func onContentChanged(context: ModelContext, tags: [Tag]) {
         let trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let titleTrimmed = titleText.trimmingCharacters(in: .whitespacesAndNewlines)
 
         if let memo = editingMemo {
+            if trimmed.isEmpty && titleTrimmed.isEmpty {
+                // 本文もタイトルも空 → 白紙メモは削除
+                context.delete(memo)
+                editingMemo = nil
+                UserDefaults.standard.removeObject(forKey: "lastEditingMemoID")
+                return
+            }
             // 既存メモを更新
             memo.content = trimmed
             memo.updatedAt = Date()
@@ -107,17 +118,14 @@ class MemoInputViewModel {
         selectedChildTagID = childTag?.id
         saveLastMemoID(memo.id)
         isLoadingMemo = false
+        loadMemoCounter += 1
     }
 
-    // アプリ起動時に前回のメモを復元
+    // アプリ起動時は常に空の入力欄で開始（書きかけメモは自動保存済みでリストにある）
     func restoreLastMemo(context: ModelContext) {
-        guard UserDefaults.standard.bool(forKey: "restoreLastMemo") else { return }
-        guard let idString = UserDefaults.standard.string(forKey: "lastEditingMemoID"),
-              let id = UUID(uuidString: idString) else { return }
-        let descriptor = FetchDescriptor<Memo>(predicate: #Predicate { memo in memo.id == id })
-        if let memo = try? context.fetch(descriptor).first {
-            loadMemo(memo)
-        }
+        // 自動保存により前回のメモは既にリストに保存されているので、
+        // 起動時は新規入力待ち状態にする
+        clearInput()
     }
 
     private func saveLastMemoID(_ id: UUID) {

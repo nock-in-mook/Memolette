@@ -14,6 +14,10 @@ struct NewTagSheetView: View {
     @State private var tagName = ""
     @State private var selectedColorIndex = 1
 
+    private var trimmedName: String {
+        tagName.trimmingCharacters(in: .whitespaces)
+    }
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
@@ -42,7 +46,20 @@ struct NewTagSheetView: View {
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
 
-                // カラー選択（コンパクト28色）
+                // プレビュー（常にスペース確保、入力中のみ表示）
+                Text(trimmedName.isEmpty ? " " : trimmedName)
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundStyle(trimmedName.isEmpty ? .clear : tagTextColor(for: selectedColorIndex))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(trimmedName.isEmpty ? Color.clear : tagColor(for: selectedColorIndex))
+                    )
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .animation(.easeOut(duration: 0.15), value: selectedColorIndex)
+
+                // カラー選択
                 VStack(alignment: .leading, spacing: 6) {
                     Text("カラー")
                         .font(.system(size: 13, weight: .medium, design: .rounded))
@@ -51,13 +68,10 @@ struct NewTagSheetView: View {
                     ColorPaletteGrid(selectedIndex: $selectedColorIndex)
                 }
 
-                // プレビュー枠
-                TagPreviewBox(name: tagName, colorIndex: selectedColorIndex)
-
                 Spacer()
             }
             .padding(20)
-            .navigationTitle(parentTagID != nil ? "新規子タグ" : "新規タグ")
+            .navigationTitle(parentTagID != nil ? "子タグの追加" : "タグ（フォルダ）の追加")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -67,7 +81,7 @@ struct NewTagSheetView: View {
                     Button("追加") {
                         saveTag()
                     }
-                    .disabled(tagName.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .disabled(trimmedName.isEmpty)
                     .bold()
                 }
             }
@@ -76,9 +90,8 @@ struct NewTagSheetView: View {
     }
 
     private func saveTag() {
-        let trimmed = tagName.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return }
-        let tag = Tag(name: trimmed, colorIndex: selectedColorIndex, parentTagID: parentTagID)
+        guard !trimmedName.isEmpty else { return }
+        let tag = Tag(name: trimmedName, colorIndex: selectedColorIndex, parentTagID: parentTagID)
         modelContext.insert(tag)
         onTagCreated?(tag.id)
         dismiss()

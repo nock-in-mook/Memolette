@@ -8,37 +8,53 @@ extension Notification.Name {
 struct MemoInputView: View {
     @Bindable var viewModel: MemoInputViewModel
     @Binding var focusInput: Bool
+    @Binding var isExpanded: Bool
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Tag.name) private var tags: [Tag]
     @FocusState private var isTextEditorFocused: Bool
 
-    // 保存アニメーション用
-    @State private var showSaveAnimation = false
-    @State private var saveAnimationOffset: CGFloat = 0
-
     // 新規タグ作成シート
     @State private var showNewTagSheet = false
-    @State private var newTagIsChild = false  // 子タグ追加かどうか
-    // 全画面編集
-    @State private var showFullEditor = false
-    // 破棄確認ダイアログ
-    @State private var showDiscardAlert = false
-    // 子タグダイアル展開
+    @State private var newTagIsChild = false
+    // 既存メモ読み込み時は閲覧モード（タップで編集開始）
+    @State private var isEditing = true
+    // 削除確認ダイアログ
+    @State private var showDeleteAlert = false
+    // ルーレット展開状態
+    @State private var showParentDial = false
     @State private var showChildDial = false
-    // 子タグダイアルへの外部ドラッグ入力
     @State private var childExternalDragY: CGFloat? = nil
+    @AppStorage("dialDefault") private var dialDefault: Int = 0
 
-    // タグIDからタブインデックスを算出（0=タグなし、1〜=親タグ順）
+    @AppStorage("allTagSortOrder") private var allTagSortOrder: Int = -1
+    @AppStorage("noTagSortOrder") private var noTagSortOrder: Int = 9999
+
     private func tabIndex(for tagID: UUID?) -> Int {
-        guard let tagID = tagID else { return 0 }
-        let parentTags = tags.filter { $0.parentTagID == nil }
-        if let idx = parentTags.firstIndex(where: { $0.id == tagID }) {
-            return idx + 1
+        // TabbedMemoListViewのtabItemsと同じ並び順で計算
+        // label: "all"=すべて, "none"=タグなし, それ以外=タグID
+        struct TabEntry: Comparable {
+            let key: String
+            let order: Int
+            static func < (lhs: TabEntry, rhs: TabEntry) -> Bool { lhs.order < rhs.order }
+        }
+        var entries: [TabEntry] = []
+        entries.append(TabEntry(key: "all", order: allTagSortOrder))
+        entries.append(TabEntry(key: "none", order: noTagSortOrder))
+        for tag in tags where tag.parentTagID == nil {
+            entries.append(TabEntry(key: tag.id.uuidString, order: tag.sortOrder))
+        }
+        entries.sort()
+
+        // タグなし選択時は「タグなし」タブへ
+        guard let tagID = tagID else {
+            return entries.firstIndex(where: { $0.key == "none" }) ?? 0
+        }
+        if let idx = entries.firstIndex(where: { $0.key == tagID.uuidString }) {
+            return idx
         }
         return 0
     }
 
-    // 親タグオプション（parentTagID == nil のタグ＋「＋追加」）
     private var parentOptions: [(id: String, name: String, color: Color)] {
         var list: [(String, String, Color)] = [("none", "タグなし", tagColor(for: 0))]
         for tag in tags where tag.parentTagID == nil {
@@ -48,8 +64,6 @@ struct MemoInputView: View {
         return list
     }
 
-    // 子タグオプション（選択中の親タグの子タグ＋「＋追加」）
-    // 親タグ未選択時も「なし」＋「＋追加」を表示
     private var childOptions: [(id: String, name: String, color: Color)] {
         var list: [(String, String, Color)] = [("none", "なし", tagColor(for: 0))]
         if let parentID = viewModel.selectedTagID {
@@ -61,7 +75,6 @@ struct MemoInputView: View {
         return list
     }
 
-    // 選択中タグの表示名と色（ルーレット・タブと統一）
     private var selectedTagInfo: (name: String, color: Color) {
         if let tagID = viewModel.selectedTagID,
            let tag = tags.first(where: { $0.id == tagID }) {
@@ -70,7 +83,6 @@ struct MemoInputView: View {
         return ("タグなし", tagColor(for: 0))
     }
 
-    // 子タグ情報
     private var selectedChildTagInfo: (name: String, color: Color)? {
         if let childID = viewModel.selectedChildTagID,
            let tag = tags.first(where: { $0.id == childID }) {
@@ -79,311 +91,98 @@ struct MemoInputView: View {
         return nil
     }
 
-    // 5文字省略
-    private var truncatedTagName: String {
-        let name = selectedTagInfo.name
-        if name.count > 5 {
-            return String(name.prefix(5)) + "…"
-        }
-        return name
-    }
-
-    private var truncatedChildTagName: String? {
-        guard let info = selectedChildTagInfo else { return nil }
-        if info.name.count > 4 {
-            return String(info.name.prefix(4)) + "…"
-        }
-        return info.name
-    }
-
     var body: some View {
-        HStack(spacing: 0) {
-            // 左3/4: 入力エリア + タイトル + ボタン行
-            VStack(spacing: 0) {
-                // メモ入力欄
+        VStack(spacing: 0) {
+            // ヘッダー: タイトル + タグ
+            headerRow
+            Divider()
+            // 本文（右端はタグタブ分空ける）
+            ZStack(alignment: .topTrailing) {
+                // 本文入力（編集中はTextEditor、閲覧中はText）
                 ZStack(alignment: .topLeading) {
-                    TextEditor(text: $viewModel.inputText)
-                        .font(.system(size: 17))
-                        .padding(.leading, 4)
-                        .padding(.trailing, 28) // 右側ボタン(拡大・破棄)との重なり防止
-                        .padding(.top, 4)
-                        .padding(.bottom, 20) // 最下行の余白（スクロール時に窮屈にならないように）
-                        .focused($isTextEditorFocused)
-
-                    if viewModel.inputText.isEmpty {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(viewModel.isMarkdown ? "タップでマークダウン編集..." : "メモを入力...")
-                                .font(.system(size: 17))
-                            if viewModel.isMarkdown {
-                                Text("(設定でオンオフ切替できます)")
-                                    .font(.system(size: 12))
-                            }
-                        }
-                        .foregroundStyle(.gray.opacity(0.5))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 12)
-                        .allowsHitTesting(false)
-                    }
-
-                    // マークダウンON＋空欄のとき、タップで全画面編集へ
-                    if viewModel.isMarkdown && viewModel.inputText.isEmpty {
-                        Color.clear
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                showFullEditor = true
-                            }
-                    }
-
-                    // オーバーレイボタン（右上: 拡大、右下: 破棄）
-                    VStack {
-                        HStack {
-                            Spacer()
-                            Button {
-                                showFullEditor = true
-                            } label: {
-                                Image(systemName: "arrow.up.left.and.arrow.down.right")
-                                    .font(.system(size: 14))
-                                    .foregroundStyle(.gray.opacity(0.5))
-                                    .padding(5)
-                                    .background(
-                                        Circle()
-                                            .fill(Color(uiColor: .systemBackground).opacity(0.8))
-                                    )
-                            }
+                    if isEditing {
+                        TextEditor(text: $viewModel.inputText)
+                            .font(.system(size: 17))
+                            .padding(.leading, 10)
                             .padding(.trailing, 4)
-                            .padding(.top, 4)
+                            .padding(.top, 16)
+                            .contentMargins(.bottom, 40, for: .scrollContent)
+                            .focused($isTextEditorFocused)
+                    } else {
+                        ScrollView {
+                            Text(viewModel.inputText.isEmpty ? " " : viewModel.inputText)
+                                .font(.system(size: 17))
+                                .foregroundStyle(viewModel.inputText.isEmpty ? .clear : .primary)
+                                .frame(maxWidth: .infinity, alignment: .topLeading)
+                                .padding(.leading, 15)
+                                .padding(.trailing, 9)
+                                .padding(.top, 24)
+                                .padding(.bottom, 40)
                         }
-                        Spacer()
-                        HStack {
-                            Spacer()
-                            if viewModel.canClear {
-                                Button {
-                                    showDiscardAlert = true
-                                } label: {
-                                    Image(systemName: "trash")
-                                        .font(.system(size: 13))
-                                        .foregroundStyle(.red.opacity(0.5))
-                                        .padding(5)
-                                        .background(
-                                            Circle()
-                                                .fill(Color(uiColor: .systemBackground).opacity(0.8))
-                                        )
-                                }
-                                .padding(.trailing, 4)
-                                .padding(.bottom, 4)
-                            }
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            isEditing = true
+                            isTextEditorFocused = true
                         }
+                    }
+
+                    if viewModel.inputText.isEmpty && isEditing {
+                        Text(viewModel.isMarkdown ? "タップでマークダウン編集..." : "メモを入力...")
+                            .font(.system(size: 17))
+                            .foregroundStyle(.gray.opacity(0.5))
+                            .padding(.leading, 14)
+                            .padding(.trailing, 8)
+                            .padding(.vertical, 24)
+                            .allowsHitTesting(false)
                     }
                 }
                 .frame(maxHeight: .infinity)
 
-                Divider()
-                    .padding(.horizontal, 6)
-
-                // タイトル入力
-                TextField("タイトル（任意）", text: $viewModel.titleText)
-                    .font(.system(size: 15, design: .rounded))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 8)
-
-                Divider()
-                    .padding(.horizontal, 6)
-
-                // ボタン行
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 5) {
-                        // タグ表示（親＋子タグ縦並び）
-                        VStack(alignment: .leading, spacing: 1) {
-                            // 親タグ
-                            Text(truncatedTagName)
-                                .font(.system(size: 14, weight: .bold, design: .rounded))
-                                .foregroundStyle(.primary)
-                                .lineLimit(1)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 2)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .fill(selectedTagInfo.color)
-                                )
-
-                            // 子タグ（選択時のみ）
-                            if let childName = truncatedChildTagName,
-                               let childInfo = selectedChildTagInfo {
-                                HStack(spacing: 2) {
-                                    Text("└")
-                                        .font(.system(size: 10))
-                                        .foregroundStyle(.tertiary)
-                                    Text(childName)
-                                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                                        .foregroundStyle(.primary)
-                                        .lineLimit(1)
-                                        .padding(.horizontal, 5)
-                                        .padding(.vertical, 1)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 4)
-                                                .fill(childInfo.color)
-                                        )
-                                }
-                            }
-                        }
-
-                        Spacer()
-
-                        Button {
-                            UIPasteboard.general.string = viewModel.inputText
-                        } label: {
-                            Label("コピー", systemImage: "doc.on.doc")
-                                .font(.system(size: 14))
-                        }
-                        .disabled(viewModel.inputText.isEmpty)
-
-                        Button {
-                            let targetTab = tabIndex(for: viewModel.selectedTagID)
-                            viewModel.clearInput()
-                            showChildDial = false
-                            triggerSaveAnimation()
-                            NotificationCenter.default.post(
-                                name: .switchToTab,
-                                object: nil,
-                                userInfo: ["tabIndex": targetTab]
-                            )
-                        } label: {
-                            Label("保存", systemImage: "square.and.arrow.down.fill")
-                                .font(.system(size: 14, weight: .bold))
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .buttonBorderShape(.capsule)
-                        .controlSize(.small)
-                        .disabled(!viewModel.canClear)
-                    }
-                }
-                .padding(.horizontal, 8)
-                .padding(.top, 2)
-                .padding(.bottom, 4)
             }
-
-            // 区切り線
-            Rectangle()
-                .fill(Color.gray.opacity(0.2))
-                .frame(width: 1)
-
-            // 右側: 親タグダイアル + 子タグダイアル
-            HStack(spacing: 0) {
-                // 親タグダイアル
-                TagDialView(
-                    options: parentOptions,
-                    selectedID: $viewModel.selectedTagID,
-                    width: showChildDial ? 70 : 100,
-                    onAddTap: {
-                        newTagIsChild = false
-                        showNewTagSheet = true
-                    },
-                    externalDragY: .constant(nil)
-                )
-
-                // 子タグエリア（ドラッグジェスチャーは永続コンテナに配置）
-                // コンテナが常に存在するのでドラッグ中にビューが切り替わっても途切れない
-                ZStack {
-                    if showChildDial {
-                        HStack(spacing: 0) {
-                            // 仕切り線
-                            Rectangle()
-                                .fill(Color.gray.opacity(0.2))
-                                .frame(width: 1)
-
-                            // 子タグダイアル
-                            TagDialView(
-                                options: childOptions,
-                                selectedID: $viewModel.selectedChildTagID,
-                                width: 70,
-                                onAddTap: {
-                                    newTagIsChild = true
-                                    showNewTagSheet = true
-                                },
-                                externalDragY: $childExternalDragY
-                            )
-
-                            // 閉じるタブ（右端、タップ or 右スワイプで閉じる）
-                            Text("›")
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundStyle(.secondary)
-                                .frame(width: 14, height: 60)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 4)
-                                        .fill(Color.gray.opacity(0.1))
-                                )
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    withAnimation(.spring(response: 0.3)) {
-                                        showChildDial = false
-                                    }
-                                }
-                                .simultaneousGesture(
-                                    DragGesture(minimumDistance: 10)
-                                        .onEnded { value in
-                                            if value.translation.width > 20 {
-                                                withAnimation(.spring(response: 0.3)) {
-                                                    showChildDial = false
-                                                }
-                                            }
-                                        }
-                                )
-                        }
-                    } else {
-                        // 「子」タブ突起（タップで展開）
-                        VStack(spacing: 2) {
-                            Text("子")
-                                .font(.system(size: 12, weight: .bold, design: .rounded))
-                            Text("‹")
-                                .font(.system(size: 13, weight: .bold))
-                        }
-                        .foregroundStyle(.secondary)
-                        .frame(width: 22, height: 70)
+            .padding(.trailing, showParentDial ? (showChildDial ? 185 : 135) : 0)
+            .animation(.spring(response: 0.3), value: showParentDial)
+            .animation(.spring(response: 0.3), value: showChildDial)
+            .overlay(alignment: .bottomTrailing) {
+                // 展開/縮小ボタン
+                Button {
+                    withAnimation(.spring(response: 0.35)) {
+                        isExpanded.toggle()
+                    }
+                } label: {
+                    Image(systemName: isExpanded ? "arrow.down.forward.and.arrow.up.backward" : "arrow.up.backward.and.arrow.down.forward")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 28, height: 28)
                         .background(
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(Color.gray.opacity(0.15))
+                            Circle().fill(Color.blue.opacity(0.6))
                         )
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            withAnimation(.spring(response: 0.3)) {
-                                showChildDial = true
-                            }
-                        }
-                    }
+                        .shadow(color: .black.opacity(0.2), radius: 2, x: -1, y: 1)
                 }
-                // ドラッグジェスチャーはZStack（永続コンテナ）に配置
-                // ビュー切替が起きてもジェスチャーがキャンセルされない
-                .contentShape(Rectangle())
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 5)
-                        .onChanged { value in
-                            // 閉じた状態ならドラッグで展開
-                            if !showChildDial {
-                                showChildDial = true
-                            }
-                            // 垂直成分を子ダイアルに転送
-                            childExternalDragY = value.translation.height
-                        }
-                        .onEnded { _ in
-                            // ドラッグ終了 → 子ダイアルにスナップ
-                            childExternalDragY = nil
-                        }
-                )
+                .padding(.trailing, 8)
+                .padding(.bottom, 8)
             }
+            .overlay(alignment: .topTrailing) {
+                // 仕切り線直下・右端からタグタブを生やす
+                dialArea
+                    .padding(.trailing, -10)
+                    .offset(y: -1)
+            }
+            Divider()
+            // フッター: 左=削除 右=コピー+保存
+            footerRow
         }
-        .frame(height: 200)
         .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color(uiColor: .systemBackground))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(Color.gray.opacity(0.25), lineWidth: 1)
+            ZStack {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color(uiColor: .systemBackground))
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(Color.gray.opacity(0.25), lineWidth: 1)
+            }
         )
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .alert("このメモを破棄します。よろしいですか？", isPresented: $showDiscardAlert) {
-            Button("破棄", role: .destructive) {
+        .alert("このメモを削除します。よろしいですか？", isPresented: $showDeleteAlert) {
+            Button("削除", role: .destructive) {
                 viewModel.discardMemo(context: modelContext)
             }
             Button("キャンセル", role: .cancel) {}
@@ -392,18 +191,14 @@ struct MemoInputView: View {
             NewTagSheetView(
                 parentTagID: newTagIsChild ? viewModel.selectedTagID : nil,
                 onTagCreated: { newTagID in
-                    // 新タグ追加後、即座にルーレット＆タグ表示に反映
                     if newTagIsChild {
                         viewModel.selectedChildTagID = newTagID
                     } else {
                         viewModel.selectedTagID = newTagID
-                        // 親タグ追加時は対応するバッグ（タブ）も開く
-                        // @Queryの更新を待ってからインデックスを算出
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                             let idx = tabIndex(for: newTagID)
                             NotificationCenter.default.post(
-                                name: .switchToTab,
-                                object: nil,
+                                name: .switchToTab, object: nil,
                                 userInfo: ["tabIndex": idx]
                             )
                         }
@@ -411,61 +206,289 @@ struct MemoInputView: View {
                 }
             )
         }
-        .fullScreenCover(isPresented: $showFullEditor) {
-            FullEditorView(
-                text: $viewModel.inputText,
-                isMarkdown: $viewModel.isMarkdown
-            )
-        }
         .onChange(of: focusInput) { _, newValue in
-            if newValue {
-                isTextEditorFocused = true
-                focusInput = false
-            }
+            if newValue { isEditing = true; isTextEditorFocused = true; focusInput = false }
         }
-        // 自動保存: テキスト変更
+        .onChange(of: viewModel.loadMemoCounter) { _, _ in
+            // 既存メモ読み込み時は閲覧モードで開始
+            isEditing = false
+            isTextEditorFocused = false
+        }
         .onChange(of: viewModel.inputText) { _, _ in
             viewModel.onContentChanged(context: modelContext, tags: tags)
         }
-        // 自動保存: タイトル変更
         .onChange(of: viewModel.titleText) { _, _ in
             viewModel.onTitleChanged()
         }
-        // 自動保存: 親タグ変更 + タブ同期
         .onChange(of: viewModel.selectedTagID) { _, newTagID in
-            // 親タグが変わったら子タグをリセット（loadMemo中は除く）
-            if !viewModel.isLoadingMemo {
-                viewModel.selectedChildTagID = nil
-            }
+            if !viewModel.isLoadingMemo { viewModel.selectedChildTagID = nil }
             viewModel.onTagChanged(tags: tags)
-            // 下のタブも連動して切替
             let idx = tabIndex(for: newTagID)
-            NotificationCenter.default.post(
-                name: .switchToTab,
-                object: nil,
-                userInfo: ["tabIndex": idx]
-            )
+            NotificationCenter.default.post(name: .switchToTab, object: nil, userInfo: ["tabIndex": idx])
         }
-        // 自動保存: 子タグ変更
         .onChange(of: viewModel.selectedChildTagID) { _, _ in
             viewModel.onTagChanged(tags: tags)
         }
-        // マークダウンメモ読み込み時にFullEditorを自動起動
-        .onChange(of: viewModel.openFullEditor) { _, newValue in
-            if newValue {
-                showFullEditor = true
-                viewModel.openFullEditor = false
+        .onAppear {
+            showParentDial = dialDefault >= 1
+            showChildDial = dialDefault >= 2
+        }
+    }
+
+    // MARK: - ヘッダー
+
+    private var headerRow: some View {
+        HStack(spacing: 6) {
+            TextField("タイトル（任意）", text: $viewModel.titleText)
+                .font(.system(size: 17, weight: .semibold, design: .rounded))
+
+            Spacer()
+
+            // タグ表示（タップでルーレット展開）
+            tagDisplay
+                .onTapGesture {
+                    withAnimation(.spring(response: 0.3)) {
+                        showParentDial = true
+                    }
+                }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+    }
+
+    private var tagDisplay: some View {
+        HStack(spacing: 3) {
+            if viewModel.selectedTagID == nil {
+                // タグ未選択時はアイコンのみ
+                Image(systemName: "tag")
+                    .font(.system(size: 13))
+                    .foregroundStyle(.tertiary)
+            } else {
+                let info = selectedTagInfo
+                Text(info.name.prefix(4) + (info.name.count > 4 ? "…" : ""))
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(RoundedRectangle(cornerRadius: 5).fill(info.color))
+                if let childInfo = selectedChildTagInfo {
+                    Text(childInfo.name.prefix(3) + (childInfo.name.count > 3 ? "…" : ""))
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 1)
+                        .background(RoundedRectangle(cornerRadius: 4).fill(childInfo.color))
+                }
             }
         }
     }
 
-    private func triggerSaveAnimation() {
-        // 保存後の吸い込みアニメーション（将来実装）
-        withAnimation(.easeIn(duration: 0.3)) {
-            showSaveAnimation = true
+    // MARK: - フッター（左=削除 右=コピー+保存）
+
+    private var footerRow: some View {
+        HStack(spacing: 8) {
+            // 左: 削除
+            Button { showDeleteAlert = true } label: {
+                Image(systemName: "trash")
+                    .font(.system(size: 15))
+                    .foregroundStyle(.red.opacity(0.5))
+            }
+            .disabled(!viewModel.canClear)
+
+            Spacer()
+
+            // 右: コピー
+            Button {
+                UIPasteboard.general.string = viewModel.inputText
+            } label: {
+                Label("コピー", systemImage: "doc.on.doc").font(.system(size: 14))
+            }
+            .disabled(viewModel.inputText.isEmpty)
+
+            // 右: 確定（メモは自動保存済み→入力欄をクリアして次のメモへ）
+            Button {
+                viewModel.clearInput()
+                isEditing = true
+                isTextEditorFocused = false
+                UIApplication.shared.sendAction(
+                    #selector(UIResponder.resignFirstResponder),
+                    to: nil, from: nil, for: nil
+                )
+            } label: {
+                Label("確定", systemImage: "checkmark.circle.fill")
+                    .font(.system(size: 14, weight: .bold))
+            }
+            .buttonStyle(.borderedProminent)
+            .buttonBorderShape(.capsule)
+            .controlSize(.small)
+            .disabled(!viewModel.canClear)
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            showSaveAnimation = false
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+    }
+
+    // MARK: - ルーレット（収納式）
+
+    // ルーレットの固定高さ
+    private let dialFixedHeight: CGFloat = 160
+
+    private var dialArea: some View {
+        VStack(spacing: 0) {
+            dialContent
+                .frame(height: showParentDial ? dialFixedHeight : nil)
+            Spacer(minLength: 0)
         }
+        .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private var dialContent: some View {
+        HStack(spacing: 0) {
+            if showParentDial {
+                Rectangle().fill(Color.gray.opacity(0.2)).frame(width: 1)
+
+                TagDialView(
+                    options: parentOptions,
+                    selectedID: $viewModel.selectedTagID,
+                    width: showChildDial ? 85 : 110,
+                    onAddTap: { newTagIsChild = false; showNewTagSheet = true },
+                    externalDragY: .constant(nil)
+                )
+
+                ZStack {
+                    if showChildDial {
+                        HStack(spacing: 0) {
+                            Rectangle().fill(Color.gray.opacity(0.2)).frame(width: 1)
+                            TagDialView(
+                                options: childOptions,
+                                selectedID: $viewModel.selectedChildTagID,
+                                width: 80,
+                                onAddTap: { newTagIsChild = true; showNewTagSheet = true },
+                                externalDragY: $childExternalDragY
+                            )
+                            Text("›")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 14, height: 60)
+                                .background(RoundedRectangle(cornerRadius: 4).fill(Color.gray.opacity(0.1)))
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    withAnimation(.spring(response: 0.3)) { showChildDial = false }
+                                }
+                        }
+                    } else {
+                        VStack(spacing: 2) {
+                            Text("子").font(.system(size: 11, weight: .bold, design: .rounded))
+                            Text("‹").font(.system(size: 12, weight: .bold))
+                        }
+                        .foregroundStyle(.secondary)
+                        .frame(width: 20, height: 60)
+                        .background(
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color(red: 0.90, green: 0.90, blue: 0.92))
+                        )
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.3)) { showChildDial = true }
+                        }
+                    }
+                }
+                .contentShape(Rectangle())
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 5)
+                        .onChanged { value in
+                            if !showChildDial { showChildDial = true }
+                            childExternalDragY = value.translation.height
+                        }
+                        .onEnded { _ in childExternalDragY = nil }
+                )
+
+                Text("›")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(.tertiary)
+                    .frame(width: 12, height: 50)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        withAnimation(.spring(response: 0.3)) {
+                            showParentDial = false; showChildDial = false
+                        }
+                    }
+                    .simultaneousGesture(
+                        DragGesture(minimumDistance: 10)
+                            .onEnded { value in
+                                if value.translation.width > 20 {
+                                    withAnimation(.spring(response: 0.3)) {
+                                        showParentDial = false; showChildDial = false
+                                    }
+                                }
+                            }
+                    )
+            } else {
+                // 逆さL字タブ（上=横タブ、下=縦グリップ）
+                VStack(alignment: .trailing, spacing: 0) {
+                    // 上部: 横長タブ（今まで通り）
+                    HStack(spacing: 2) {
+                        Text("◀").font(.system(size: 12))
+                        Text("タグ").font(.system(size: 13, weight: .bold, design: .rounded))
+                    }
+                    .foregroundStyle(.white)
+                    .frame(width: 60, height: 22, alignment: .leading)
+                    .padding(.leading, 6)
+                    .background(
+                        UnevenRoundedRectangle(topLeadingRadius: 6, bottomLeadingRadius: 6, bottomTrailingRadius: 0, topTrailingRadius: 0)
+                            .fill(Color(red: 0.76, green: 0.76, blue: 0.78))
+                    )
+
+                    // 下部: 縦長グリップ（包丁の刃先カーブ）
+                    HStack(spacing: 0) {
+                        Spacer(minLength: 0)
+                        GripShape()
+                            .fill(Color(red: 0.76, green: 0.76, blue: 0.78))
+                            .frame(width: 35, height: 70)
+                    }
+                    .frame(width: 60)
+                }
+                .shadow(color: .black.opacity(0.15), radius: 2, x: -1, y: 1)
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 5)
+                        .onChanged { _ in
+                            if !showParentDial {
+                                withAnimation(.spring(response: 0.3)) { showParentDial = true }
+                            }
+                        }
+                )
+            }
+        }
+    }
+}
+
+// グリップの包丁刃先シェイプ
+// 上部は幅16ptの長方形、下端が左に向かってカーブしながら広がり刃先のように消える
+struct GripShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        let gripWidth: CGFloat = 8
+        let left = rect.maxX - gripWidth  // グリップ左端
+        let right = rect.maxX             // グリップ右端（画面端）
+
+        let filletR: CGFloat = 7  // L字内側の丸み半径
+
+        var path = Path()
+        // 左上: フィレットの開始点（上辺から）
+        path.move(to: CGPoint(x: left - filletR, y: 0))
+        // 内側の丸みカーブ（水平→垂直へ滑らかに）
+        path.addQuadCurve(
+            to: CGPoint(x: left, y: filletR),
+            control: CGPoint(x: left, y: 0)
+        )
+        // 左辺をまっすぐ途中まで下へ
+        path.addLine(to: CGPoint(x: left, y: rect.height * 0.5))
+        // 左辺がカーブして右へ→最後は水平に右辺と合流
+        path.addCurve(
+            to: CGPoint(x: right, y: rect.height),
+            control1: CGPoint(x: left, y: rect.height * 0.85),
+            control2: CGPoint(x: right - gripWidth * 0.6, y: rect.height)
+        )
+        // 右辺をまっすぐ上へ
+        path.addLine(to: CGPoint(x: right, y: 0))
+        path.closeSubpath()
+        return path
     }
 }

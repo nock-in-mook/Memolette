@@ -558,60 +558,20 @@ struct TabbedMemoListView: View {
                     } else {
                         ScrollViewReader { scrollProxy in
                         ScrollView {
-                            LazyVGrid(columns: currentColumns, spacing: 8) {
-                                ForEach(filteredMemos) { memo in
-                                    HStack(spacing: 4) {
-                                        if isSelectMode {
-                                            Image(systemName: selectedMemoIDs.contains(memo.id) ? "checkmark.circle.fill" : "circle")
-                                                .font(.system(size: 20))
-                                                .foregroundStyle(selectedMemoIDs.contains(memo.id) ? .red : .gray.opacity(0.6))
-                                        }
-                                        MemoCardView(memo: memo, gridSize: currentGridSize, availableHeight: geo.size.height)
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: 8)
-                                                    .stroke(Color.blue, lineWidth: flashMemoID == memo.id ? 3 : 0)
-                                                    .opacity(flashMemoID == memo.id ? 1 : 0)
-                                                    .animation(.easeInOut(duration: 0.3).repeatCount(3, autoreverses: true), value: flashMemoID)
-                                            )
-                                    }
-                                    .contentShape(RoundedRectangle(cornerRadius: 8))
-                                    .onTapGesture {
-                                        if isSelectMode {
-                                            if selectedMemoIDs.contains(memo.id) {
-                                                selectedMemoIDs.remove(memo.id)
-                                            } else {
-                                                selectedMemoIDs.insert(memo.id)
-                                            }
-                                        } else {
-                                            onEditMemo?(memo)
-                                        }
-                                    }
-                                    .draggable(memo.id.uuidString) {
-                                        MemoCardView(memo: memo, gridSize: currentGridSize, availableHeight: geo.size.height)
-                                            .frame(width: 120, height: 60)
-                                            .opacity(0.8)
-                                    }
-                                    .contextMenu {
-                                        if !isSelectMode {
-                                            Button {
-                                                UIPasteboard.general.string = memo.content
-                                            } label: {
-                                                Label("コピー", systemImage: "doc.on.doc")
-                                            }
-                                            Button(role: .destructive) {
-                                                onDeleteMemo?(memo)
-                                                modelContext.delete(memo)
-                                            } label: {
-                                                Label("削除", systemImage: "trash")
-                                            }
-                                        }
+                            VStack(spacing: 0) {
+                                // 上部スペーサー（ツールバー分、タップ不可）
+                                Color.clear
+                                    .frame(height: (drawerReveal > 0 && canShowChildTagPanel) ? 50 + drawerBandHeight : 50)
+                                    .allowsHitTesting(false)
+
+                                LazyVGrid(columns: currentColumns, spacing: 8) {
+                                    ForEach(filteredMemos) { memo in
+                                        memoGridItem(memo: memo, availableHeight: geo.size.height)
                                     }
                                 }
+                                .padding(.horizontal, 10)
+                                .padding(.bottom, 40)
                             }
-                            .padding(.horizontal, 10)
-                            // 子タグパネル展開時はトップパディングを増やす
-                            .padding(.top, (drawerReveal > 0 && canShowChildTagPanel) ? 50 + drawerBandHeight : 50)
-                            .padding(.bottom, 40)
                             .id("memoGrid")
                         }
                         .onChange(of: flashMemoID) { _, newValue in
@@ -1039,6 +999,60 @@ struct TabbedMemoListView: View {
         }
     }
 
+    // メモグリッドの1アイテム（型推論負荷軽減のため分離）
+    @ViewBuilder
+    private func memoGridItem(memo: Memo, availableHeight: CGFloat) -> some View {
+        HStack(spacing: 4) {
+            if isSelectMode {
+                Image(systemName: selectedMemoIDs.contains(memo.id) ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 20))
+                    .foregroundStyle(selectedMemoIDs.contains(memo.id) ? .red : .gray.opacity(0.6))
+            }
+            MemoCardView(memo: memo, gridSize: currentGridSize, availableHeight: availableHeight, onTap: {
+                handleMemoTap(memo)
+            })
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.blue, lineWidth: flashMemoID == memo.id ? 3 : 0)
+                        .opacity(flashMemoID == memo.id ? 1 : 0)
+                        .animation(.easeInOut(duration: 0.3).repeatCount(3, autoreverses: true), value: flashMemoID)
+                )
+        }
+        .draggable(memo.id.uuidString) {
+            MemoCardView(memo: memo, gridSize: currentGridSize, availableHeight: availableHeight)
+                .frame(width: 120, height: 60)
+                .opacity(0.8)
+        }
+        .contextMenu {
+            if !isSelectMode {
+                Button {
+                    UIPasteboard.general.string = memo.content
+                } label: {
+                    Label("コピー", systemImage: "doc.on.doc")
+                }
+                Button(role: .destructive) {
+                    onDeleteMemo?(memo)
+                    modelContext.delete(memo)
+                } label: {
+                    Label("削除", systemImage: "trash")
+                }
+            }
+        }
+    }
+
+    // メモカードタップ処理
+    private func handleMemoTap(_ memo: Memo) {
+        if isSelectMode {
+            if selectedMemoIDs.contains(memo.id) {
+                selectedMemoIDs.remove(memo.id)
+            } else {
+                selectedMemoIDs.insert(memo.id)
+            }
+        } else {
+            onEditMemo?(memo)
+        }
+    }
+
     // 並び替えシートからの新しい順序を適用（全タブ対象）
     private func applyTabOrder(_ newOrder: [(label: String, tag: Tag?, colorIndex: Int)]) {
         let currentItem = tabItems[selectedTabIndex]
@@ -1162,6 +1176,8 @@ struct SearchMemoCardView: View {
 struct MemoCardView: View {
     let memo: Memo
     var gridSize: GridSizeOption = .grid3x8
+    var availableHeight: CGFloat = 0
+    var onTap: (() -> Void)? = nil
 
     // グリッドサイズに応じたスタイル
     private var titleFont: CGFloat {
@@ -1204,8 +1220,7 @@ struct MemoCardView: View {
         }
     }
 
-    // GeometryReaderから渡される利用可能な高さで計算
-    var availableHeight: CGFloat = 0
+    // availableHeightはプロパティ宣言で定義済み
 
     // 全文モードでは高さ固定しない
     private var isFullMode: Bool { gridSize == .full }
@@ -1266,6 +1281,8 @@ struct MemoCardView: View {
         }
         .frame(height: cardHeight)
         .background(Color(uiColor: .systemBackground))
+        .contentShape(RoundedRectangle(cornerRadius: 6))
+        .onTapGesture { onTap?() }
         .clipShape(RoundedRectangle(cornerRadius: 6))
         .shadow(color: .black.opacity(0.08), radius: 2, x: 0, y: 1)
     }

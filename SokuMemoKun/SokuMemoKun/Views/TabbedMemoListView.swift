@@ -575,7 +575,8 @@ struct TabbedMemoListView: View {
                         Spacer()
                     }
                     .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
+                    .padding(.top, 8)
+                    .padding(.bottom, 4)
                 } else {
                 ZStack(alignment: .top) {
                     HStack(spacing: 8) {

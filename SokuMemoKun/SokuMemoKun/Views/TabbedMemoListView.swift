@@ -640,9 +640,9 @@ struct TabbedMemoListView: View {
                 } else {
                 ZStack(alignment: .top) {
                     VStack(spacing: 0) {
-                        // 子タグドロワー表示スペース
+                        // 子タグドロワー表示スペース（＋下余白6pt）
                         if canShowChildTagPanel && drawerReveal > 0 {
-                            Color.clear.frame(height: drawerBandHeight)
+                            Color.clear.frame(height: drawerBandHeight + 6)
                         }
 
                         // メモ枚数 + 保存ボタン行（ZStackでセンタリング）
@@ -762,7 +762,8 @@ struct TabbedMemoListView: View {
         max(0, drawerReveal + drawerDragOffset)
     }
 
-    private let drawerBandHeight: CGFloat = 28  // 帯の高さ（取っ手もトレーも同じ）
+    private let drawerBandHeight: CGFloat = 36  // トレーの高さ
+    private let drawerHandleHeight: CGFloat = 23  // 取っ手の高さ
     private let drawerHandleTextWidth: CGFloat = 52  // 「◁子タグ」横書き幅
 
     /// 子タグのコンテンツ幅を計算（+ボタン + 全チップ + パディング）
@@ -801,40 +802,45 @@ struct TabbedMemoListView: View {
             let reveal = min(max(0, effectiveDrawerReveal), contentMax)
             let children = childTags
             let parentName = currentParentTag?.name ?? ""
-            let totalWidth = drawerHandleTextWidth + reveal
+            let handleWidth: CGFloat = reveal > 0 ? 30 : drawerHandleTextWidth
+            let totalWidth = handleWidth + reveal
 
             HStack(spacing: 0) {
                 // 左端: 「◁ 子タグ」取っ手（帯と一体化）
-                HStack(spacing: 2) {
-                    Image(systemName: "arrowtriangle.left.fill")
-                        .font(.system(size: 8))
-                        .foregroundStyle(.white.opacity(0.8))
-                    Text("子タグ")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                        .fixedSize()
+                Group {
+                    if reveal > 0 {
+                        Image(systemName: "arrowtriangle.right.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(.white.opacity(0.8))
+                    } else {
+                        HStack(spacing: 2) {
+                            Image(systemName: "arrowtriangle.left.fill")
+                                .font(.system(size: 8))
+                                .foregroundStyle(.white.opacity(0.8))
+                            Text("子タグ")
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .foregroundStyle(.white)
+                                .lineLimit(1)
+                                .fixedSize()
+                        }
+                    }
                 }
-                .frame(width: drawerHandleTextWidth, height: drawerBandHeight)
+                .frame(width: reveal > 0 ? 30 : drawerHandleTextWidth, height: drawerHandleHeight)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        if drawerReveal > 0 {
+                            drawerReveal = 0
+                        } else {
+                            drawerReveal = contentMax
+                        }
+                    }
+                }
 
                 // トレー内容（子タグチップ群）— 帯の続き
                 if reveal > 0 {
+                    ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 6) {
-                        // 追加ボタン
-                        Button {
-                            showAddChildTagSheet = true
-                        } label: {
-                            Image(systemName: "plus")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(.white)
-                                .frame(width: 24, height: 24)
-                                .background(
-                                    Circle()
-                                        .fill(Color.white.opacity(0.3))
-                                )
-                        }
-                        .buttonStyle(.plain)
-
                         if children.isEmpty {
                             Text("\(parentName)の子タグなし")
                                 .font(.system(size: 12, design: .rounded))
@@ -858,14 +864,30 @@ struct TabbedMemoListView: View {
                                 }
                             }
                         }
+
+                        // 追加ボタン（一番右）
+                        Button {
+                            showAddChildTagSheet = true
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(.white)
+                                .frame(width: 24, height: 24)
+                                .background(
+                                    Circle()
+                                        .fill(Color.white.opacity(0.3))
+                                )
+                        }
+                        .buttonStyle(.plain)
                     }
                     .padding(.leading, 4)
                     .padding(.trailing, 8)
+                    }
                     .frame(height: drawerBandHeight)
                 }
             }
             // 帯全体の背景（不透明グレー）
-            .frame(width: totalWidth, height: drawerBandHeight)
+            .frame(width: totalWidth, height: reveal > 0 ? drawerBandHeight : drawerHandleHeight)
             .background(
                 UnevenRoundedRectangle(
                     topLeadingRadius: 8,
@@ -874,12 +896,12 @@ struct TabbedMemoListView: View {
                     topTrailingRadius: 0
                 )
                 .fill(Color.gray)
-                .shadow(color: .black.opacity(0.15), radius: 2, x: -1, y: 1)
+                .shadow(color: .black.opacity(0.2), radius: 3, x: -2, y: 2)
             )
             .contentShape(Rectangle())  // タップ・ドラッグ領域を帯だけに限定
             .clipped()
             // 右端に配置
-            .position(x: geo.size.width - totalWidth / 2, y: drawerBandHeight / 2 + 4)
+            .position(x: geo.size.width - totalWidth / 2, y: (reveal > 0 ? drawerBandHeight : drawerHandleHeight) / 2 + 6)
             // ドラッグジェスチャー（帯のみ反応）
             .gesture(
                 DragGesture()
@@ -903,15 +925,6 @@ struct TabbedMemoListView: View {
                         }
                     }
             )
-            .onTapGesture {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                    if drawerReveal > 0 {
-                        drawerReveal = 0
-                    } else {
-                        drawerReveal = contentMax
-                    }
-                }
-            }
             .sheet(isPresented: $showAddChildTagSheet) {
                 NewTagSheetView(parentTagID: currentParentTag?.id, onTagCreated: { newTagID in
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -935,7 +948,10 @@ struct TabbedMemoListView: View {
                     .fill(tagColor(for: colorIndex))
                     .opacity(isSelected ? 1.0 : 0.6)
             )
-            .scaleEffect(isSelected ? 1.08 : 1.0)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .strokeBorder(Color.white, lineWidth: isSelected ? 2.0 : 0)
+            )
             .id(id)
     }
 

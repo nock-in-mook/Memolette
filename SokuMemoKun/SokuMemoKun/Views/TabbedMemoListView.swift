@@ -554,20 +554,21 @@ struct TabbedMemoListView: View {
 
                 // 上部ツールバー
                 if isCompact {
-                    // コンパクト時: 「記入中のメモをここに追加」ボタンだけ
+                    // コンパクト時: 「記入中のメモをここに保存」ボタンだけ
                     HStack {
+                        Spacer()
                         Button {
                             let currentTag = tabItems[selectedTabIndex].tag
                             onAddToCurrentTab?(currentTag?.id)
                         } label: {
-                            Label("記入中のメモをここに追加", systemImage: "arrow.down.doc")
-                                .font(.system(size: 12, weight: .medium, design: .rounded))
-                                .foregroundStyle(.blue)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
+                            Label("記入中のメモをここに保存", systemImage: "arrow.down.doc")
+                                .font(.system(size: 13, weight: .medium, design: .rounded))
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
                                 .background(
                                     Capsule()
-                                        .fill(Color(uiColor: .systemBackground).opacity(0.9))
+                                        .fill(Color(uiColor: .systemBackground).opacity(0.85))
                                 )
                         }
                         .buttonStyle(.plain)
@@ -590,7 +591,7 @@ struct TabbedMemoListView: View {
                             let currentTag = tabItems[selectedTabIndex].tag
                             onAddMemo?(currentTag?.id)
                         } label: {
-                            Label("フォルダにメモ追加", systemImage: "plus")
+                            Label("ここにメモ追加", systemImage: "plus")
                                 .font(.system(size: 13, weight: .medium, design: .rounded))
                                 .foregroundStyle(.secondary)
                                 .padding(.horizontal, 8)

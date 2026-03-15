@@ -105,8 +105,8 @@ class MemoInputViewModel {
         selectedChildTagID = nil
         isMarkdown = UserDefaults.standard.bool(forKey: "defaultMarkdown")
         UserDefaults.standard.removeObject(forKey: "lastEditingMemoID")
-        // onChangeは次のレンダリングサイクルで発火するので、少し遅延してフラグを戻す
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+        // onChangeは次のレンダリングサイクルで発火するので、次サイクルでフラグを戻す
+        DispatchQueue.main.async { [weak self] in
             self?.isClearingInput = false
         }
     }

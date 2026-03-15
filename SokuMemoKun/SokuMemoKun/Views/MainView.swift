@@ -29,6 +29,12 @@ struct MainView: View {
                     )
                     .frame(height: isInputExpanded ? geo.size.height * 0.92 : geo.size.height * 0.48 - 30)
 
+                    // Specialメニュー用スペース（入力欄とフォルダの間）
+                    if !isInputExpanded {
+                        Spacer()
+                            .frame(height: 30)
+                    }
+
                     // 下: フォルダ付きメモ一覧
                     TabbedMemoListView(
                         selectedTabIndex: $selectedTabIndex,

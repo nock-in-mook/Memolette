@@ -684,23 +684,11 @@ struct TabbedMemoListView: View {
                             .animation(.spring(response: 0.3), value: drawerReveal)
                     }
 
-                    // 左下: グリッドサイズボタン
-                    VStack {
-                        Spacer()
-                        HStack {
-                            gridSizeButton
-                                .padding(.horizontal, 10)
-                                .padding(.bottom, 8)
-                            Spacer()
-                        }
-                    }
-
-                    // 右下: 選択削除ボタン
+                    // 左下: ゴミ箱ボタン
                     if !isCompact {
                     VStack {
                         Spacer()
                         HStack {
-                            Spacer()
                         if isSelectMode {
                             Button {
                                 isSelectMode = false
@@ -733,20 +721,32 @@ struct TabbedMemoListView: View {
                                 .padding(10)
                                 .background(
                                     Capsule()
-                                        .fill(.ultraThinMaterial)
+                                        .fill(Color(uiColor: .systemGray6))
                                         .shadow(color: .black.opacity(0.15), radius: 3, y: 1)
                                 )
                                 .overlay(
                                     Capsule()
-                                        .stroke(Color.gray.opacity(0.4), lineWidth: 1.5)
+                                        .stroke(Color.gray.opacity(0.4), lineWidth: 1.0)
                                 )
                         }
                         .buttonStyle(.plain)
                         .disabled(isSelectMode && selectedMemoIDs.isEmpty)
+                            Spacer()
                     }
                     .padding(.horizontal, 10)
                     .padding(.bottom, 8)
                     }
+                    }
+
+                    // 右下: グリッドサイズボタン
+                    VStack {
+                        Spacer()
+                        HStack {
+                            Spacer()
+                            gridSizeButton
+                                .padding(.horizontal, 10)
+                                .padding(.bottom, 8)
+                        }
                     }
                 }
                 }
@@ -966,12 +966,12 @@ struct TabbedMemoListView: View {
             .padding(.vertical, 8)
             .background(
                 Capsule()
-                    .fill(currentColor.opacity(0.85))
+                    .fill(Color(uiColor: .systemGray6))
                     .shadow(color: .black.opacity(0.15), radius: 3, y: 1)
             )
             .overlay(
                 Capsule()
-                    .stroke(Color.gray.opacity(0.4), lineWidth: 1.5)
+                    .stroke(Color.gray.opacity(0.4), lineWidth: 1.0)
             )
         }
     }

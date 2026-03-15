@@ -279,7 +279,7 @@ struct MemoInputView: View {
         }
     }
 
-    // MARK: - フッター（左=削除 右=コピー+保存）
+    // MARK: - フッター（左=削除 右=コピー+閉じる）
 
     private var footerRow: some View {
         HStack(spacing: 8) {
@@ -300,6 +300,17 @@ struct MemoInputView: View {
                 Label("コピー", systemImage: "doc.on.doc").font(.system(size: 14))
             }
             .disabled(viewModel.inputText.isEmpty)
+
+            // 右: 閉じる（既存メモを開いている時のみ表示）
+            if viewModel.editingMemo != nil {
+                Button {
+                    isEditing = true
+                    isTextEditorFocused = false
+                    viewModel.clearInput()
+                } label: {
+                    Label("閉じる", systemImage: "xmark.circle").font(.system(size: 14))
+                }
+            }
 
         }
         .padding(.horizontal, 10)

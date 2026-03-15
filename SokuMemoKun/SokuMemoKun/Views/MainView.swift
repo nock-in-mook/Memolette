@@ -49,14 +49,25 @@ struct MainView: View {
             .ignoresSafeArea(.keyboard)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                // 左: ＋ボタン（新規メモ作成）
+                // 左: 展開時は「←」で縮小、通常時は「＋」で新規メモ
                 ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        viewModel.clearInput()
-                        focusInput = true
-                    } label: {
-                        Image(systemName: "plus.circle")
-                            .font(.system(size: 17))
+                    if isInputExpanded {
+                        Button {
+                            withAnimation(.spring(response: 0.35)) {
+                                isInputExpanded = false
+                            }
+                        } label: {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 17))
+                        }
+                    } else {
+                        Button {
+                            viewModel.clearInput()
+                            focusInput = true
+                        } label: {
+                            Image(systemName: "plus.circle")
+                                .font(.system(size: 17))
+                        }
                     }
                 }
                 // 中央: 検索バー

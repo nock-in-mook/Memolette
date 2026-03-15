@@ -12,6 +12,7 @@ struct MainView: View {
     @AppStorage("defaultMarkdown") private var defaultMarkdown = false
     @AppStorage("markdownEnabled") private var markdownEnabled = false
     @Environment(\.modelContext) private var modelContext
+    @Query(sort: \Tag.name) private var tags: [Tag]
 
     var body: some View {
         NavigationStack {
@@ -45,8 +46,9 @@ struct MainView: View {
                         },
                         isCompact: isInputExpanded,
                         onAddToCurrentTab: { tagID in
-                            // 記入中のメモのタグを現在のタブに設定して確定
+                            // 記入中のメモにタグを付けて確定
                             viewModel.selectedTagID = tagID
+                            viewModel.onTagChanged(tags: tags)
                             viewModel.clearInput()
                         }
                     )

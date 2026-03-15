@@ -23,10 +23,9 @@ struct MainView: View {
                         focusInput: $focusInput,
                         isExpanded: $isInputExpanded
                     )
-                    .frame(height: isInputExpanded ? geo.size.height : geo.size.height * 0.48)
+                    .frame(height: geo.size.height * (isInputExpanded ? 0.92 : 0.48))
 
-                    // 下: フォルダ付きメモ一覧（展開時は非表示）
-                    if !isInputExpanded {
+                    // 下: フォルダ付きメモ一覧
                     TabbedMemoListView(
                         selectedTabIndex: $selectedTabIndex,
                         searchText: $searchText,
@@ -45,7 +44,6 @@ struct MainView: View {
                             }
                         }
                     )
-                    }
                 }
             }
             .ignoresSafeArea(.keyboard)

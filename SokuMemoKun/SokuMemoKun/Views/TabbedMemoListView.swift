@@ -150,8 +150,11 @@ struct TabbedMemoListView: View {
     @Environment(\.modelContext) private var modelContext
     @Binding var selectedTabIndex: Int
     @Binding var searchText: String
-    @State private var isSelectMode = false
+    enum SelectMode { case none, delete, moveToTop }
+    @State private var selectMode: SelectMode = .none
     @State private var selectedMemoIDs: Set<UUID> = []
+    // 後方互換用
+    private var isSelectMode: Bool { selectMode != .none }
     // 選択削除確認ダイアログ
     @State private var showDeleteConfirm = false
     // 長押し単体削除確認ダイアログ
@@ -359,7 +362,7 @@ struct TabbedMemoListView: View {
                     selectedTabIndex: $selectedTabIndex,
                     flashTabIndex: flashTabIndex,
                     onSelectModeReset: {
-                        isSelectMode = false
+                        selectMode = .none
                         selectedMemoIDs.removeAll()
                         // タブ切替時に子タグフィルターリセット
                         selectedChildFilterID = nil
@@ -676,31 +679,40 @@ struct TabbedMemoListView: View {
 
                         // メモ枚数 + 保存ボタン行（ZStackでセンタリング）
                         ZStack {
-                            HStack {
-                                Text("\(filteredMemos.count)枚のメモ")
-                                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                                    .foregroundStyle(darkenedColor)
-                                Spacer()
-                            }
-
-                            Button {
-                                if isSelectMode { isSelectMode = false; selectedMemoIDs.removeAll() }
-                                let currentTag = tabItems[selectedTabIndex].tag
-                                onAddMemo?(currentTag?.id)
-                            } label: {
-                                Label("このタグにメモ作成", systemImage: "plus.circle")
+                            if isSelectMode {
+                                // 選択モード中のガイドテキスト
+                                Text(selectMode == .delete
+                                     ? "削除するメモを選択してください"
+                                     : "トップに移動するメモを選択してください")
                                     .font(.system(size: 13, weight: .medium, design: .rounded))
                                     .foregroundStyle(.secondary)
-                                    .padding(.horizontal, 2)
-                                    .padding(.vertical, 0)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                            } else {
+                                HStack {
+                                    Text("\(filteredMemos.count)枚のメモ")
+                                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                                        .foregroundStyle(darkenedColor)
+                                    Spacer()
+                                }
+                                Button {
+                                    let currentTag = tabItems[selectedTabIndex].tag
+                                    onAddMemo?(currentTag?.id)
+                                } label: {
+                                    Label("このタグにメモ作成", systemImage: "plus.circle")
+                                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                                        .foregroundStyle(.secondary)
+                                        .padding(.horizontal, 2)
+                                        .padding(.vertical, 0)
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 4)
+                                .background(
+                                    Capsule()
+                                        .fill(Color(uiColor: .systemBackground).opacity(0.85))
+                                )
                             }
-                            .buttonStyle(.plain)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 4)
-                            .background(
-                                Capsule()
-                                    .fill(Color(uiColor: .systemBackground).opacity(0.85))
-                            )
                         }
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
@@ -719,8 +731,9 @@ struct TabbedMemoListView: View {
                         Spacer()
                         HStack {
                         if isSelectMode {
+                            // 取消ボタン
                             Button {
-                                isSelectMode = false
+                                selectMode = .none
                                 selectedMemoIDs.removeAll()
                             } label: {
                                 Text("取消")
@@ -735,13 +748,64 @@ struct TabbedMemoListView: View {
                                     )
                             }
                             .buttonStyle(.plain)
-                            // トップに移動ボタン（選択モード時）
-                            Button {
-                                moveSelectedToTop()
-                            } label: {
-                                MoveToTopIcon()
-                                    .frame(width: 20, height: 20)
+                            // 実行ボタン（モードに応じて変わる）
+                            if selectMode == .delete {
+                                Button {
+                                    showDeleteConfirm = true
+                                } label: {
+                                    Image(systemName: "trash.fill")
+                                        .font(.system(size: 17))
+                                        .foregroundStyle(selectedMemoIDs.isEmpty ? Color.secondary : Color.red)
+                                        .padding(10)
+                                        .background(
+                                            Capsule()
+                                                .fill(Color(uiColor: .systemGray6))
+                                                .shadow(color: .black.opacity(0.15), radius: 3, y: 1)
+                                        )
+                                        .overlay(
+                                            Capsule()
+                                                .stroke(Color.gray.opacity(0.4), lineWidth: 1.0)
+                                        )
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(selectedMemoIDs.isEmpty)
+                            } else if selectMode == .moveToTop {
+                                Button {
+                                    if !selectedMemoIDs.isEmpty {
+                                        moveSelectedToTop()
+                                    }
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        MoveToTopIcon(variant: 3)
+                                            .frame(width: 18, height: 18)
+                                        Text("トップに移動")
+                                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                    }
                                     .foregroundStyle(selectedMemoIDs.isEmpty ? .secondary : .primary)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(
+                                        Capsule()
+                                            .fill(Color(uiColor: .systemGray6))
+                                            .shadow(color: .black.opacity(0.15), radius: 3, y: 1)
+                                    )
+                                    .overlay(
+                                        Capsule()
+                                            .stroke(Color.gray.opacity(0.4), lineWidth: 1.0)
+                                    )
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(selectedMemoIDs.isEmpty)
+                            }
+                        } else {
+                            // 通常時: ゴミ箱ボタン
+                            Button {
+                                selectMode = .delete
+                                selectedMemoIDs.removeAll()
+                            } label: {
+                                Image(systemName: "trash")
+                                    .font(.system(size: 17))
+                                    .foregroundStyle(.secondary)
                                     .padding(10)
                                     .background(
                                         Capsule()
@@ -754,32 +818,27 @@ struct TabbedMemoListView: View {
                                     )
                             }
                             .buttonStyle(.plain)
-                            .disabled(selectedMemoIDs.isEmpty)
-                        }
-                        Button {
-                            if isSelectMode {
-                                showDeleteConfirm = true
-                            } else {
-                                isSelectMode = true
+                            // 通常時: トップに移動ボタン
+                            Button {
+                                selectMode = .moveToTop
                                 selectedMemoIDs.removeAll()
+                            } label: {
+                                MoveToTopIcon(variant: 3)
+                                    .frame(width: 20, height: 20)
+                                    .foregroundStyle(.secondary)
+                                    .padding(10)
+                                    .background(
+                                        Capsule()
+                                            .fill(Color(uiColor: .systemGray6))
+                                            .shadow(color: .black.opacity(0.15), radius: 3, y: 1)
+                                    )
+                                    .overlay(
+                                        Capsule()
+                                            .stroke(Color.gray.opacity(0.4), lineWidth: 1.0)
+                                    )
                             }
-                        } label: {
-                            Image(systemName: isSelectMode ? "trash.fill" : "trash")
-                                .font(.system(size: 17))
-                                .foregroundStyle(isSelectMode && !selectedMemoIDs.isEmpty ? .red : .secondary)
-                                .padding(10)
-                                .background(
-                                    Capsule()
-                                        .fill(Color(uiColor: .systemGray6))
-                                        .shadow(color: .black.opacity(0.15), radius: 3, y: 1)
-                                )
-                                .overlay(
-                                    Capsule()
-                                        .stroke(Color.gray.opacity(0.4), lineWidth: 1.0)
-                                )
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
-                        .disabled(isSelectMode && selectedMemoIDs.isEmpty)
                             Spacer()
                     }
                     .padding(.horizontal, 10)
@@ -1057,7 +1116,7 @@ struct TabbedMemoListView: View {
             offset += 1
         }
         selectedMemoIDs.removeAll()
-        isSelectMode = false
+        selectMode = .none
     }
 
     private func deleteSelectedMemos() {
@@ -1066,7 +1125,7 @@ struct TabbedMemoListView: View {
             modelContext.delete(memo)
         }
         selectedMemoIDs.removeAll()
-        isSelectMode = false
+        selectMode = .none
     }
 
     private func setGridSize(_ option: GridSizeOption) {
@@ -1595,29 +1654,204 @@ struct TabBarView: View {
 
 // 「トップに移動」オリジナルアイコン（複数メモ+上矢印）
 struct MoveToTopIcon: View {
+    var variant: Int = 0
     var body: some View {
         Canvas { context, size in
             let w = size.width
             let h = size.height
-            // メモカード2枚（奥）
-            let backCard = Path(roundedRect: CGRect(x: w * 0.18, y: h * 0.35, width: w * 0.45, height: w * 0.35), cornerRadius: 2)
-            context.fill(backCard, with: .color(.primary.opacity(0.25)))
-            // メモカード（手前）
-            let frontCard = Path(roundedRect: CGRect(x: w * 0.08, y: h * 0.45, width: w * 0.45, height: w * 0.35), cornerRadius: 2)
-            context.fill(frontCard, with: .color(.primary.opacity(0.45)))
-            // 上矢印
-            var arrow = Path()
-            let ax = w * 0.75  // 矢印の中心X
-            let ay = h * 0.15  // 矢印の先端Y
-            // 矢印の頭（三角）
-            arrow.move(to: CGPoint(x: ax, y: ay))
-            arrow.addLine(to: CGPoint(x: ax - w * 0.15, y: ay + h * 0.2))
-            arrow.addLine(to: CGPoint(x: ax + w * 0.15, y: ay + h * 0.2))
-            arrow.closeSubpath()
-            context.fill(arrow, with: .color(.primary))
-            // 矢印の軸
-            let shaft = Path(CGRect(x: ax - w * 0.05, y: ay + h * 0.18, width: w * 0.1, height: h * 0.5))
-            context.fill(shaft, with: .color(.primary))
+            switch variant {
+            case 1: // カード3枚重ね＋大きい矢印（中央）
+                let c3 = Path(roundedRect: CGRect(x: w*0.05, y: h*0.55, width: w*0.5, height: h*0.2), cornerRadius: 2)
+                let c2 = Path(roundedRect: CGRect(x: w*0.05, y: h*0.65, width: w*0.5, height: h*0.2), cornerRadius: 2)
+                let c1 = Path(roundedRect: CGRect(x: w*0.05, y: h*0.75, width: w*0.5, height: h*0.2), cornerRadius: 2)
+                context.fill(c1, with: .color(.primary.opacity(0.15)))
+                context.fill(c2, with: .color(.primary.opacity(0.3)))
+                context.fill(c3, with: .color(.primary.opacity(0.5)))
+                var arrow = Path()
+                let ax = w*0.72; let ay = h*0.05
+                arrow.move(to: CGPoint(x: ax, y: ay))
+                arrow.addLine(to: CGPoint(x: ax - w*0.2, y: ay + h*0.25))
+                arrow.addLine(to: CGPoint(x: ax + w*0.2, y: ay + h*0.25))
+                arrow.closeSubpath()
+                context.fill(arrow, with: .color(.primary))
+                let shaft = Path(CGRect(x: ax - w*0.06, y: ay + h*0.22, width: w*0.12, height: h*0.6))
+                context.fill(shaft, with: .color(.primary))
+            case 2: // 大きなカード2枚＋右上に矢印
+                let c1 = Path(roundedRect: CGRect(x: w*0.02, y: h*0.45, width: w*0.6, height: h*0.25), cornerRadius: 3)
+                let c2 = Path(roundedRect: CGRect(x: w*0.08, y: h*0.6, width: w*0.6, height: h*0.25), cornerRadius: 3)
+                context.fill(c2, with: .color(.primary.opacity(0.2)))
+                context.fill(c1, with: .color(.primary.opacity(0.5)))
+                var arrow = Path()
+                let ax = w*0.8; let ay = h*0.08
+                arrow.move(to: CGPoint(x: ax, y: ay))
+                arrow.addLine(to: CGPoint(x: ax - w*0.18, y: ay + h*0.22))
+                arrow.addLine(to: CGPoint(x: ax + w*0.18, y: ay + h*0.22))
+                arrow.closeSubpath()
+                context.fill(arrow, with: .color(.primary))
+                let shaft = Path(CGRect(x: ax - w*0.05, y: ay + h*0.2, width: w*0.1, height: h*0.45))
+                context.fill(shaft, with: .color(.primary))
+            case 3: // カード横並び＋上矢印（中央上）
+                let c1 = Path(roundedRect: CGRect(x: w*0.02, y: h*0.5, width: w*0.28, height: h*0.4), cornerRadius: 2)
+                let c2 = Path(roundedRect: CGRect(x: w*0.35, y: h*0.5, width: w*0.28, height: h*0.4), cornerRadius: 2)
+                let c3 = Path(roundedRect: CGRect(x: w*0.68, y: h*0.5, width: w*0.28, height: h*0.4), cornerRadius: 2)
+                context.fill(c1, with: .color(.primary.opacity(0.35)))
+                context.fill(c2, with: .color(.primary.opacity(0.45)))
+                context.fill(c3, with: .color(.primary.opacity(0.25)))
+                var arrow = Path()
+                let ax = w*0.5; let ay = h*0.02
+                arrow.move(to: CGPoint(x: ax, y: ay))
+                arrow.addLine(to: CGPoint(x: ax - w*0.2, y: ay + h*0.25))
+                arrow.addLine(to: CGPoint(x: ax + w*0.2, y: ay + h*0.25))
+                arrow.closeSubpath()
+                context.fill(arrow, with: .color(.primary.opacity(0.45)))
+                let shaft = Path(CGRect(x: ax - w*0.06, y: ay + h*0.22, width: w*0.12, height: h*0.2))
+                context.fill(shaft, with: .color(.primary.opacity(0.45)))
+            case 4: // 大カード1枚＋矢印突き抜け
+                let card = Path(roundedRect: CGRect(x: w*0.05, y: h*0.35, width: w*0.6, height: h*0.55), cornerRadius: 3)
+                context.fill(card, with: .color(.primary.opacity(0.4)))
+                // カード内の横線（メモっぽく）
+                let line1 = Path(CGRect(x: w*0.12, y: h*0.48, width: w*0.4, height: h*0.03))
+                let line2 = Path(CGRect(x: w*0.12, y: h*0.56, width: w*0.35, height: h*0.03))
+                let line3 = Path(CGRect(x: w*0.12, y: h*0.64, width: w*0.38, height: h*0.03))
+                context.fill(line1, with: .color(.primary.opacity(0.2)))
+                context.fill(line2, with: .color(.primary.opacity(0.2)))
+                context.fill(line3, with: .color(.primary.opacity(0.2)))
+                var arrow = Path()
+                let ax = w*0.8; let ay = h*0.05
+                arrow.move(to: CGPoint(x: ax, y: ay))
+                arrow.addLine(to: CGPoint(x: ax - w*0.17, y: ay + h*0.2))
+                arrow.addLine(to: CGPoint(x: ax + w*0.17, y: ay + h*0.2))
+                arrow.closeSubpath()
+                context.fill(arrow, with: .color(.primary))
+                let shaft = Path(CGRect(x: ax - w*0.05, y: ay + h*0.18, width: w*0.1, height: h*0.7))
+                context.fill(shaft, with: .color(.primary))
+            case 5: // カード2枚ずらし＋太い矢印
+                let c1 = Path(roundedRect: CGRect(x: w*0.0, y: h*0.4, width: w*0.55, height: h*0.28), cornerRadius: 3)
+                let c2 = Path(roundedRect: CGRect(x: w*0.1, y: h*0.58, width: w*0.55, height: h*0.28), cornerRadius: 3)
+                context.fill(c2, with: .color(.primary.opacity(0.2)))
+                context.fill(c1, with: .color(.primary.opacity(0.5)))
+                var arrow = Path()
+                let ax = w*0.75; let ay = h*0.0
+                arrow.move(to: CGPoint(x: ax, y: ay))
+                arrow.addLine(to: CGPoint(x: ax - w*0.22, y: ay + h*0.3))
+                arrow.addLine(to: CGPoint(x: ax - w*0.1, y: ay + h*0.3))
+                arrow.addLine(to: CGPoint(x: ax - w*0.1, y: ay + h*0.85))
+                arrow.addLine(to: CGPoint(x: ax + w*0.1, y: ay + h*0.85))
+                arrow.addLine(to: CGPoint(x: ax + w*0.1, y: ay + h*0.3))
+                arrow.addLine(to: CGPoint(x: ax + w*0.22, y: ay + h*0.3))
+                arrow.closeSubpath()
+                context.fill(arrow, with: .color(.primary))
+            case 6: // ミニカード3枚積み＋矢印（左寄せ）
+                for i in 0..<3 {
+                    let y = h * (0.5 + Double(i) * 0.15)
+                    let card = Path(roundedRect: CGRect(x: w*0.0, y: y, width: w*0.55, height: h*0.15), cornerRadius: 2)
+                    context.fill(card, with: .color(.primary.opacity(0.5 - Double(i) * 0.12)))
+                }
+                var arrow = Path()
+                let ax = w*0.78; let ay = h*0.05
+                arrow.move(to: CGPoint(x: ax, y: ay))
+                arrow.addLine(to: CGPoint(x: ax - w*0.18, y: ay + h*0.22))
+                arrow.addLine(to: CGPoint(x: ax + w*0.18, y: ay + h*0.22))
+                arrow.closeSubpath()
+                context.fill(arrow, with: .color(.primary))
+                let shaft = Path(CGRect(x: ax - w*0.055, y: ay + h*0.2, width: w*0.11, height: h*0.55))
+                context.fill(shaft, with: .color(.primary))
+            case 7: // カード2枚＋丸い矢印
+                let c1 = Path(roundedRect: CGRect(x: w*0.0, y: h*0.45, width: w*0.55, height: h*0.25), cornerRadius: 3)
+                let c2 = Path(roundedRect: CGRect(x: w*0.08, y: h*0.62, width: w*0.55, height: h*0.25), cornerRadius: 3)
+                context.fill(c2, with: .color(.primary.opacity(0.2)))
+                context.fill(c1, with: .color(.primary.opacity(0.5)))
+                let cx = w*0.75; let cy = h*0.3
+                let circle = Path(ellipseIn: CGRect(x: cx - w*0.2, y: cy - w*0.2, width: w*0.4, height: w*0.4))
+                context.fill(circle, with: .color(.primary.opacity(0.15)))
+                var arrow = Path()
+                arrow.move(to: CGPoint(x: cx, y: cy - h*0.18))
+                arrow.addLine(to: CGPoint(x: cx - w*0.12, y: cy - h*0.05))
+                arrow.addLine(to: CGPoint(x: cx + w*0.12, y: cy - h*0.05))
+                arrow.closeSubpath()
+                context.fill(arrow, with: .color(.primary))
+            case 8: // 大カード2枚＋ストップライン付き矢印
+                let c1 = Path(roundedRect: CGRect(x: w*0.0, y: h*0.5, width: w*0.58, height: h*0.22), cornerRadius: 3)
+                let c2 = Path(roundedRect: CGRect(x: w*0.06, y: h*0.66, width: w*0.58, height: h*0.22), cornerRadius: 3)
+                context.fill(c2, with: .color(.primary.opacity(0.2)))
+                context.fill(c1, with: .color(.primary.opacity(0.5)))
+                // ストップライン（上端）
+                let line = Path(CGRect(x: w*0.6, y: h*0.05, width: w*0.32, height: h*0.04))
+                context.fill(line, with: .color(.primary))
+                var arrow = Path()
+                let ax = w*0.76; let ay = h*0.12
+                arrow.move(to: CGPoint(x: ax, y: ay))
+                arrow.addLine(to: CGPoint(x: ax - w*0.15, y: ay + h*0.2))
+                arrow.addLine(to: CGPoint(x: ax + w*0.15, y: ay + h*0.2))
+                arrow.closeSubpath()
+                context.fill(arrow, with: .color(.primary))
+                let shaft = Path(CGRect(x: ax - w*0.05, y: ay + h*0.18, width: w*0.1, height: h*0.55))
+                context.fill(shaft, with: .color(.primary))
+            case 9: // SF Symbol風 doc.on.doc + 矢印
+                // 奥のドキュメント
+                let back = Path(roundedRect: CGRect(x: w*0.15, y: h*0.38, width: w*0.45, height: h*0.35), cornerRadius: 3)
+                context.fill(back, with: .color(.primary.opacity(0.25)))
+                context.stroke(back, with: .color(.primary.opacity(0.4)), lineWidth: 1.5)
+                // 手前のドキュメント
+                let front = Path(roundedRect: CGRect(x: w*0.02, y: h*0.5, width: w*0.45, height: h*0.35), cornerRadius: 3)
+                context.fill(front, with: .color(.primary.opacity(0.1)))
+                context.stroke(front, with: .color(.primary.opacity(0.6)), lineWidth: 1.5)
+                // 手前の中の横線
+                for i in 0..<3 {
+                    let ly = h * (0.6 + Double(i) * 0.08)
+                    let l = Path(CGRect(x: w*0.08, y: ly, width: w*0.32, height: h*0.02))
+                    context.fill(l, with: .color(.primary.opacity(0.3)))
+                }
+                var arrow = Path()
+                let ax = w*0.78; let ay = h*0.02
+                arrow.move(to: CGPoint(x: ax, y: ay))
+                arrow.addLine(to: CGPoint(x: ax - w*0.17, y: ay + h*0.2))
+                arrow.addLine(to: CGPoint(x: ax + w*0.17, y: ay + h*0.2))
+                arrow.closeSubpath()
+                context.fill(arrow, with: .color(.primary))
+                let shaft = Path(CGRect(x: ax - w*0.05, y: ay + h*0.18, width: w*0.1, height: h*0.55))
+                context.fill(shaft, with: .color(.primary))
+            default: // 0: 現在のデザイン
+                let backCard = Path(roundedRect: CGRect(x: w*0.18, y: h*0.35, width: w*0.45, height: w*0.35), cornerRadius: 2)
+                context.fill(backCard, with: .color(.primary.opacity(0.25)))
+                let frontCard = Path(roundedRect: CGRect(x: w*0.08, y: h*0.45, width: w*0.45, height: w*0.35), cornerRadius: 2)
+                context.fill(frontCard, with: .color(.primary.opacity(0.45)))
+                var arrow = Path()
+                let ax = w*0.75; let ay = h*0.15
+                arrow.move(to: CGPoint(x: ax, y: ay))
+                arrow.addLine(to: CGPoint(x: ax - w*0.15, y: ay + h*0.2))
+                arrow.addLine(to: CGPoint(x: ax + w*0.15, y: ay + h*0.2))
+                arrow.closeSubpath()
+                context.fill(arrow, with: .color(.primary))
+                let shaft = Path(CGRect(x: ax - w*0.05, y: ay + h*0.18, width: w*0.1, height: h*0.5))
+                context.fill(shaft, with: .color(.primary))
+            }
         }
+    }
+}
+
+// アイコン候補一覧（テスト用）
+struct IconGalleryView: View {
+    var body: some View {
+        ScrollView {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 80))], spacing: 20) {
+                ForEach(0..<10) { i in
+                    VStack(spacing: 6) {
+                        MoveToTopIcon(variant: i)
+                            .frame(width: 50, height: 50)
+                        Text("#\(i)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color(uiColor: .systemGray6))
+                    )
+                }
+            }
+            .padding()
+        }
+        .navigationTitle("アイコン候補")
     }
 }

@@ -25,7 +25,7 @@ struct MemoInputView: View {
     @State private var showDeleteAlert = false
     // ルーレット展開状態
     @State private var showParentDial = false
-    @State private var showChildDial = false
+    @State private var showChildDial = true
     @State private var childExternalDragY: CGFloat? = nil
     @AppStorage("dialDefault") private var dialDefault: Int = 0
 
@@ -60,7 +60,8 @@ struct MemoInputView: View {
 
     private var parentOptions: [(id: String, name: String, color: Color)] {
         var list: [(String, String, Color)] = [("none", "タグなし", tagColor(for: 0))]
-        for tag in tags where tag.parentTagID == nil {
+        let parentTags = tags.filter { $0.parentTagID == nil }.sorted { $0.sortOrder < $1.sortOrder }
+        for tag in parentTags {
             list.append((tag.id.uuidString, tag.name, tagColor(for: tag.colorIndex)))
         }
         return list
@@ -231,7 +232,7 @@ struct MemoInputView: View {
         }
         .onAppear {
             showParentDial = dialDefault >= 1
-            showChildDial = dialDefault >= 2
+            showChildDial = true // 子ルーレット常時表示
         }
     }
 
@@ -380,7 +381,6 @@ struct MemoInputView: View {
                     childExternalDragY: $childExternalDragY
                 )
                 .offset(x: -30, y: -10) // ルーレットを左にはみ出し、上にずらす
-                childDialToggle
             }
             .frame(height: dialFixedHeight)
 
@@ -438,7 +438,7 @@ struct MemoInputView: View {
             .onTapGesture {
                 withAnimation(.spring(response: 0.3)) {
                     if showParentDial {
-                        showParentDial = false; showChildDial = false
+                        showParentDial = false
                     } else {
                         showParentDial = true
                     }

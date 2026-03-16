@@ -18,7 +18,7 @@ struct TagDialView: View {
     private let wheelRadius: CGFloat = 270      // 親の外周半径
     private let parentThickness: CGFloat = 82   // 親セクターの厚み
     private let childThickness: CGFloat = 70    // 子セクターの厚み
-    private let itemAngle: CGFloat = 8          // 各タグ間の角度（度）
+    private let itemAngle: CGFloat = 10         // 各タグ間の角度（度）
     private let dialHeight: CGFloat = 192
 
     // 親の回転
@@ -56,7 +56,27 @@ struct TagDialView: View {
     private func snappedIndex(rotation: CGFloat, count: Int) -> Int {
         guard count > 0 else { return 0 }
         let raw = Int(round(rotation / itemAngle))
-        return ((raw % count) + count) % count
+        return max(0, min(raw, count - 1))
+    }
+
+    // 端でクランプ（ゴムバンド付き）
+    private func clampedRotation(_ rotation: CGFloat, count: Int) -> CGFloat {
+        guard count > 0 else { return 0 }
+        let maxRot = CGFloat(max(count - 1, 0)) * itemAngle
+        if rotation < 0 {
+            return rotation * 0.2 // ゴムバンド: 20%だけ動く
+        } else if rotation > maxRot {
+            return maxRot + (rotation - maxRot) * 0.2
+        }
+        return rotation
+    }
+
+    // スナップ時に端を超えないようにクランプ
+    private func clampedSnap(_ rotation: CGFloat, count: Int) -> CGFloat {
+        guard count > 0 else { return 0 }
+        let snapped = round(rotation / itemAngle) * itemAngle
+        let maxRot = CGFloat(count - 1) * itemAngle
+        return max(0, min(snapped, maxRot))
     }
 
     var body: some View {
@@ -94,14 +114,14 @@ struct TagDialView: View {
 
             // --- 縁取り描画 ---
             // 親の外周
-            drawEdge(context: &context, cx: cx, cy: cy, radius: parentOuterR, lineWidth: 2.5, brightness: (0.55, 0.9, 0.55))
+            drawEdge(context: &context, cx: cx, cy: cy, radius: parentOuterR, lineWidth: 2.5, brightness: (0.35, 0.5, 0.35))
 
             // 親の内周 / 子の外周（共有境界）
-            drawEdge(context: &context, cx: cx, cy: cy, radius: parentInnerR, lineWidth: 1.5, brightness: (0.4, 0.7, 0.4))
+            drawEdge(context: &context, cx: cx, cy: cy, radius: parentInnerR, lineWidth: 1.5, brightness: (0.3, 0.45, 0.3))
 
             // 子の内周（showChild時のみ）
             if sc {
-                drawEdge(context: &context, cx: cx, cy: cy, radius: childInnerR, lineWidth: 1.5, brightness: (0.4, 0.7, 0.4))
+                drawEdge(context: &context, cx: cx, cy: cy, radius: childInnerR, lineWidth: 1.5, brightness: (0.3, 0.45, 0.3))
             }
 
             // --- 選択ポインター（赤い三角） ---
@@ -122,25 +142,27 @@ struct TagDialView: View {
                     if showChild && touchX > borderX {
                         // 子エリア（内周より右＝内側）
                         childIsDragging = true
-                        childRotation = childDragStart + value.translation.height * -0.3
+                        let rawRot = childDragStart + value.translation.height * -0.3
+                        childRotation = clampedRotation(rawRot, count: cOpts.count)
                     } else {
                         // 親エリア（内周より左＝外側）
                         parentIsDragging = true
-                        parentRotation = parentDragStart + value.translation.height * -0.3
+                        let rawRot = parentDragStart + value.translation.height * -0.3
+                        parentRotation = clampedRotation(rawRot, count: pOpts.count)
                     }
                 }
                 .onEnded { value in
                     if parentIsDragging {
-                        let snapped = round(parentRotation / itemAngle) * itemAngle
-                        withAnimation(.easeOut(duration: 0.15)) { parentRotation = snapped }
+                        let snapped = clampedSnap(parentRotation, count: pOpts.count)
+                        withAnimation(.spring(response: 0.3)) { parentRotation = snapped }
                         parentDragStart = snapped
                         parentIsInternalChange = true
                         updateParentSelection()
                         parentIsDragging = false
                     }
                     if childIsDragging {
-                        let snapped = round(childRotation / itemAngle) * itemAngle
-                        withAnimation(.easeOut(duration: 0.15)) { childRotation = snapped }
+                        let snapped = clampedSnap(childRotation, count: cOpts.count)
+                        withAnimation(.spring(response: 0.3)) { childRotation = snapped }
                         childDragStart = snapped
                         childIsInternalChange = true
                         updateChildSelection()
@@ -156,10 +178,11 @@ struct TagDialView: View {
         .onChange(of: childExternalDragY) { _, newValue in
             if let dragY = newValue {
                 childIsDragging = true
-                childRotation = childDragStart + dragY * -0.3
+                let rawRot = childDragStart + dragY * -0.3
+                childRotation = clampedRotation(rawRot, count: childOptions.count)
             } else if childIsDragging {
-                let snapped = round(childRotation / itemAngle) * itemAngle
-                withAnimation(.easeOut(duration: 0.15)) { childRotation = snapped }
+                let snapped = clampedSnap(childRotation, count: childOptions.count)
+                withAnimation(.spring(response: 0.3)) { childRotation = snapped }
                 childDragStart = snapped
                 childIsInternalChange = true
                 updateChildSelection()
@@ -192,15 +215,14 @@ struct TagDialView: View {
     ) {
         let midR = (innerR + outerR) / 2
 
-        for slotOffset in -8...8 {
+        for slotOffset in -10...10 {
             let baseIndex = Int(floor(rotation / itemAngle + 0.5))
             let rawIndex = baseIndex + slotOffset
-            let index = ((rawIndex % count) + count) % count
-            guard index < options.count else { continue }
+            let hasTag = rawIndex >= 0 && rawIndex < count
 
             let displayAngle = CGFloat(rawIndex) * itemAngle - rotation
             let dist = abs(displayAngle)
-            let maxDist = itemAngle * 6
+            let maxDist = itemAngle * 8
             let fade = max(0.0, 1.0 - dist / maxDist)
             guard fade > 0 else { continue }
 
@@ -226,33 +248,29 @@ struct TagDialView: View {
             )
             sector.closeSubpath()
 
-            let option = options[index]
-            let isSelected = dist < itemAngle / 2
+            let isSelected = hasTag && dist < itemAngle / 2
 
             // セクター塗り
             context.opacity = fade
             context.fill(
                 sector,
-                with: .color(option.color.opacity(isSelected ? 0.9 : 0.6))
+                with: .color(hasTag ? .white.opacity(isSelected ? 1.0 : 0.95) : Color(white: 0.92))
             )
 
-            // 選択ハイライト
+            // タグがない範囲は薄いグレー塗りのみ（仕切り線・バッジなし）
+            guard hasTag else { context.opacity = 1.0; continue }
+            let index = rawIndex
+            let option = options[index]
+
+            // 選択ハイライト（薄いグレーで浮き上がり感）
             if isSelected {
                 context.fill(
                     sector,
-                    with: .linearGradient(
-                        Gradient(colors: [
-                            .white.opacity(0.3),
-                            .white.opacity(0.05),
-                            .white.opacity(0.15)
-                        ]),
-                        startPoint: CGPoint(x: 0, y: cy - 20),
-                        endPoint: CGPoint(x: 0, y: cy + 20)
-                    )
+                    with: .color(Color.gray.opacity(0.05))
                 )
             }
 
-            // 仕切り線
+            // 仕切り線（上端）
             let divCG = Double(cgEnd) * .pi / 180
             var divLine = Path()
             divLine.move(to: CGPoint(
@@ -265,11 +283,30 @@ struct TagDialView: View {
             ))
             context.stroke(
                 divLine,
-                with: .color(.white.opacity(0.5 * fade)),
-                lineWidth: 0.8
+                with: .color(Color(white: 0.35).opacity(Double(fade) * 0.5)),
+                lineWidth: 1.5
             )
 
-            // テキスト
+            // 最後のセクターは下端にも仕切り線
+            if index == count - 1 {
+                let divStart = Double(cgStart) * .pi / 180
+                var bottomLine = Path()
+                bottomLine.move(to: CGPoint(
+                    x: cx + innerR * CGFloat(cos(divStart)),
+                    y: cy + innerR * CGFloat(sin(divStart))
+                ))
+                bottomLine.addLine(to: CGPoint(
+                    x: cx + outerR * CGFloat(cos(divStart)),
+                    y: cy + outerR * CGFloat(sin(divStart))
+                ))
+                context.stroke(
+                    bottomLine,
+                    with: .color(Color(white: 0.35).opacity(Double(fade) * 0.5)),
+                    lineWidth: 1.5
+                )
+            }
+
+            // カラーバッジ + テキスト
             let cgMid = (180.0 - Double(displayAngle)) * .pi / 180
             let textX = cx + midR * CGFloat(cos(cgMid))
             let textY = cy + midR * CGFloat(sin(cgMid))
@@ -280,17 +317,46 @@ struct TagDialView: View {
                 }
                 return option.name
             }()
-            let fontSize: CGFloat = isSelected ? 16 : 12
+            let fontSize: CGFloat = isSelected ? 14 : 11
+            let isNoneTag = option.id == "none"
+
+            // テキスト色: タグなしは黒、それ以外は色の明るさで判定
+            let textColor: Color = {
+                if isNoneTag { return Color(white: isSelected ? 0.1 : 0.4) }
+                var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0
+                UIColor(option.color).getRed(&r, green: &g, blue: &b, alpha: nil)
+                let luminance = 0.299 * r + 0.587 * g + 0.114 * b
+                return luminance < 0.6 ? .white : .black
+            }()
             let resolved = context.resolve(
                 Text(displayName)
                     .font(.system(
                         size: fontSize,
-                        weight: isSelected ? .bold : .medium,
+                        weight: isSelected ? .bold : .semibold,
                         design: .rounded
                     ))
-                    .foregroundColor(Color(white: isSelected ? 0.1 : 0.3))
+                    .foregroundColor(textColor)
             )
-            context.draw(resolved, at: CGPoint(x: textX, y: textY), anchor: .center)
+            // バッジ+テキストをセクターの角度に合わせて回転描画
+            let rotAngle = Angle.degrees(-Double(displayAngle))
+            var rotCtx = context
+            rotCtx.translateBy(x: textX, y: textY)
+            rotCtx.rotate(by: rotAngle)
+
+            // バッジ背景（「タグなし」「なし」はバッジなし）
+            if !isNoneTag {
+                let badgeW = resolved.measure(in: CGSize(width: 200, height: 50)).width + 12
+                let badgeH = resolved.measure(in: CGSize(width: 200, height: 50)).height + 6
+                let badgeRect = CGRect(
+                    x: -badgeW / 2,
+                    y: -badgeH / 2,
+                    width: badgeW,
+                    height: badgeH
+                )
+                let badgePath = Path(roundedRect: badgeRect, cornerRadius: 5)
+                rotCtx.fill(badgePath, with: .color(option.color.opacity(isSelected ? 1.0 : 0.8)))
+            }
+            rotCtx.draw(resolved, at: .zero, anchor: .center)
 
             context.opacity = 1.0
         }

@@ -15,11 +15,11 @@ struct TagDialView: View {
     @Binding var showChild: Bool
 
     // 円の設定
-    private let wheelRadius: CGFloat = 300      // 親の外周半径
+    private let wheelRadius: CGFloat = 270      // 親の外周半径
     private let parentThickness: CGFloat = 82   // 親セクターの厚み
     private let childThickness: CGFloat = 70    // 子セクターの厚み
     private let itemAngle: CGFloat = 8          // 各タグ間の角度（度）
-    private let dialHeight: CGFloat = 160
+    private let dialHeight: CGFloat = 192
 
     // 親の回転
     @State private var parentRotation: CGFloat = 0

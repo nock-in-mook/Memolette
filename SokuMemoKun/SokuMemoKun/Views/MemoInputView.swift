@@ -343,7 +343,7 @@ struct MemoInputView: View {
     // MARK: - ルーレット（トレー方式）
 
     // ルーレットの固定高さ
-    private let dialFixedHeight: CGFloat = 160
+    private let dialFixedHeight: CGFloat = 192
     // トレーの設定
     private let trayColor = Color(red: 0.76, green: 0.76, blue: 0.78)
     private let trayCornerRadius: CGFloat = 10
@@ -353,58 +353,22 @@ struct MemoInputView: View {
     private let tabHeight: CGFloat = 22     // タブの高さ（最初のデザインと同じ細さ）
     private let tabRadius: CGFloat = 6      // タブの左側角丸
 
+    // チラ見せ量（閉じている時にルーレットがどれだけ覗くか）
+    private let peekAmount: CGFloat = 0  // あとで調整可能
+
+    // トレー全体の幅（GeometryReaderで計測）
+    @State private var trayTotalWidth: CGFloat = 300
+
     private var dialArea: some View {
-        Group {
-            if showParentDial {
-                openTray
-                    .transition(.move(edge: .trailing))
-            } else {
-                closedTab
-            }
-        }
-        .fixedSize(horizontal: true, vertical: false)
+        openTray
+            .fixedSize(horizontal: true, vertical: false)
+            // 閉じている時: トレー本体分だけ右にオフセット（タブだけ見える）
+            .offset(x: showParentDial ? 0 : (trayTotalWidth - tabWidth - peekAmount))
+            .animation(.spring(response: 0.3), value: showParentDial)
     }
 
-    // 閉じている時のタブ
-    private var closedTab: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 2) {
-                Text("◀").font(.system(size: 12))
-                Text("タグ付け").font(.system(size: 13, weight: .bold, design: .rounded))
-            }
-            .foregroundStyle(.white)
-            .frame(width: tabWidth, height: tabHeight, alignment: .leading)
-            .padding(.leading, 6)
-            .background(
-                UnevenRoundedRectangle(
-                    topLeadingRadius: tabRadius,
-                    bottomLeadingRadius: tabRadius,
-                    bottomTrailingRadius: 0,
-                    topTrailingRadius: 0
-                )
-                .fill(trayColor)
-                .shadow(color: .black.opacity(0.15), radius: 2, x: -1, y: 1)
-            )
-            .contentShape(Rectangle())
-            .onTapGesture {
-                withAnimation(.spring(response: 0.3)) { showParentDial = true }
-            }
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 5)
-                    .onChanged { value in
-                        if value.translation.width < -10 {
-                            withAnimation(.spring(response: 0.3)) { showParentDial = true }
-                        }
-                    }
-            )
-            Spacer(minLength: 0)
-        }
-    }
-
-    // 展開時: タブがトレーの左上から飛び出した一体型
+    // 一体型トレー（常時描画）
     private var openTray: some View {
-        // GeometryReaderでトレー本体の実サイズを取得し、
-        // その上にタブが飛び出すShapeを正確に描画する
         VStack(spacing: 4) {
             HStack(spacing: 0) {
                 TagDialView(
@@ -415,6 +379,7 @@ struct MemoInputView: View {
                     showChild: $showChildDial,
                     childExternalDragY: $childExternalDragY
                 )
+                .offset(x: -30, y: -10) // ルーレットを左にはみ出し、上にずらす
                 childDialToggle
             }
             .frame(height: dialFixedHeight)
@@ -447,20 +412,24 @@ struct MemoInputView: View {
         .padding(.leading, tabWidth + 12)
         .padding(.trailing, 12)
         .background(
-            TrayWithTabShape(
-                tabWidth: tabWidth,
-                tabHeight: tabHeight,
-                tabRadius: tabRadius,
-                bodyRadius: trayCornerRadius
-            )
-            .fill(trayColor)
-            .shadow(color: .black.opacity(0.2), radius: 3, x: -2, y: 2)
+            GeometryReader { geo in
+                TrayWithTabShape(
+                    tabWidth: tabWidth,
+                    tabHeight: tabHeight,
+                    tabRadius: tabRadius,
+                    bodyRadius: trayCornerRadius
+                )
+                .fill(trayColor)
+                .shadow(color: .black.opacity(0.2), radius: 3, x: -2, y: 2)
+                .onAppear { trayTotalWidth = geo.size.width }
+                .onChange(of: geo.size.width) { _, newW in trayTotalWidth = newW }
+            }
         )
         // タブテキストを左上に配置
         .overlay(alignment: .topLeading) {
             HStack(spacing: 2) {
-                Text("▶").font(.system(size: 12))
-                Text("しまう").font(.system(size: 13, weight: .bold, design: .rounded))
+                Text(showParentDial ? "▶" : "◀").font(.system(size: 12))
+                Text(showParentDial ? "しまう" : "タグ付け").font(.system(size: 13, weight: .bold, design: .rounded))
             }
             .foregroundStyle(.white)
             .frame(width: tabWidth, height: tabHeight, alignment: .leading)
@@ -468,9 +437,21 @@ struct MemoInputView: View {
             .contentShape(Rectangle())
             .onTapGesture {
                 withAnimation(.spring(response: 0.3)) {
-                    showParentDial = false; showChildDial = false
+                    if showParentDial {
+                        showParentDial = false; showChildDial = false
+                    } else {
+                        showParentDial = true
+                    }
                 }
             }
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 5)
+                    .onChanged { value in
+                        if !showParentDial && value.translation.width < -10 {
+                            withAnimation(.spring(response: 0.3)) { showParentDial = true }
+                        }
+                    }
+            )
         }
     }
 

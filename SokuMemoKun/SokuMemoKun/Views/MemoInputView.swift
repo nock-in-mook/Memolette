@@ -144,6 +144,12 @@ struct MemoInputView: View {
             .padding(.trailing, showParentDial ? (showChildDial ? 185 : 135) : 0)
             .animation(.spring(response: 0.3), value: showParentDial)
             .animation(.spring(response: 0.3), value: showChildDial)
+            .onTapGesture {
+                // トレー外タップで収納
+                if showParentDial {
+                    withAnimation(.spring(response: 0.3)) { showParentDial = false }
+                }
+            }
             .overlay(alignment: .bottomTrailing) {
                 // 展開/縮小ボタン
                 Button {
@@ -166,7 +172,7 @@ struct MemoInputView: View {
             .overlay(alignment: .topTrailing) {
                 // 仕切り線直下・右端からタグタブを生やす
                 dialArea
-                    .padding(.trailing, -10)
+                    .padding(.trailing, -15)
                     .offset(y: -1)
             }
             Divider()
@@ -346,16 +352,16 @@ struct MemoInputView: View {
     // ルーレットの固定高さ
     private let dialFixedHeight: CGFloat = 211
     // トレーの設定
-    private let trayColor = Color(red: 0.76, green: 0.76, blue: 0.78)
+    private let trayColor = Color.gray  // 子タグドロワーと統一
     private let trayCornerRadius: CGFloat = 10
 
     // タブ寸法
-    private let tabWidth: CGFloat = 70      // タブの横幅
+    private let tabWidth: CGFloat = 50      // タブの横幅（短くしてチラ見せスペース確保）
     private let tabHeight: CGFloat = 22     // タブの高さ（最初のデザインと同じ細さ）
     private let tabRadius: CGFloat = 6      // タブの左側角丸
 
     // チラ見せ量（閉じている時にルーレットがどれだけ覗くか）
-    private let peekAmount: CGFloat = 0  // あとで調整可能
+    private let peekAmount: CGFloat = 10  // トレーチラ見せ量
 
     // トレー全体の幅（GeometryReaderで計測）
     @State private var trayTotalWidth: CGFloat = 300
@@ -364,7 +370,7 @@ struct MemoInputView: View {
         openTray
             .fixedSize(horizontal: true, vertical: false)
             // 閉じている時: トレー本体分だけ右にオフセット（タブだけ見える）
-            .offset(x: showParentDial ? 0 : (trayTotalWidth - tabWidth - peekAmount))
+            .offset(x: showParentDial ? 0 : (trayTotalWidth - tabWidth))
             .animation(.spring(response: 0.3), value: showParentDial)
     }
 
@@ -381,7 +387,7 @@ struct MemoInputView: View {
                     isOpen: showParentDial,
                     childExternalDragY: $childExternalDragY
                 )
-                .offset(x: -30, y: -10) // ルーレットを左にはみ出し、上にずらす
+                .offset(x: showParentDial ? -27 : -30, y: -10) // 開き時は右寄せ、閉じ時はチラ見せ
             }
             .frame(height: dialFixedHeight)
 
@@ -418,7 +424,8 @@ struct MemoInputView: View {
                     tabWidth: tabWidth,
                     tabHeight: tabHeight,
                     tabRadius: tabRadius,
-                    bodyRadius: trayCornerRadius
+                    bodyRadius: trayCornerRadius,
+                    bodyPeek: showParentDial ? 0 : peekAmount
                 )
                 .fill(trayColor)
                 .shadow(color: .black.opacity(0.2), radius: 3, x: -2, y: 2)
@@ -430,7 +437,7 @@ struct MemoInputView: View {
         .overlay(alignment: .topLeading) {
             HStack(spacing: 2) {
                 Text(showParentDial ? "▶" : "◀").font(.system(size: 12))
-                Text(showParentDial ? "しまう" : "タグ付け").font(.system(size: 13, weight: .bold, design: .rounded))
+                Text(showParentDial ? "しまう" : "タグ").font(.system(size: 13, weight: .bold, design: .rounded))
             }
             .foregroundStyle(.white)
             .frame(width: tabWidth, height: tabHeight, alignment: .leading)
@@ -512,11 +519,13 @@ struct TrayWithTabShape: Shape {
     let tabHeight: CGFloat
     let tabRadius: CGFloat
     let bodyRadius: CGFloat
+    var bodyPeek: CGFloat = 0  // ボディが取っ手エリアに侵入する幅
 
     func path(in rect: CGRect) -> Path {
         // タブ: (0,0) → (tabWidth, tabHeight) 左上に飛び出す
-        // ボディ: (tabWidth, tabHeight) → (maxX, maxY)
+        // ボディ: (bodyLeftX, tabHeight) → (maxX, maxY)
         let bodyTop = tabHeight
+        let bodyLeftX = tabWidth - bodyPeek  // peekぶんだけ左に伸ばす
 
         var p = Path()
 
@@ -525,28 +534,28 @@ struct TrayWithTabShape: Shape {
         p.addArc(center: CGPoint(x: tabRadius, y: tabRadius),
                  radius: tabRadius, startAngle: .degrees(180), endAngle: .degrees(270), clockwise: false)
 
-        // 2. タブ上辺 → 右端まで（ボディ上辺と同じ高さ）
+        // 2. タブ上辺 → 右端まで
         p.addLine(to: CGPoint(x: rect.maxX, y: 0))
 
         // 3. 右辺を下へ
         p.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
 
         // 4. ボディ下辺 → ボディ左下角（丸み）
-        p.addLine(to: CGPoint(x: tabWidth + bodyRadius, y: rect.maxY))
-        p.addArc(center: CGPoint(x: tabWidth + bodyRadius, y: rect.maxY - bodyRadius),
+        p.addLine(to: CGPoint(x: bodyLeftX + bodyRadius, y: rect.maxY))
+        p.addArc(center: CGPoint(x: bodyLeftX + bodyRadius, y: rect.maxY - bodyRadius),
                  radius: bodyRadius, startAngle: .degrees(90), endAngle: .degrees(180), clockwise: false)
 
         // 5. ボディ左辺を上へ → タブ下辺
-        p.addLine(to: CGPoint(x: tabWidth, y: bodyTop))
+        p.addLine(to: CGPoint(x: bodyLeftX, y: bodyTop))
 
         // 6. タブ下辺を左へ（左下角の丸み分手前まで）
         p.addLine(to: CGPoint(x: tabRadius, y: bodyTop))
 
-        // 9. タブ左下角（丸み）
+        // 7. タブ左下角（丸み）
         p.addArc(center: CGPoint(x: tabRadius, y: bodyTop - tabRadius),
                  radius: tabRadius, startAngle: .degrees(90), endAngle: .degrees(180), clockwise: false)
 
-        // 10. タブ左辺を上へ → 始点に戻る
+        // 8. タブ左辺を上へ → 始点に戻る
         p.closeSubpath()
 
         return p

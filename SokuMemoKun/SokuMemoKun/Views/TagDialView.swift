@@ -129,6 +129,28 @@ struct TagDialView: View {
 
             // --- 選択ポインター（赤い三角） ---
             drawPointer(context: &context, cy: cy)
+
+            // --- インナーシャドウ（トレーの縁がルーレットに影を落とす風） ---
+            let shadowSize: CGFloat = 8
+            let shadowColor = Color.black.opacity(0.2)
+            let clear = Color.clear
+            let shadowLeft: CGFloat = 20  // トレー左端に合わせる
+            // 上辺
+            let topGrad = Gradient(colors: [shadowColor, clear])
+            context.fill(
+                Path(CGRect(x: shadowLeft, y: 0, width: size.width - shadowLeft, height: shadowSize)),
+                with: .linearGradient(topGrad, startPoint: CGPoint(x: 0, y: 0), endPoint: CGPoint(x: 0, y: shadowSize))
+            )
+            // 下辺
+            context.fill(
+                Path(CGRect(x: shadowLeft, y: size.height - shadowSize, width: size.width - shadowLeft, height: shadowSize)),
+                with: .linearGradient(topGrad, startPoint: CGPoint(x: 0, y: size.height), endPoint: CGPoint(x: 0, y: size.height - shadowSize))
+            )
+            // 右辺
+            context.fill(
+                Path(CGRect(x: size.width - shadowSize, y: 0, width: shadowSize, height: size.height)),
+                with: .linearGradient(topGrad, startPoint: CGPoint(x: size.width, y: 0), endPoint: CGPoint(x: size.width - shadowSize, y: 0))
+            )
         }
         .frame(width: canvasWidth, height: dialHeight)
         .clipped()

@@ -14,12 +14,15 @@ struct TagDialView: View {
     // 子ダイアル表示
     @Binding var showChild: Bool
 
+    // トレーが開いているか（カラー表示の切り替えに使用）
+    var isOpen: Bool = false
+
     // 円の設定
-    private let wheelRadius: CGFloat = 270      // 親の外周半径
-    private let parentThickness: CGFloat = 82   // 親セクターの厚み
-    private let childThickness: CGFloat = 82    // 子セクターの厚み（親と同じ）
-    private let itemAngle: CGFloat = 10         // 各タグ間の角度（度）
-    private let dialHeight: CGFloat = 192
+    private let wheelRadius: CGFloat = 350      // 親の外周半径
+    private let parentThickness: CGFloat = 110  // 親セクターの厚み
+    private let childThickness: CGFloat = 110   // 子セクターの厚み（親と同じ）
+    private let itemAngle: CGFloat = 8          // 各タグ間の角度（度）
+    private let dialHeight: CGFloat = 211
 
     // 親の回転
     @State private var parentRotation: CGFloat = 0
@@ -98,7 +101,7 @@ struct TagDialView: View {
                     context: &context, cx: cx, cy: cy,
                     outerR: parentOuterR, innerR: parentInnerR,
                     options: pOpts, rotation: pRot, count: pCount,
-                    maxChars: 5
+                    maxChars: 10
                 )
             }
 
@@ -108,7 +111,7 @@ struct TagDialView: View {
                     context: &context, cx: cx, cy: cy,
                     outerR: childOuterR, innerR: childInnerR,
                     options: cOpts, rotation: cRot, count: cCount,
-                    maxChars: 3
+                    maxChars: 7
                 )
             }
 
@@ -252,40 +255,53 @@ struct TagDialView: View {
 
             // セクター塗り
             context.opacity = fade
-            context.fill(
-                sector,
-                with: .color(hasTag ? .white.opacity(isSelected ? 1.0 : 0.95) : Color(white: 0.92))
-            )
+            if hasTag && isOpen {
+                // 開いている時: タグカラーで塗りつぶし
+                let option = options[rawIndex]
+                let isNone = option.id == "none"
+                context.fill(
+                    sector,
+                    with: .color(isNone ? .white.opacity(isSelected ? 1.0 : 0.95) : option.color.opacity(isSelected ? 1.0 : 0.85))
+                )
+            } else {
+                // 閉じている時 or タグなし範囲: 白 or 薄いグレー
+                context.fill(
+                    sector,
+                    with: .color(hasTag ? .white.opacity(isSelected ? 1.0 : 0.95) : Color(white: 0.92))
+                )
+            }
 
-            // タグがない範囲は薄いグレー塗りのみ（仕切り線・バッジなし）
+            // 仕切り線（閉じてる時は全スロット、開いてる時はタグありのみ）
+            if !isOpen || hasTag {
+                let divCG = Double(cgEnd) * .pi / 180
+                var divLine = Path()
+                divLine.move(to: CGPoint(
+                    x: cx + innerR * CGFloat(cos(divCG)),
+                    y: cy + innerR * CGFloat(sin(divCG))
+                ))
+                divLine.addLine(to: CGPoint(
+                    x: cx + outerR * CGFloat(cos(divCG)),
+                    y: cy + outerR * CGFloat(sin(divCG))
+                ))
+                context.stroke(
+                    divLine,
+                    with: .color(Color(white: 0.35).opacity(Double(fade) * 0.5)),
+                    lineWidth: 1.5
+                )
+            }
+
+            // タグがない範囲は塗り＋仕切り線のみ（バッジなし）
             guard hasTag else { context.opacity = 1.0; continue }
             let index = rawIndex
             let option = options[index]
 
-            // 選択ハイライト（薄いグレーで浮き上がり感）
-            if isSelected {
+            // 選択ハイライト（閉じている時のみ）
+            if isSelected && !isOpen {
                 context.fill(
                     sector,
                     with: .color(Color.gray.opacity(0.05))
                 )
             }
-
-            // 仕切り線（上端）
-            let divCG = Double(cgEnd) * .pi / 180
-            var divLine = Path()
-            divLine.move(to: CGPoint(
-                x: cx + innerR * CGFloat(cos(divCG)),
-                y: cy + innerR * CGFloat(sin(divCG))
-            ))
-            divLine.addLine(to: CGPoint(
-                x: cx + outerR * CGFloat(cos(divCG)),
-                y: cy + outerR * CGFloat(sin(divCG))
-            ))
-            context.stroke(
-                divLine,
-                with: .color(Color(white: 0.35).opacity(Double(fade) * 0.5)),
-                lineWidth: 1.5
-            )
 
             // 最後のセクターは下端にも仕切り線
             if index == count - 1 {
@@ -317,12 +333,33 @@ struct TagDialView: View {
                 }
                 return option.name
             }()
-            let fontSize: CGFloat = isSelected ? 14 : 11
+            // フォントサイズ: セクター幅と文字数に応じて可変
+            let nameLen = displayName.count
+            let thickness = outerR - innerR
+            let baseFontSize: CGFloat = {
+                if maxChars >= 10 {
+                    // 親タグ
+                    if nameLen <= 2 { return 24 }
+                    if nameLen <= 3 { return 21 }
+                    if nameLen <= 4 { return 18 }
+                    if nameLen <= 6 { return 15 }
+                    if nameLen <= 8 { return 13 }
+                    return 11
+                } else {
+                    // 子タグ（少し小さめ）
+                    if nameLen <= 2 { return 16 }
+                    if nameLen <= 3 { return 14 }
+                    if nameLen <= 5 { return 12 }
+                    return 10
+                }
+            }()
             let isNoneTag = option.id == "none"
+            let isParent = maxChars >= 10
+            let fontSize: CGFloat = isNoneTag ? (isParent ? 16 : 14) : (isSelected ? baseFontSize : max(baseFontSize - 2, 9))
 
-            // テキスト色: タグなしは黒、それ以外は色の明るさで判定
+            // テキスト色: タグなしは薄いグレー固定、それ以外は色の明るさで判定
             let textColor: Color = {
-                if isNoneTag { return Color(white: isSelected ? 0.1 : 0.4) }
+                if isNoneTag { return Color(white: 0.55) }
                 var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0
                 UIColor(option.color).getRed(&r, green: &g, blue: &b, alpha: nil)
                 let luminance = 0.299 * r + 0.587 * g + 0.114 * b
@@ -367,8 +404,8 @@ struct TagDialView: View {
         radius: CGFloat, lineWidth: CGFloat,
         brightness: (CGFloat, CGFloat, CGFloat)
     ) {
-        // Canvas高さに収まる角度範囲を計算（はみ出し防止）
-        let halfHeight = dialHeight / 2 - lineWidth
+        // Canvas高さに収まる角度範囲を計算（パネルの端まで描画）
+        let halfHeight = dialHeight / 2
         let maxSinAngle = min(1.0, Double(halfHeight / radius))
         let maxAngle = asin(maxSinAngle) * 180.0 / .pi
         let startDeg = 180.0 - maxAngle

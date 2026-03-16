@@ -344,7 +344,7 @@ struct MemoInputView: View {
     // MARK: - ルーレット（トレー方式）
 
     // ルーレットの固定高さ
-    private let dialFixedHeight: CGFloat = 192
+    private let dialFixedHeight: CGFloat = 211
     // トレーの設定
     private let trayColor = Color(red: 0.76, green: 0.76, blue: 0.78)
     private let trayCornerRadius: CGFloat = 10
@@ -378,6 +378,7 @@ struct MemoInputView: View {
                     childOptions: childOptions,
                     childSelectedID: $viewModel.selectedChildTagID,
                     showChild: $showChildDial,
+                    isOpen: showParentDial,
                     childExternalDragY: $childExternalDragY
                 )
                 .offset(x: -30, y: -10) // ルーレットを左にはみ出し、上にずらす

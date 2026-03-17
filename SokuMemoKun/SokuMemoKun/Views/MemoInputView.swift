@@ -408,27 +408,29 @@ struct MemoInputView: View {
             }
             .frame(height: dialFixedHeight)
 
-            HStack(spacing: 6) {
+            ZStack(alignment: .trailing) {
                 Button {
                     newTagIsChild = false
                     showNewTagSheet = true
                 } label: {
                     Label("親タグ追加", systemImage: "plus.circle.fill")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(.white.opacity(0.8))
                 }
-                .offset(x: -40)
+                .padding(.trailing, 160) // 親タグラベル（200）の下あたり
                 if showChildDial {
                     Button {
                         newTagIsChild = true
                         showNewTagSheet = true
                     } label: {
                         Label("子タグ追加", systemImage: "plus.circle")
-                            .font(.system(size: 11, weight: .medium))
+                            .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(.white.opacity(0.7))
                     }
+                    .padding(.trailing, 50) // 子タグラベル（83）の下あたり
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .trailing)
             .padding(.vertical, 4)
             .offset(y: -13)
         }

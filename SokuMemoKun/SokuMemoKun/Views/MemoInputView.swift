@@ -23,14 +23,64 @@ struct MemoInputView: View {
     @State private var isEditing = true
     // 削除確認ダイアログ
     @State private var showDeleteAlert = false
+    // 子タグ追加時の親タグ未選択警告
+    @State private var showNoParentAlert = false
+    // タグ長押し編集/削除
+    @State private var longPressedTagID: UUID?
+    @State private var longPressedIsChild = false
+    @State private var showTagActionSheet = false
+    @State private var showTagEditSheet = false
+    @State private var showTagDeleteAlert = false
     // ルーレット展開状態
     @State private var showParentDial = false
+    @State private var trayHidden = false // 完全収納（取っ手も隠れる）
     @State private var showChildDial = true
     @State private var childExternalDragY: CGFloat? = nil
     @AppStorage("dialDefault") private var dialDefault: Int = 0
 
     @AppStorage("allTagSortOrder") private var allTagSortOrder: Int = -1
     @AppStorage("noTagSortOrder") private var noTagSortOrder: Int = 9999
+
+    // タグ削除ダイアログのタイトル・メッセージ
+    private var longPressedTag: Tag? {
+        guard let id = longPressedTagID else { return nil }
+        return tags.first(where: { $0.id == id })
+    }
+
+    private var tagDeleteAlertTitle: String {
+        guard let tag = longPressedTag else { return "タグを削除" }
+        let count = tag.memos.count
+        if count > 0 {
+            return "「\(tag.name)」を削除しますか？（メモ\(count)件あり）"
+        }
+        return "「\(tag.name)」を削除しますか？"
+    }
+
+    private var tagDeleteAlertMessage: String {
+        guard let tag = longPressedTag else { return "" }
+        let count = tag.memos.count
+        if count > 0 {
+            return "このタグに紐づく\(count)件のメモは「タグなし」に移動されます。メモ自体は削除されません。"
+        }
+        return "このタグを削除します。"
+    }
+
+    private func deleteTag() {
+        guard let tag = longPressedTag else { return }
+        // メモからタグを外す
+        for memo in tag.memos {
+            memo.tags.removeAll { $0.id == tag.id }
+        }
+        // 選択中のタグだった場合はクリア
+        if viewModel.selectedTagID == tag.id {
+            viewModel.selectedTagID = nil
+        }
+        if viewModel.selectedChildTagID == tag.id {
+            viewModel.selectedChildTagID = nil
+        }
+        modelContext.delete(tag)
+        longPressedTagID = nil
+    }
 
     private func tabIndex(for tagID: UUID?) -> Int {
         // TabbedMemoListViewのtabItemsと同じ並び順で計算
@@ -144,6 +194,12 @@ struct MemoInputView: View {
             .padding(.trailing, showParentDial ? (showChildDial ? 185 : 135) : 0)
             .animation(.spring(response: 0.3), value: showParentDial)
             .animation(.spring(response: 0.3), value: showChildDial)
+            .onTapGesture {
+                // トレー外タップで収納
+                if showParentDial {
+                    withAnimation(.spring(response: 0.3)) { showParentDial = false }
+                }
+            }
             .overlay(alignment: .bottomTrailing) {
                 // 展開/縮小ボタン
                 Button {
@@ -166,7 +222,7 @@ struct MemoInputView: View {
             .overlay(alignment: .topTrailing) {
                 // 仕切り線直下・右端からタグタブを生やす
                 dialArea
-                    .padding(.trailing, -10)
+                    .padding(.trailing, -15)
                     .offset(y: -1)
             }
             Divider()
@@ -208,6 +264,46 @@ struct MemoInputView: View {
                 }
             )
         }
+        // 親タグ未選択で子タグ追加しようとした時の警告
+        .alert("親タグを選んでください", isPresented: $showNoParentAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("子タグを追加するには、先にルーレットで親タグを選択してください。")
+        }
+        // タグ長押しアクションシート
+        .confirmationDialog(
+            longPressedTag != nil ? "「\(longPressedTag!.name)」" : "タグの操作",
+            isPresented: $showTagActionSheet,
+            titleVisibility: .visible
+        ) {
+            Button("タグ名・色を編集") { showTagEditSheet = true }
+            if let tag = longPressedTag, tag.memos.count > 0 {
+                Button("削除（メモ\(tag.memos.count)件あり）", role: .destructive) { showTagDeleteAlert = true }
+            } else {
+                Button("削除", role: .destructive) { showTagDeleteAlert = true }
+            }
+            Button("キャンセル", role: .cancel) {}
+        }
+        // タグ編集シート
+        .sheet(isPresented: $showTagEditSheet) {
+            if let tagID = longPressedTagID,
+               let tag = tags.first(where: { $0.id == tagID }) {
+                TagDetailEditView(
+                    tag: tag,
+                    titleLabel: longPressedIsChild ? "子タグの編集" : "親タグの編集"
+                )
+            }
+        }
+        // タグ削除確認ダイアログ
+        .alert(
+            tagDeleteAlertTitle,
+            isPresented: $showTagDeleteAlert
+        ) {
+            Button("削除", role: .destructive) { deleteTag() }
+            Button("キャンセル", role: .cancel) {}
+        } message: {
+            Text(tagDeleteAlertMessage)
+        }
         .onChange(of: focusInput) { _, newValue in
             if newValue { isEditing = true; isTextEditorFocused = true; focusInput = false }
         }
@@ -231,7 +327,18 @@ struct MemoInputView: View {
             viewModel.onTagChanged(tags: tags)
         }
         .onAppear {
-            showParentDial = dialDefault >= 1
+            // dialDefault: 0=チラ見せ, 1=全開, 2=完全収納
+            switch dialDefault {
+            case 2:
+                trayHidden = true
+                showParentDial = false
+            case 1:
+                trayHidden = false
+                showParentDial = true
+            default:
+                trayHidden = false
+                showParentDial = false
+            }
             showChildDial = true // 子ルーレット常時表示
         }
     }
@@ -254,7 +361,8 @@ struct MemoInputView: View {
                 }
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 6)
+        .padding(.top, 10)
+        .padding(.bottom, 6)
     }
 
     private var tagDisplay: some View {
@@ -344,28 +452,33 @@ struct MemoInputView: View {
     // MARK: - ルーレット（トレー方式）
 
     // ルーレットの固定高さ
-    private let dialFixedHeight: CGFloat = 192
+    private let dialFixedHeight: CGFloat = 211
     // トレーの設定
-    private let trayColor = Color(red: 0.76, green: 0.76, blue: 0.78)
+    private let trayColor = Color.gray  // 子タグドロワーと統一
     private let trayCornerRadius: CGFloat = 10
 
     // タブ寸法
-    private let tabWidth: CGFloat = 70      // タブの横幅
+    private let tabWidth: CGFloat = 80      // タブの横幅（「◀ タグ付け」テキスト分）
     private let tabHeight: CGFloat = 22     // タブの高さ（最初のデザインと同じ細さ）
     private let tabRadius: CGFloat = 6      // タブの左側角丸
 
     // チラ見せ量（閉じている時にルーレットがどれだけ覗くか）
-    private let peekAmount: CGFloat = 0  // あとで調整可能
+    private let peekAmount: CGFloat = 10  // トレーチラ見せ量
 
     // トレー全体の幅（GeometryReaderで計測）
     @State private var trayTotalWidth: CGFloat = 300
 
+    // 完全収納時に取っ手が覗く量
+    private let hiddenPeekAmount: CGFloat = 34
+
     private var dialArea: some View {
         openTray
             .fixedSize(horizontal: true, vertical: false)
-            // 閉じている時: トレー本体分だけ右にオフセット（タブだけ見える）
-            .offset(x: showParentDial ? 0 : (trayTotalWidth - tabWidth - peekAmount))
+            .offset(x: trayHidden
+                ? (trayTotalWidth - hiddenPeekAmount)  // 完全収納: 取っ手が少しだけ覗く
+                : (showParentDial ? 0 : (trayTotalWidth - tabWidth)))  // 通常
             .animation(.spring(response: 0.3), value: showParentDial)
+            .animation(.spring(response: 0.3), value: trayHidden)
     }
 
     // 一体型トレー（常時描画）
@@ -378,37 +491,73 @@ struct MemoInputView: View {
                     childOptions: childOptions,
                     childSelectedID: $viewModel.selectedChildTagID,
                     showChild: $showChildDial,
-                    childExternalDragY: $childExternalDragY
+                    isOpen: showParentDial,
+                    childExternalDragY: $childExternalDragY,
+                    onEditTag: { id, isChild in
+                        if let uuid = UUID(uuidString: id) {
+                            longPressedTagID = uuid
+                            longPressedIsChild = isChild
+                            showTagEditSheet = true
+                        }
+                    },
+                    onDeleteTag: { id in
+                        if let uuid = UUID(uuidString: id) {
+                            longPressedTagID = uuid
+                            showTagDeleteAlert = true
+                        }
+                    }
                 )
-                .offset(x: -30, y: -10) // ルーレットを左にはみ出し、上にずらす
+                .offset(x: showParentDial ? -27 : -50, y: -10) // 開き時は右寄せ、閉じ時はチラ見せ
+                .allowsHitTesting(showParentDial) // チラ見せ時はタッチ無効
+                // 引き出し時: 右端の余白に「しまう」ボタン
+                if showParentDial {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.5))
+                        .frame(maxHeight: .infinity)
+                        .frame(width: 36)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.3)) { showParentDial = false }
+                        }
+                }
             }
             .frame(height: dialFixedHeight)
 
-            HStack(spacing: 6) {
+            ZStack(alignment: .trailing) {
                 Button {
                     newTagIsChild = false
                     showNewTagSheet = true
                 } label: {
                     Label("親タグ追加", systemImage: "plus.circle.fill")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(.white.opacity(0.8))
                 }
+                .padding(.trailing, 196) // 親タグラベル（200）の下あたり +36矢印ボタン分
                 if showChildDial {
                     Button {
-                        newTagIsChild = true
-                        showNewTagSheet = true
+                        if viewModel.selectedTagID == nil {
+                            // 親タグが「タグなし」の時は警告
+                            showNoParentAlert = true
+                        } else {
+                            newTagIsChild = true
+                            showNewTagSheet = true
+                        }
                     } label: {
                         Label("子タグ追加", systemImage: "plus.circle")
-                            .font(.system(size: 11, weight: .medium))
+                            .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(.white.opacity(0.7))
                     }
+                    .padding(.trailing, 86) // 子タグラベル（83）の下あたり +36矢印ボタン分
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .trailing)
             .padding(.vertical, 4)
+            .offset(y: -13)
         }
         // コンテンツをボディ領域に配置（タブの右＋下）
         .padding(.top, tabHeight + 10)
-        .padding(.bottom, 10)
+        .padding(.bottom, 6) // タイトル欄拡大分をトレー下端で吸収
         .padding(.leading, tabWidth + 12)
         .padding(.trailing, 12)
         .background(
@@ -417,7 +566,8 @@ struct MemoInputView: View {
                     tabWidth: tabWidth,
                     tabHeight: tabHeight,
                     tabRadius: tabRadius,
-                    bodyRadius: trayCornerRadius
+                    bodyRadius: trayCornerRadius,
+                    bodyPeek: showParentDial ? 0 : peekAmount
                 )
                 .fill(trayColor)
                 .shadow(color: .black.opacity(0.2), radius: 3, x: -2, y: 2)
@@ -425,33 +575,62 @@ struct MemoInputView: View {
                 .onChange(of: geo.size.width) { _, newW in trayTotalWidth = newW }
             }
         )
+        // 余白タップでトレーを閉じる（ルーレット上のタップはTagDialView側で消費）
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if showParentDial {
+                withAnimation(.spring(response: 0.3)) { showParentDial = false }
+            }
+        }
+        // ルーレットラベル（展開時のみ、取っ手の帯と同じ高さに表示）
+        .overlay(alignment: .topTrailing) {
+            if showParentDial && !trayHidden {
+                ZStack(alignment: .trailing) {
+                    Text("親タグ")
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.6))
+                        .frame(height: tabHeight)
+                        .padding(.trailing, 236) // 親セクター中央 +36矢印ボタン分
+                    if showChildDial {
+                        Text("子タグ")
+                            .font(.system(size: 10, weight: .medium, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.6))
+                            .frame(height: tabHeight)
+                            .padding(.trailing, 119) // 子セクター中央 +36矢印ボタン分
+                    }
+                }
+            }
+        }
         // タブテキストを左上に配置
         .overlay(alignment: .topLeading) {
             HStack(spacing: 2) {
-                Text(showParentDial ? "▶" : "◀").font(.system(size: 12))
-                Text(showParentDial ? "しまう" : "タグ付け").font(.system(size: 13, weight: .bold, design: .rounded))
+                if trayHidden {
+                    // 完全収納時: 矢印だけ
+                    Text("◀").font(.system(size: 12))
+                } else {
+                    Text(showParentDial ? "▶" : "◀").font(.system(size: 12))
+                    Text(showParentDial ? "しまう" : "タグ付け").font(.system(size: 13, weight: .bold, design: .rounded))
+                }
             }
             .foregroundStyle(.white)
-            .frame(width: tabWidth, height: tabHeight, alignment: .leading)
-            .padding(.leading, 6)
+            .frame(width: trayHidden ? hiddenPeekAmount : tabWidth, height: tabHeight, alignment: .leading)
+            .padding(.leading, trayHidden ? 4 : 6)
             .contentShape(Rectangle())
             .onTapGesture {
                 withAnimation(.spring(response: 0.3)) {
-                    if showParentDial {
+                    if trayHidden {
+                        // 完全収納 → 全開
+                        trayHidden = false
+                        showParentDial = true
+                    } else if showParentDial {
+                        // 全開 → チラ見せ
                         showParentDial = false
                     } else {
+                        // チラ見せ → 全開
                         showParentDial = true
                     }
                 }
             }
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 5)
-                    .onChanged { value in
-                        if !showParentDial && value.translation.width < -10 {
-                            withAnimation(.spring(response: 0.3)) { showParentDial = true }
-                        }
-                    }
-            )
         }
     }
 
@@ -511,11 +690,15 @@ struct TrayWithTabShape: Shape {
     let tabHeight: CGFloat
     let tabRadius: CGFloat
     let bodyRadius: CGFloat
+    var bodyPeek: CGFloat = 0  // ボディが取っ手エリアに侵入する幅
+    var innerRadius: CGFloat = 10  // 取っ手とボディの内側角の丸み
 
     func path(in rect: CGRect) -> Path {
         // タブ: (0,0) → (tabWidth, tabHeight) 左上に飛び出す
-        // ボディ: (tabWidth, tabHeight) → (maxX, maxY)
+        // ボディ: (bodyLeftX, tabHeight) → (maxX, maxY)
         let bodyTop = tabHeight
+        let bodyLeftX = tabWidth - bodyPeek  // peekぶんだけ左に伸ばす
+        let ir = min(innerRadius, bodyTop)  // 内側角の丸み（はみ出し防止）
 
         var p = Path()
 
@@ -524,28 +707,32 @@ struct TrayWithTabShape: Shape {
         p.addArc(center: CGPoint(x: tabRadius, y: tabRadius),
                  radius: tabRadius, startAngle: .degrees(180), endAngle: .degrees(270), clockwise: false)
 
-        // 2. タブ上辺 → 右端まで（ボディ上辺と同じ高さ）
+        // 2. タブ上辺 → 右端まで
         p.addLine(to: CGPoint(x: rect.maxX, y: 0))
 
         // 3. 右辺を下へ
         p.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
 
         // 4. ボディ下辺 → ボディ左下角（丸み）
-        p.addLine(to: CGPoint(x: tabWidth + bodyRadius, y: rect.maxY))
-        p.addArc(center: CGPoint(x: tabWidth + bodyRadius, y: rect.maxY - bodyRadius),
+        p.addLine(to: CGPoint(x: bodyLeftX + bodyRadius, y: rect.maxY))
+        p.addArc(center: CGPoint(x: bodyLeftX + bodyRadius, y: rect.maxY - bodyRadius),
                  radius: bodyRadius, startAngle: .degrees(90), endAngle: .degrees(180), clockwise: false)
 
-        // 5. ボディ左辺を上へ → タブ下辺
-        p.addLine(to: CGPoint(x: tabWidth, y: bodyTop))
+        // 5. ボディ左辺を上へ → 内側角の手前まで
+        p.addLine(to: CGPoint(x: bodyLeftX, y: bodyTop + ir))
+
+        // 5.5. 内側角の丸み（凹カーブ: 時計回り）
+        p.addArc(center: CGPoint(x: bodyLeftX - ir, y: bodyTop + ir),
+                 radius: ir, startAngle: .degrees(0), endAngle: .degrees(270), clockwise: true)
 
         // 6. タブ下辺を左へ（左下角の丸み分手前まで）
         p.addLine(to: CGPoint(x: tabRadius, y: bodyTop))
 
-        // 9. タブ左下角（丸み）
+        // 7. タブ左下角（丸み）
         p.addArc(center: CGPoint(x: tabRadius, y: bodyTop - tabRadius),
                  radius: tabRadius, startAngle: .degrees(90), endAngle: .degrees(180), clockwise: false)
 
-        // 10. タブ左辺を上へ → 始点に戻る
+        // 8. タブ左辺を上へ → 始点に戻る
         p.closeSubpath()
 
         return p

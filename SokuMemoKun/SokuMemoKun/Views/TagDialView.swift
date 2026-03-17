@@ -39,6 +39,13 @@ struct TagDialView: View {
     // 外部ドラッグ入力（子タブからの引き出し用）
     @Binding var childExternalDragY: CGFloat?
 
+    // 長押しコールバック（isChild: 子タグか, id: タグID）
+    var onLongPress: ((_ isChild: Bool, _ id: String) -> Void)?
+
+    // 長押し検出用
+    @State private var longPressTimer: Timer?
+    @State private var longPressLocation: CGPoint?
+
     // 計算プロパティ
     private var parentOuterR: CGFloat { wheelRadius }
     private var parentInnerR: CGFloat { wheelRadius - parentThickness }
@@ -193,6 +200,37 @@ struct TagDialView: View {
                         updateChildSelection()
                         childIsDragging = false
                     }
+                }
+        )
+        // タップイベントを消費（親ビューのトレー閉じジェスチャーに伝播させない）
+        .onTapGesture { }
+        // 長押し検出（位置情報付き）
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { value in
+                    if longPressLocation == nil {
+                        // タッチ開始: タイマーセット
+                        longPressLocation = value.startLocation
+                        longPressTimer = Timer.scheduledTimer(withTimeInterval: 0.6, repeats: false) { _ in
+                            DispatchQueue.main.async {
+                                if let loc = longPressLocation {
+                                    handleLongPress(at: loc)
+                                }
+                                longPressLocation = nil
+                            }
+                        }
+                    }
+                    // 移動量が大きければ長押しキャンセル（ドラッグ操作）
+                    if abs(value.translation.width) > 10 || abs(value.translation.height) > 10 {
+                        longPressTimer?.invalidate()
+                        longPressTimer = nil
+                        longPressLocation = nil
+                    }
+                }
+                .onEnded { _ in
+                    longPressTimer?.invalidate()
+                    longPressTimer = nil
+                    longPressLocation = nil
                 }
         )
         .onAppear {
@@ -517,6 +555,41 @@ struct TagDialView: View {
         if index < childOptions.count {
             let option = childOptions[index]
             childSelectedID = option.id == "none" ? nil : UUID(uuidString: option.id)
+        }
+    }
+
+    // タッチ位置からタグを判定して長押しコールバックを呼ぶ
+    private func handleLongPress(at location: CGPoint) {
+        let cx = wheelRadius + 2
+        let cy = dialHeight / 2
+        let touchX = location.x
+        let touchY = location.y
+        let borderX = cx - parentInnerR
+
+        // y座標から角度オフセットを計算（中央=0、上=プラス、下=マイナス）
+        let dy = cy - touchY
+        let angleOffset = dy / (dialHeight / 2) * 3 * itemAngle // 画面半分で約3タグ分
+
+        if showChild && touchX > borderX {
+            // 子タグエリア
+            let touchRotation = childRotation + angleOffset
+            let index = snappedIndex(rotation: touchRotation, count: childOptions.count)
+            if index < childOptions.count {
+                let option = childOptions[index]
+                if option.id != "none" {
+                    onLongPress?(true, option.id)
+                }
+            }
+        } else {
+            // 親タグエリア
+            let touchRotation = parentRotation + angleOffset
+            let index = snappedIndex(rotation: touchRotation, count: parentOptions.count)
+            if index < parentOptions.count {
+                let option = parentOptions[index]
+                if option.id != "none" {
+                    onLongPress?(false, option.id)
+                }
+            }
         }
     }
 }

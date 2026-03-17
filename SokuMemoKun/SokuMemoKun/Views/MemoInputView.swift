@@ -23,6 +23,13 @@ struct MemoInputView: View {
     @State private var isEditing = true
     // 削除確認ダイアログ
     @State private var showDeleteAlert = false
+    // 子タグ追加時の親タグ未選択警告
+    @State private var showNoParentAlert = false
+    // タグ長押し編集/削除
+    @State private var longPressedTagID: UUID?
+    @State private var showTagActionSheet = false
+    @State private var showTagEditSheet = false
+    @State private var showTagDeleteAlert = false
     // ルーレット展開状態
     @State private var showParentDial = false
     @State private var trayHidden = false // 完全収納（取っ手も隠れる）
@@ -32,6 +39,47 @@ struct MemoInputView: View {
 
     @AppStorage("allTagSortOrder") private var allTagSortOrder: Int = -1
     @AppStorage("noTagSortOrder") private var noTagSortOrder: Int = 9999
+
+    // タグ削除ダイアログのタイトル・メッセージ
+    private var longPressedTag: Tag? {
+        guard let id = longPressedTagID else { return nil }
+        return tags.first(where: { $0.id == id })
+    }
+
+    private var tagDeleteAlertTitle: String {
+        guard let tag = longPressedTag else { return "タグを削除" }
+        let count = tag.memos.count
+        if count > 0 {
+            return "「\(tag.name)」を削除しますか？（メモ\(count)件あり）"
+        }
+        return "「\(tag.name)」を削除しますか？"
+    }
+
+    private var tagDeleteAlertMessage: String {
+        guard let tag = longPressedTag else { return "" }
+        let count = tag.memos.count
+        if count > 0 {
+            return "このタグに紐づく\(count)件のメモは「タグなし」に移動されます。メモ自体は削除されません。"
+        }
+        return "このタグを削除します。"
+    }
+
+    private func deleteTag() {
+        guard let tag = longPressedTag else { return }
+        // メモからタグを外す
+        for memo in tag.memos {
+            memo.tags.removeAll { $0.id == tag.id }
+        }
+        // 選択中のタグだった場合はクリア
+        if viewModel.selectedTagID == tag.id {
+            viewModel.selectedTagID = nil
+        }
+        if viewModel.selectedChildTagID == tag.id {
+            viewModel.selectedChildTagID = nil
+        }
+        modelContext.delete(tag)
+        longPressedTagID = nil
+    }
 
     private func tabIndex(for tagID: UUID?) -> Int {
         // TabbedMemoListViewのtabItemsと同じ並び順で計算
@@ -215,6 +263,43 @@ struct MemoInputView: View {
                 }
             )
         }
+        // 親タグ未選択で子タグ追加しようとした時の警告
+        .alert("親タグを選んでください", isPresented: $showNoParentAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("子タグを追加するには、先にルーレットで親タグを選択してください。")
+        }
+        // タグ長押しアクションシート
+        .confirmationDialog(
+            longPressedTag != nil ? "「\(longPressedTag!.name)」" : "タグの操作",
+            isPresented: $showTagActionSheet,
+            titleVisibility: .visible
+        ) {
+            Button("タグ名・色を編集") { showTagEditSheet = true }
+            if let tag = longPressedTag, tag.memos.count > 0 {
+                Button("削除（メモ\(tag.memos.count)件あり）", role: .destructive) { showTagDeleteAlert = true }
+            } else {
+                Button("削除", role: .destructive) { showTagDeleteAlert = true }
+            }
+            Button("キャンセル", role: .cancel) {}
+        }
+        // タグ編集シート
+        .sheet(isPresented: $showTagEditSheet) {
+            if let tagID = longPressedTagID,
+               let tag = tags.first(where: { $0.id == tagID }) {
+                TagDetailEditView(tag: tag)
+            }
+        }
+        // タグ削除確認ダイアログ
+        .alert(
+            tagDeleteAlertTitle,
+            isPresented: $showTagDeleteAlert
+        ) {
+            Button("削除", role: .destructive) { deleteTag() }
+            Button("キャンセル", role: .cancel) {}
+        } message: {
+            Text(tagDeleteAlertMessage)
+        }
         .onChange(of: focusInput) { _, newValue in
             if newValue { isEditing = true; isTextEditorFocused = true; focusInput = false }
         }
@@ -272,7 +357,8 @@ struct MemoInputView: View {
                 }
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 6)
+        .padding(.top, 10)
+        .padding(.bottom, 6)
     }
 
     private var tagDisplay: some View {
@@ -402,7 +488,13 @@ struct MemoInputView: View {
                     childSelectedID: $viewModel.selectedChildTagID,
                     showChild: $showChildDial,
                     isOpen: showParentDial,
-                    childExternalDragY: $childExternalDragY
+                    childExternalDragY: $childExternalDragY,
+                    onLongPress: { isChild, id in
+                        if let uuid = UUID(uuidString: id) {
+                            longPressedTagID = uuid
+                            showTagActionSheet = true
+                        }
+                    }
                 )
                 .offset(x: showParentDial ? -27 : -30, y: -10) // 開き時は右寄せ、閉じ時はチラ見せ
                 .allowsHitTesting(showParentDial) // チラ見せ時はタッチ無効
@@ -430,17 +522,22 @@ struct MemoInputView: View {
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(.white.opacity(0.8))
                 }
-                .padding(.trailing, 160) // 親タグラベル（200）の下あたり
+                .padding(.trailing, 196) // 親タグラベル（200）の下あたり +36矢印ボタン分
                 if showChildDial {
                     Button {
-                        newTagIsChild = true
-                        showNewTagSheet = true
+                        if viewModel.selectedTagID == nil {
+                            // 親タグが「タグなし」の時は警告
+                            showNoParentAlert = true
+                        } else {
+                            newTagIsChild = true
+                            showNewTagSheet = true
+                        }
                     } label: {
                         Label("子タグ追加", systemImage: "plus.circle")
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(.white.opacity(0.7))
                     }
-                    .padding(.trailing, 50) // 子タグラベル（83）の下あたり
+                    .padding(.trailing, 86) // 子タグラベル（83）の下あたり +36矢印ボタン分
                 }
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
@@ -449,7 +546,7 @@ struct MemoInputView: View {
         }
         // コンテンツをボディ領域に配置（タブの右＋下）
         .padding(.top, tabHeight + 10)
-        .padding(.bottom, 10)
+        .padding(.bottom, 6) // タイトル欄拡大分をトレー下端で吸収
         .padding(.leading, tabWidth + 12)
         .padding(.trailing, 12)
         .background(
@@ -467,7 +564,7 @@ struct MemoInputView: View {
                 .onChange(of: geo.size.width) { _, newW in trayTotalWidth = newW }
             }
         )
-        // 余白タップでトレーを閉じる
+        // 余白タップでトレーを閉じる（ルーレット上のタップはTagDialView側で消費）
         .contentShape(Rectangle())
         .onTapGesture {
             if showParentDial {
@@ -482,13 +579,13 @@ struct MemoInputView: View {
                         .font(.system(size: 10, weight: .medium, design: .rounded))
                         .foregroundStyle(.white.opacity(0.6))
                         .frame(height: tabHeight)
-                        .padding(.trailing, 200) // 親セクター中央
+                        .padding(.trailing, 236) // 親セクター中央 +36矢印ボタン分
                     if showChildDial {
                         Text("子タグ")
                             .font(.system(size: 10, weight: .medium, design: .rounded))
                             .foregroundStyle(.white.opacity(0.6))
                             .frame(height: tabHeight)
-                            .padding(.trailing, 83) // 子セクター中央
+                            .padding(.trailing, 119) // 子セクター中央 +36矢印ボタン分
                     }
                 }
             }

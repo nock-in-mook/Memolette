@@ -27,6 +27,7 @@ struct MemoInputView: View {
     @State private var showNoParentAlert = false
     // タグ長押し編集/削除
     @State private var longPressedTagID: UUID?
+    @State private var longPressedIsChild = false
     @State private var showTagActionSheet = false
     @State private var showTagEditSheet = false
     @State private var showTagDeleteAlert = false
@@ -287,7 +288,10 @@ struct MemoInputView: View {
         .sheet(isPresented: $showTagEditSheet) {
             if let tagID = longPressedTagID,
                let tag = tags.first(where: { $0.id == tagID }) {
-                TagDetailEditView(tag: tag)
+                TagDetailEditView(
+                    tag: tag,
+                    titleLabel: longPressedIsChild ? "子タグの編集" : "親タグの編集"
+                )
             }
         }
         // タグ削除確認ダイアログ
@@ -489,9 +493,10 @@ struct MemoInputView: View {
                     showChild: $showChildDial,
                     isOpen: showParentDial,
                     childExternalDragY: $childExternalDragY,
-                    onEditTag: { id in
+                    onEditTag: { id, isChild in
                         if let uuid = UUID(uuidString: id) {
                             longPressedTagID = uuid
+                            longPressedIsChild = isChild
                             showTagEditSheet = true
                         }
                     },

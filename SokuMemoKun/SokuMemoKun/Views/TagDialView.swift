@@ -42,8 +42,8 @@ struct TagDialView: View {
     // 外部ドラッグ入力（子タブからの引き出し用）
     @Binding var childExternalDragY: CGFloat?
 
-    // タグ操作コールバック
-    var onEditTag: ((_ id: String) -> Void)?
+    // タグ操作コールバック（isChild: 子タグか）
+    var onEditTag: ((_ id: String, _ isChild: Bool) -> Void)?
     var onDeleteTag: ((_ id: String) -> Void)?
 
     // ジオメトリ定数
@@ -280,7 +280,7 @@ struct TagDialView: View {
                 .if(!isNone) { view in
                     view.contextMenu {
                         Button {
-                            onEditTag?(option.id)
+                            onEditTag?(option.id, isChild)
                         } label: {
                             Label("タグ名・色を編集", systemImage: "pencil")
                         }
@@ -523,20 +523,58 @@ struct TagDialView: View {
 
     // MARK: - タップでタグにスナップ回転（新機能）
 
+    // タップ回転アニメーション用タイマー
+    @State private var snapTimer: Timer?
+
     private func snapToTag(index: Int, isChild: Bool) {
         let target = CGFloat(index) * itemAngle
-        // ルーレットが回って移動する感じのアニメーション
-        let anim = Animation.spring(response: 0.45, dampingFraction: 0.75)
-        if isChild {
-            withAnimation(anim) { childRotation = target }
-            childDragStart = target
-            childIsInternalChange = true
-            updateChildSelection()
-        } else {
-            withAnimation(anim) { parentRotation = target }
-            parentDragStart = target
-            parentIsInternalChange = true
-            updateParentSelection()
+        let current = isChild ? childRotation : parentRotation
+        let totalDelta = target - current
+        guard abs(totalDelta) > 0.1 else { return }
+
+        // 既存のタイマーがあればキャンセル
+        snapTimer?.invalidate()
+
+        // 細かいステップに分割して送り込む（ドラッグ風コマ送り）
+        let totalSteps = max(8, Int(abs(totalDelta) / itemAngle) * 6)  // 1タグあたり6コマ
+        let interval: TimeInterval = 0.012  // ~83fps
+        var step = 0
+
+        snapTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { timer in
+            step += 1
+            // easeInOut カーブ: 最初ゆっくり → 中盤加速 → 最後ゆっくり
+            let t = Double(step) / Double(totalSteps)
+            let eased = t < 0.5
+                ? 4 * t * t * t
+                : 1 - pow(-2 * t + 2, 3) / 2
+
+            let newRot = current + CGFloat(eased) * totalDelta
+
+            if isChild {
+                childRotation = newRot
+            } else {
+                parentRotation = newRot
+            }
+
+            if step >= totalSteps {
+                timer.invalidate()
+                // ピタッと止まる
+                if isChild {
+                    childRotation = target
+                } else {
+                    parentRotation = target
+                }
+                if isChild {
+                    childDragStart = target
+                    childIsInternalChange = true
+                    updateChildSelection()
+                } else {
+                    parentDragStart = target
+                    parentIsInternalChange = true
+                    updateParentSelection()
+                }
+                snapTimer = nil
+            }
         }
     }
 

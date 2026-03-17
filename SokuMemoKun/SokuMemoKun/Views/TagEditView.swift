@@ -223,6 +223,7 @@ struct TagPreviewBox: View {
 // 個別タグ編集シート（名前変更・色変更）
 struct TagDetailEditView: View {
     @Bindable var tag: Tag
+    var titleLabel: String = "タグを編集"
     @Environment(\.dismiss) private var dismiss
 
     @State private var editName: String = ""
@@ -281,7 +282,7 @@ struct TagDetailEditView: View {
                 Spacer()
             }
             .padding(20)
-            .navigationTitle("タグを編集")
+            .navigationTitle(titleLabel)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

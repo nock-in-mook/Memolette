@@ -25,7 +25,6 @@ struct MemoInputView: View {
     @State private var showDeleteAlert = false
     // ルーレット展開状態
     @State private var showParentDial = false
-    @State private var trayLabelText = "タグ" // アニメーション完了後にテキスト切替
     @State private var showChildDial = true
     @State private var childExternalDragY: CGFloat? = nil
     @AppStorage("dialDefault") private var dialDefault: Int = 0
@@ -239,19 +238,7 @@ struct MemoInputView: View {
         }
         .onAppear {
             showParentDial = dialDefault >= 1
-            trayLabelText = (dialDefault >= 1) ? "しまう" : "タグ"
             showChildDial = true // 子ルーレット常時表示
-        }
-        .onChange(of: showParentDial) { _, isOpen in
-            if isOpen {
-                // 開く時: アニメーション完了後に「しまう」に変更
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    trayLabelText = "しまう"
-                }
-            } else {
-                // 閉じる時: 即座に「タグ」に戻す
-                trayLabelText = "タグ"
-            }
         }
     }
 
@@ -449,8 +436,8 @@ struct MemoInputView: View {
         // タブテキストを左上に配置
         .overlay(alignment: .topLeading) {
             HStack(spacing: 2) {
-                Text(trayLabelText == "しまう" ? "▶" : "◀").font(.system(size: 12))
-                Text(trayLabelText).font(.system(size: 13, weight: .bold, design: .rounded))
+                Text(showParentDial ? "▶" : "◀").font(.system(size: 12))
+                Text(showParentDial ? "しまう" : "タグ").font(.system(size: 13, weight: .bold, design: .rounded))
             }
             .foregroundStyle(.white)
             .frame(width: tabWidth, height: tabHeight, alignment: .leading)

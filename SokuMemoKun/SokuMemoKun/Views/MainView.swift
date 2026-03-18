@@ -22,109 +22,84 @@ struct MainView: View {
     @AppStorage("defaultMarkdown") private var defaultMarkdown = false
     @AppStorage("markdownEnabled") private var markdownEnabled = false
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Query(sort: \Tag.name) private var tags: [Tag]
+
+    // 横画面かつiPad判定（横画面の時だけ左右分割）
+    private var isIPad: Bool { horizontalSizeClass == .regular && UIDevice.current.userInterfaceIdiom == .pad }
+    private var useSideBySide: Bool { isIPad && isLandscape }
+    @State private var isLandscape = false
 
     var body: some View {
         NavigationStack {
             GeometryReader { geo in
-                VStack(spacing: 0) {
-                    if !isMemoListExpanded {
-                        // 上: 入力欄（展開時は画面いっぱいに伸びる）
+                if useSideBySide {
+                    // iPad横画面: 左右分割レイアウト（右利き: 左=フォルダ、右=入力欄）
+                    HStack(spacing: 0) {
+                        // 左: フォルダ付きメモ一覧
+                        tabbedMemoList
+                            .frame(width: geo.size.width * 0.6)
+
+                        // 区切り線
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.2))
+                            .frame(width: 1)
+
+                        // 右: 入力欄
                         MemoInputView(
                             viewModel: viewModel,
                             focusInput: $focusInput,
-                            isExpanded: $isInputExpanded,
+                            isExpanded: .constant(false),
                             hasDiff: viewModel.inputText != originalContent || viewModel.titleText != originalTitle,
                             onConfirm: { confirmMemo() }
                         )
-                        .frame(height: isInputExpanded ? geo.size.height * 0.92 : geo.size.height * 0.48 - 30)
+                    }
+                } else {
+                    // iPhone: 上下分割レイアウト（従来通り）
+                    VStack(spacing: 0) {
+                        if !isMemoListExpanded {
+                            MemoInputView(
+                                viewModel: viewModel,
+                                focusInput: $focusInput,
+                                isExpanded: $isInputExpanded,
+                                hasDiff: viewModel.inputText != originalContent || viewModel.titleText != originalTitle,
+                                onConfirm: { confirmMemo() }
+                            )
+                            .frame(height: isInputExpanded ? geo.size.height * 0.92 : geo.size.height * 0.48 - 30)
 
-                        // Specialメニュー用スペース（入力欄とフォルダの間）
-                        if !isInputExpanded {
-                            // 上向き取っ手（タップでメモ一覧最大化）
+                            // Specialメニュー用スペース（入力欄とフォルダの間）
+                            if !isInputExpanded {
+                                Button {
+                                    withAnimation(.spring(response: 0.35)) {
+                                        isMemoListExpanded = true
+                                    }
+                                } label: {
+                                    Image(systemName: "chevron.compact.up")
+                                        .font(.system(size: 18, weight: .semibold))
+                                        .foregroundStyle(.secondary.opacity(0.5))
+                                        .frame(maxWidth: .infinity)
+                                        .frame(height: 30)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        } else {
                             Button {
                                 withAnimation(.spring(response: 0.35)) {
-                                    isMemoListExpanded = true
+                                    isMemoListExpanded = false
                                 }
                             } label: {
-                                Image(systemName: "chevron.compact.up")
-                                    .font(.system(size: 18, weight: .semibold))
-                                    .foregroundStyle(.secondary.opacity(0.5))
+                                Image(systemName: "chevron.compact.down")
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .foregroundStyle(.secondary)
                                     .frame(maxWidth: .infinity)
-                                    .frame(height: 30)
+                                    .frame(height: 28)
+                                    .background(Color(uiColor: .secondarySystemBackground).opacity(0.6))
                             }
                             .buttonStyle(.plain)
                         }
-                    } else {
-                        // メモ一覧最大化時: 元に戻すボタン
-                        Button {
-                            withAnimation(.spring(response: 0.35)) {
-                                isMemoListExpanded = false
-                            }
-                        } label: {
-                            Image(systemName: "chevron.compact.down")
-                                .font(.system(size: 20, weight: .semibold))
-                                .foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 28)
-                                .background(Color(uiColor: .secondarySystemBackground).opacity(0.6))
-                        }
-                        .buttonStyle(.plain)
-                    }
 
-                    // 下: フォルダ付きメモ一覧
-                    TabbedMemoListView(
-                        selectedTabIndex: $selectedTabIndex,
-                        searchText: $searchText,
-                        onAddMemo: { tagID in
-                            if isMemoListExpanded {
-                                // 最大化時: 入力欄最大化に切替（←で戻れるように）
-                                viewModel.clearInput()
-                                viewModel.selectedTagID = tagID
-                                enteredFromMemoList = true
-                                withAnimation(.spring(response: 0.35)) {
-                                    isMemoListExpanded = false
-                                    isInputExpanded = true
-                                }
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                                    focusInput = true
-                                }
-                            } else {
-                                viewModel.clearInput()
-                                viewModel.selectedTagID = tagID
-                                focusInput = true
-                            }
-                        },
-                        onEditMemo: { memo in
-                            if isMemoListExpanded {
-                                // 最大化時: メモを読み込み→一覧縮小＋入力欄最大化
-                                viewModel.loadMemo(memo)
-                                originalContent = viewModel.inputText
-                                originalTitle = viewModel.titleText
-                                enteredFromMemoList = true
-                                withAnimation(.spring(response: 0.35)) {
-                                    isMemoListExpanded = false
-                                    isInputExpanded = true
-                                }
-                            } else {
-                                // 通常時: 入力欄に読み込む
-                                viewModel.loadMemo(memo)
-                                originalContent = viewModel.inputText
-                                originalTitle = viewModel.titleText
-                            }
-                        },
-                        onDeleteMemo: { memo in
-                            if viewModel.editingMemo?.id == memo.id {
-                                viewModel.clearInput()
-                            }
-                        },
-                        isCompact: isInputExpanded,
-                        onAddToCurrentTab: { tagID in
-                            // 確認ダイアログを表示
-                            pendingSaveTagID = tagID
-                            showSaveToTabAlert = true
-                        }
-                    )
+                        tabbedMemoList
+                    }
                 }
             }
             .ignoresSafeArea(.keyboard)
@@ -342,11 +317,25 @@ struct MainView: View {
             }
             .onAppear {
                 viewModel.restoreLastMemo(context: modelContext)
-                // マスタースイッチOFFなら起動時もマークダウン解除
                 if !markdownEnabled {
                     viewModel.isMarkdown = false
                 }
+                // 画面向き初期化
+                updateLandscape()
             }
+            .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in
+                updateLandscape()
+            }
+        }
+    }
+
+    // 画面向き更新
+    private func updateLandscape() {
+        let scene = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first
+        if let interfaceOrientation = scene?.interfaceOrientation {
+            isLandscape = interfaceOrientation.isLandscape
         }
     }
 
@@ -374,6 +363,58 @@ struct MainView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             withAnimation { showSavedToast = false }
         }
+    }
+
+    // フォルダ付きメモ一覧（iPhone/iPad共通）
+    private var tabbedMemoList: some View {
+        TabbedMemoListView(
+            selectedTabIndex: $selectedTabIndex,
+            searchText: $searchText,
+            onAddMemo: { tagID in
+                if isMemoListExpanded {
+                    viewModel.clearInput()
+                    viewModel.selectedTagID = tagID
+                    enteredFromMemoList = true
+                    withAnimation(.spring(response: 0.35)) {
+                        isMemoListExpanded = false
+                        isInputExpanded = true
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                        focusInput = true
+                    }
+                } else {
+                    viewModel.clearInput()
+                    viewModel.selectedTagID = tagID
+                    focusInput = true
+                }
+            },
+            onEditMemo: { memo in
+                if isMemoListExpanded {
+                    viewModel.loadMemo(memo)
+                    originalContent = viewModel.inputText
+                    originalTitle = viewModel.titleText
+                    enteredFromMemoList = true
+                    withAnimation(.spring(response: 0.35)) {
+                        isMemoListExpanded = false
+                        isInputExpanded = true
+                    }
+                } else {
+                    viewModel.loadMemo(memo)
+                    originalContent = viewModel.inputText
+                    originalTitle = viewModel.titleText
+                }
+            },
+            onDeleteMemo: { memo in
+                if viewModel.editingMemo?.id == memo.id {
+                    viewModel.clearInput()
+                }
+            },
+            isCompact: useSideBySide ? false : isInputExpanded,
+            onAddToCurrentTab: { tagID in
+                pendingSaveTagID = tagID
+                showSaveToTabAlert = true
+            }
+        )
     }
 
     // 「ここに保存」ダイアログ用のタグ名

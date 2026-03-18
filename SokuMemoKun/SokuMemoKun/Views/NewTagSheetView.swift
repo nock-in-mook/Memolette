@@ -10,12 +10,19 @@ struct NewTagSheetView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Query(sort: \Tag.name) private var allTags: [Tag]
 
     @State private var tagName = ""
     @State private var selectedColorIndex = 1
 
     private var trimmedName: String {
         tagName.trimmingCharacters(in: .whitespaces)
+    }
+
+    // 同じ階層に同名タグがあるか
+    private var isDuplicate: Bool {
+        guard !trimmedName.isEmpty else { return false }
+        return allTags.contains { $0.parentTagID == parentTagID && $0.name == trimmedName }
     }
 
     var body: some View {
@@ -40,10 +47,17 @@ struct NewTagSheetView: View {
                             }
                         }
 
-                    Text("\(tagName.count)/20")
-                        .font(.system(size: 11, design: .rounded))
-                        .foregroundStyle(.tertiary)
-                        .frame(maxWidth: .infinity, alignment: .trailing)
+                    HStack {
+                        if isDuplicate {
+                            Text("同じ名前のタグが既にあります")
+                                .font(.system(size: 11, design: .rounded))
+                                .foregroundStyle(.red)
+                        }
+                        Spacer()
+                        Text("\(tagName.count)/20")
+                            .font(.system(size: 11, design: .rounded))
+                            .foregroundStyle(.tertiary)
+                    }
                 }
 
                 // プレビュー（常にスペース確保、入力中のみ表示）
@@ -93,7 +107,7 @@ struct NewTagSheetView: View {
                     Button("追加") {
                         saveTag()
                     }
-                    .disabled(trimmedName.isEmpty)
+                    .disabled(trimmedName.isEmpty || isDuplicate)
                     .bold()
                 }
             }

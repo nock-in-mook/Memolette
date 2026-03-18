@@ -7,6 +7,7 @@ struct SettingsView: View {
     @AppStorage("defaultMarkdown") private var defaultMarkdown = false
     @AppStorage("restoreLastMemo") private var restoreLastMemo = false
     @AppStorage("dialDefault") private var dialDefault: Int = 0
+    @AppStorage("coloredFrame") private var coloredFrame = true
 
     var body: some View {
         NavigationStack {
@@ -36,6 +37,13 @@ struct SettingsView: View {
                         Text("隠す").tag(2)
                     } label: {
                         Label("起動時の状態", systemImage: "tray.and.arrow.down")
+                    }
+                }
+
+                // 入力欄の見た目
+                Section("入力欄") {
+                    Toggle(isOn: $coloredFrame) {
+                        Label("タグ色でフレームを彩色", systemImage: "paintbrush")
                     }
                 }
 

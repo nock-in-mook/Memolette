@@ -14,6 +14,7 @@ struct MemoInputView: View {
     var onConfirm: (() -> Void)? = nil
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Tag.name) private var tags: [Tag]
+    @AppStorage("coloredFrame") private var coloredFrame = true
     @FocusState private var isTextEditorFocused: Bool
 
     // 新規タグ作成シート
@@ -234,9 +235,10 @@ struct MemoInputView: View {
                 RoundedRectangle(cornerRadius: 10)
                     .fill(Color(uiColor: .systemBackground))
                 RoundedRectangle(cornerRadius: 10)
-                    .stroke(Color.gray.opacity(0.25), lineWidth: 1)
+                    .stroke(coloredFrame ? selectedTagInfo.color.opacity(0.5) : Color.gray.opacity(0.25), lineWidth: coloredFrame ? 2.5 : 1)
             }
         )
+        .animation(.easeInOut(duration: 0.3), value: viewModel.selectedTagID)
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .alert("このメモを削除します。よろしいですか？", isPresented: $showDeleteAlert) {

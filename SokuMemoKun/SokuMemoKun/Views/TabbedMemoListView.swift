@@ -379,6 +379,14 @@ struct TabbedMemoListView: View {
                 normalMemoContent
             }
         }
+        // ★ 全体背景（タブ行〜メモ一覧まで一体で管理）
+        .background(
+            ZStack {
+                currentColor
+                PaperTextureOverlay()
+            }
+            .ignoresSafeArea(edges: .bottom)
+        )
         .alert("\(selectedMemoIDs.count)件のメモを削除します。よろしいですか？", isPresented: $showDeleteConfirm) {
             Button("削除", role: .destructive) {
                 deleteSelectedMemos()
@@ -569,11 +577,6 @@ struct TabbedMemoListView: View {
             ZStack {
                 // メモコンテンツ（タブごとにトランジション）
                 ZStack {
-                    currentColor
-                        .ignoresSafeArea(edges: .bottom)
-
-                    PaperTextureOverlay()
-                        .ignoresSafeArea(edges: .bottom)
 
                     if filteredMemos.isEmpty {
                         VStack(spacing: 8) {
@@ -715,7 +718,6 @@ struct TabbedMemoListView: View {
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
                     }
-                    .background(currentColor)
 
                     // 子タグ引き出しドロワー
                     if !isCompact && canShowChildTagPanel {

@@ -18,10 +18,11 @@ class MemoInputViewModel {
     // loadMemoが呼ばれた回数（Viewが閲覧モードに切り替えるトリガー）
     var loadMemoCounter: Int = 0
 
-    // 入力欄にテキストがあるか（保存ボタンの有効/無効）— 本文かタイトルがあれば保存可
+    // 入力欄に内容があるか（ゴミ箱・保存ボタンの有効/無効）— 本文・タイトル・タグのいずれかがあれば有効
     var canClear: Bool {
         !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
-        !titleText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !titleText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+        selectedTagID != nil
     }
 
     // テキスト変更時の自動保存

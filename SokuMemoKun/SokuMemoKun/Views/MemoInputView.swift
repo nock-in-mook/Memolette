@@ -195,30 +195,32 @@ struct MemoInputView: View {
             .padding(.trailing, showParentDial ? (showChildDial ? 185 : 135) : 0)
             .animation(.spring(response: 0.3), value: showParentDial)
             .animation(.spring(response: 0.3), value: showChildDial)
+            .overlay(alignment: .bottomTrailing) {
+                // 展開/縮小ボタン（ルーレット非表示時のみ）
+                if !showParentDial {
+                    Button {
+                        withAnimation(.spring(response: 0.35)) {
+                            isExpanded.toggle()
+                        }
+                    } label: {
+                        Image(systemName: isExpanded ? "arrow.down.forward.and.arrow.up.backward" : "arrow.up.backward.and.arrow.down.forward")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 28, height: 28)
+                            .background(
+                                Circle().fill(Color.blue.opacity(0.6))
+                            )
+                            .shadow(color: .black.opacity(0.2), radius: 2, x: -1, y: 1)
+                    }
+                    .padding(.trailing, 8)
+                    .padding(.bottom, 8)
+                }
+            }
             .onTapGesture {
-                // トレー外タップで収納
+                // トレー外タップで収納（ルーレット表示中のみ反応）
                 if showParentDial {
                     withAnimation(.spring(response: 0.3)) { showParentDial = false }
                 }
-            }
-            .overlay(alignment: .bottomTrailing) {
-                // 展開/縮小ボタン
-                Button {
-                    withAnimation(.spring(response: 0.35)) {
-                        isExpanded.toggle()
-                    }
-                } label: {
-                    Image(systemName: isExpanded ? "arrow.down.forward.and.arrow.up.backward" : "arrow.up.backward.and.arrow.down.forward")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 28, height: 28)
-                        .background(
-                            Circle().fill(Color.blue.opacity(0.6))
-                        )
-                        .shadow(color: .black.opacity(0.2), radius: 2, x: -1, y: 1)
-                }
-                .padding(.trailing, 8)
-                .padding(.bottom, 8)
             }
             .overlay(alignment: .topTrailing) {
                 // 仕切り線直下・右端からタグタブを生やす
@@ -243,7 +245,11 @@ struct MemoInputView: View {
         .padding(.vertical, 6)
         .alert("このメモを削除します。よろしいですか？", isPresented: $showDeleteAlert) {
             Button("削除", role: .destructive) {
-                viewModel.discardMemo(context: modelContext)
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
+                    viewModel.discardMemo(context: modelContext)
+                }
             }
             Button("キャンセル", role: .cancel) {}
         }

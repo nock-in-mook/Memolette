@@ -370,11 +370,16 @@ struct MainView: View {
         TabbedMemoListView(
             selectedTabIndex: $selectedTabIndex,
             searchText: $searchText,
-            onAddMemo: { tagID in
+            onAddMemo: { tagID, childTagID in
                 if isMemoListExpanded {
                     viewModel.clearInput()
+                    viewModel.isLoadingMemo = true
                     viewModel.selectedTagID = tagID
+                    viewModel.selectedChildTagID = childTagID
                     enteredFromMemoList = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        viewModel.isLoadingMemo = false
+                    }
                     withAnimation(.spring(response: 0.35)) {
                         isMemoListExpanded = false
                         isInputExpanded = true
@@ -384,8 +389,13 @@ struct MainView: View {
                     }
                 } else {
                     viewModel.clearInput()
+                    viewModel.isLoadingMemo = true
                     viewModel.selectedTagID = tagID
+                    viewModel.selectedChildTagID = childTagID
                     focusInput = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        viewModel.isLoadingMemo = false
+                    }
                 }
             },
             onEditMemo: { memo in

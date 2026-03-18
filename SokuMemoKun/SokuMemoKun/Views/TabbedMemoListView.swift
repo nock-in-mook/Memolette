@@ -168,7 +168,7 @@ struct TabbedMemoListView: View {
     // すべて用のグリッドサイズ
     @AppStorage("allTagGridSize") private var allTagGridSize: Int = 2
     // コールバック
-    var onAddMemo: ((UUID?) -> Void)?
+    var onAddMemo: ((UUID?, UUID?) -> Void)?  // (親タグID, 子タグID)
     var onEditMemo: ((Memo) -> Void)?
     var onDeleteMemo: ((Memo) -> Void)?
     // 入力欄展開時はコンパクト表示（選択削除等を非表示）
@@ -731,23 +731,6 @@ struct TabbedMemoListView: View {
                                         .foregroundStyle(darkenedColor)
                                     Spacer()
                                 }
-                                Button {
-                                    let currentTag = tabItems[selectedTabIndex].tag
-                                    onAddMemo?(currentTag?.id)
-                                } label: {
-                                    Label("このタグにメモ作成", systemImage: "plus.circle")
-                                        .font(.system(size: 13, weight: .medium, design: .rounded))
-                                        .foregroundStyle(.secondary)
-                                        .padding(.horizontal, 2)
-                                        .padding(.vertical, 0)
-                                }
-                                .buttonStyle(.plain)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 4)
-                                .background(
-                                    Capsule()
-                                        .fill(Color(uiColor: .systemBackground).opacity(0.85))
-                                )
                             }
                         }
                         .padding(.horizontal, 10)
@@ -882,6 +865,43 @@ struct TabbedMemoListView: View {
                     }
                     }
 
+                    // 下部中央: メモ作成ボタン
+                    if !isCompact && !isSelectMode {
+                        VStack {
+                            Spacer()
+                            HStack {
+                                Spacer()
+                                Button {
+                                    let currentTag = tabItems[selectedTabIndex].tag
+                                    onAddMemo?(currentTag?.id, selectedChildFilterID)
+                                } label: {
+                                    HStack(spacing: 5) {
+                                        Image(systemName: "plus.circle")
+                                            .font(.system(size: 15))
+                                        Text("このフォルダにメモ作成")
+                                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                    }
+                                    .foregroundStyle(.blue)
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(
+                                    Capsule()
+                                        .fill(Color(uiColor: .systemGray6))
+                                        .shadow(color: .black.opacity(0.15), radius: 3, y: 1)
+                                )
+                                .overlay(
+                                    Capsule()
+                                        .stroke(Color.gray.opacity(0.4), lineWidth: 1.0)
+                                )
+                                Spacer()
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.bottom, 8)
+                        }
+                    }
+
                     // 右下: グリッドサイズボタン
                     VStack {
                         Spacer()
@@ -1004,6 +1024,7 @@ struct TabbedMemoListView: View {
                                 ForEach(children, id: \.id) { child in
                                     childTagChip(label: child.name, colorIndex: child.colorIndex, isSelected: selectedChildFilterID == child.id, id: "childTag_\(child.id)")
                                         .onTapGesture {
+                                            print("🟡 子タグタップ: \(child.name) id=\(child.id), 旧selectedChildFilterID=\(String(describing: selectedChildFilterID))")
                                             selectedChildFilterID = child.id
                                         }
                                 }
@@ -1102,6 +1123,7 @@ struct TabbedMemoListView: View {
     // グリッドサイズ切替ボタン
     private var gridSizeButton: some View {
         Menu {
+            Section("メモの表示数") {
             ForEach(GridSizeOption.allCases.reversed(), id: \.rawValue) { option in
                 Button {
                     setGridSize(option)
@@ -1113,6 +1135,7 @@ struct TabbedMemoListView: View {
                         }
                     }
                 }
+            }
             }
         } label: {
             HStack(spacing: 5) {

@@ -60,18 +60,54 @@ struct NewTagSheetView: View {
                     }
                 }
 
-                // プレビュー（常にスペース確保、入力中のみ表示）
-                Text(trimmedName.isEmpty ? " " : trimmedName)
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundStyle(trimmedName.isEmpty ? .clear : tagTextColor(for: selectedColorIndex))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(trimmedName.isEmpty ? Color.clear : tagColor(for: selectedColorIndex))
-                    )
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .animation(.easeOut(duration: 0.15), value: selectedColorIndex)
+                // プレビュー
+                if parentTagID == nil {
+                    // 親タグ: リアルなタブデザイン
+                    let isEmpty = trimmedName.isEmpty
+                    Text(isEmpty ? " " : trimmedName)
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundStyle(isEmpty ? .clear : tagTextColor(for: selectedColorIndex))
+                        .shadow(color: isEmpty ? .clear : .black.opacity(0.35), radius: 1.5, x: -1, y: 1)
+                        .lineLimit(1)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 9)
+                        .frame(minWidth: 52)
+                        .background(
+                            TrapezoidTabShape()
+                                .fill(isEmpty ? Color.clear : tagColor(for: selectedColorIndex))
+                                .shadow(color: isEmpty ? .clear : .black.opacity(0.4), radius: 5, x: -3, y: 3)
+                        )
+                        .overlay(
+                            Canvas { context, size in
+                                for _ in 0..<200 {
+                                    let x = CGFloat.random(in: 0...size.width)
+                                    let y = CGFloat.random(in: 0...size.height)
+                                    let op = Double.random(in: 0.02...0.08)
+                                    context.opacity = op
+                                    context.fill(
+                                        Path(ellipseIn: CGRect(x: x, y: y, width: 1.5, height: 1.5)),
+                                        with: .color(.black)
+                                    )
+                                }
+                            }
+                            .clipShape(TrapezoidTabShape())
+                            .allowsHitTesting(false)
+                            .opacity(isEmpty ? 0 : 1)
+                        )
+                        .frame(maxWidth: .infinity, alignment: .center)
+                } else {
+                    // 子タグ: シンプルなバッジ
+                    Text(trimmedName.isEmpty ? " " : trimmedName)
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundStyle(trimmedName.isEmpty ? .clear : tagTextColor(for: selectedColorIndex))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(trimmedName.isEmpty ? Color.clear : tagColor(for: selectedColorIndex))
+                        )
+                        .frame(maxWidth: .infinity, alignment: .center)
+                }
 
                 // カラー選択
                 VStack(alignment: .leading, spacing: 6) {

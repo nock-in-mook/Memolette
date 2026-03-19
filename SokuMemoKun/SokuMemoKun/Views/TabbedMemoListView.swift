@@ -203,7 +203,6 @@ struct SpecialColorEditSheet: View {
                         .clipShape(TrapezoidTabShape())
                         .allowsHitTesting(false)
                     )
-                    .animation(.easeOut(duration: 0.15), value: selectedColor)
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text("カラー")

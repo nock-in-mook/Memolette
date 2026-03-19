@@ -232,7 +232,7 @@ struct TagDetailEditView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
-                // タグ名入力（背景なし）
+                // タグ名入力
                 VStack(alignment: .leading, spacing: 6) {
                     Text("タグ名")
                         .font(.system(size: 13, weight: .medium, design: .rounded))
@@ -291,7 +291,6 @@ struct TagDetailEditView: View {
                         .opacity(isEmpty ? 0 : 1)
                     )
                     .frame(maxWidth: .infinity, alignment: .center)
-                    .animation(.easeOut(duration: 0.15), value: editColorIndex)
 
                 // カラー選択（コンパクト）
                 VStack(alignment: .leading, spacing: 6) {

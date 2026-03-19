@@ -1,14 +1,19 @@
 import SwiftUI
 import SwiftData
 
-// タグ編集画面（一覧・色変更・名前変更・削除）
+// タグ編集画面（一覧・色変更・名前変更・削除・並び替え）
 struct TagEditView: View {
-    @Query(sort: \Tag.name) private var tags: [Tag]
+    @Query(sort: \Tag.sortOrder) private var tags: [Tag]
     @Environment(\.modelContext) private var modelContext
     @State private var editingTag: Tag?
     @State private var showNewTagSheet = false
     @State private var isDeleteMode = false
     @State private var selectedForDeletion: Set<UUID> = []
+
+    // 親タグのみ（sortOrder順）
+    private var parentTags: [Tag] {
+        tags.filter { $0.parentTagID == nil }.sorted { $0.sortOrder < $1.sortOrder }
+    }
 
     var body: some View {
         // タグ一覧（ボタンもリスト内に含める）
@@ -72,13 +77,22 @@ struct TagEditView: View {
                         }
                         .foregroundStyle(.red.opacity(0.7))
                     }
-                    .disabled(tags.isEmpty)
+                    .disabled(parentTags.isEmpty)
                 }
                 .listRowBackground(Color.clear)
             }
 
+            // 説明テキスト
+            if !isDeleteMode {
+                Text("長押しで並び替え")
+                    .font(.system(size: 12, design: .rounded))
+                    .foregroundStyle(.tertiary)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+            }
+
             // タグ一覧
-            ForEach(tags) { tag in
+            ForEach(parentTags) { tag in
                 Button {
                     if isDeleteMode {
                         toggleDeletion(tag)
@@ -124,6 +138,9 @@ struct TagEditView: View {
                 }
                 .buttonStyle(.plain)
             }
+            .onMove { source, destination in
+                moveTag(from: source, to: destination)
+            }
         }
         .navigationTitle("タグ編集")
         .navigationBarTitleDisplayMode(.inline)
@@ -152,6 +169,14 @@ struct TagEditView: View {
         }
         selectedForDeletion.removeAll()
         isDeleteMode = false
+    }
+
+    private func moveTag(from source: IndexSet, to destination: Int) {
+        var ordered = parentTags
+        ordered.move(fromOffsets: source, toOffset: destination)
+        for (i, tag) in ordered.enumerated() {
+            tag.sortOrder = i + 1
+        }
     }
 }
 

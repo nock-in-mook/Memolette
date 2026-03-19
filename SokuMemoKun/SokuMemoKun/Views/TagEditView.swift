@@ -33,6 +33,7 @@ struct TagEditView: View {
                         }
                         .foregroundStyle(.secondary)
                     }
+                    .buttonStyle(.borderless)
 
                     Spacer()
 
@@ -47,6 +48,7 @@ struct TagEditView: View {
                         }
                         .foregroundStyle(.red)
                     }
+                    .buttonStyle(.borderless)
                     .disabled(selectedForDeletion.isEmpty)
                 }
                 .listRowBackground(Color.clear)
@@ -62,6 +64,7 @@ struct TagEditView: View {
                                 .font(.system(size: 15, weight: .medium, design: .rounded))
                         }
                     }
+                    .buttonStyle(.borderless)
 
                     Spacer()
 
@@ -77,18 +80,10 @@ struct TagEditView: View {
                         }
                         .foregroundStyle(.red.opacity(0.7))
                     }
+                    .buttonStyle(.borderless)
                     .disabled(parentTags.isEmpty)
                 }
                 .listRowBackground(Color.clear)
-            }
-
-            // 説明テキスト
-            if !isDeleteMode {
-                Text("長押しで並び替え")
-                    .font(.system(size: 12, design: .rounded))
-                    .foregroundStyle(.tertiary)
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
             }
 
             // タグ一覧
@@ -142,8 +137,20 @@ struct TagEditView: View {
                 moveTag(from: source, to: destination)
             }
         }
-        .navigationTitle("タグ編集")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                VStack(spacing: 2) {
+                    Text("タグ編集")
+                        .font(.headline)
+                    if !isDeleteMode {
+                        Text("長押しで並び替え")
+                            .font(.system(size: 13, design: .rounded))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
         .sheet(item: $editingTag) { tag in
             TagDetailEditView(tag: tag)
         }

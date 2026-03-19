@@ -73,9 +73,12 @@ private let tabColors: [Color] = [
 
 // 「すべて」タブ用の色（薄い黄色）
 private let allTabColor = Color(red: 0.98, green: 0.96, blue: 0.82)
+// 「よく見る」タブ用の色（薄い水色）
+private let frequentTabColor = Color(red: 0.85, green: 0.93, blue: 0.98)
 
 func tagColor(for index: Int) -> Color {
     if index == -1 { return allTabColor }
+    if index == -2 { return frequentTabColor }
     guard index >= 0 && index < tabColors.count else {
         return tabColors[0]
     }
@@ -196,14 +199,21 @@ struct TabbedMemoListView: View {
 
     // colorIndex == -1 は「すべて」タブを示す特別な値
     private let allTabColorIndex = -1
+    // colorIndex == -2 は「よく見る」タブを示す特別な値
+    private let frequentTabColorIndex = -2
 
     // タブの並び順（sortOrder順、すべて=-1、タグなし=sortOrder）
     @AppStorage("allTagSortOrder") private var allTagSortOrder: Int = -1
     @AppStorage("noTagSortOrder") private var noTagSortOrder: Int = 9999
+    @AppStorage("frequentTagSortOrder") private var frequentTagSortOrder: Int = -2
+    // 「すべて」「よく見る」のカスタムカラーインデックス（-1=デフォルト色）
+    @AppStorage("allTabCustomColor") private var allTabCustomColor: Int = -1
+    @AppStorage("frequentTabCustomColor") private var frequentTabCustomColor: Int = -1
 
     private var tabItems: [(label: String, tag: Tag?, colorIndex: Int)] {
         var items: [(label: String, tag: Tag?, colorIndex: Int, order: Int)] = []
         items.append(("すべて", nil, allTabColorIndex, allTagSortOrder))
+        items.append(("よく見る", nil, frequentTabColorIndex, frequentTagSortOrder))
         items.append(("タグなし", nil, 0, noTagSortOrder))
         for tag in tags where tag.parentTagID == nil {
             items.append((tag.name, tag, tag.colorIndex, tag.sortOrder))
@@ -220,7 +230,22 @@ struct TabbedMemoListView: View {
     // 「タグなし」タブかどうか
     private var isNoTagTab: Bool {
         let item = tabItems[selectedTabIndex]
-        return item.tag == nil && item.colorIndex != allTabColorIndex
+        return item.tag == nil && item.colorIndex != allTabColorIndex && item.colorIndex != frequentTabColorIndex
+    }
+
+    // 「よく見る」タブかどうか
+    private var isFrequentTab: Bool {
+        tabItems[selectedTabIndex].colorIndex == frequentTabColorIndex
+    }
+
+    // よく見るメモ（閲覧回数順、上位6件）
+    private var frequentMemos: [Memo] {
+        Array(allMemos.filter { $0.viewCount > 0 }.sorted { $0.viewCount > $1.viewCount }.prefix(6))
+    }
+
+    // 最近見たメモ（最終閲覧日時順、上位6件）
+    private var recentMemos: [Memo] {
+        Array(allMemos.filter { $0.lastViewedAt != nil }.sorted { ($0.lastViewedAt ?? .distantPast) > ($1.lastViewedAt ?? .distantPast) }.prefix(6))
     }
 
     // 現在の親タグ（あれば）
@@ -288,6 +313,10 @@ struct TabbedMemoListView: View {
         if item.colorIndex == allTabColorIndex {
             return sortedMemos(Array(allMemos))
         }
+        // 「よく見る」タブ（左右分割表示なので空を返す）
+        if item.colorIndex == frequentTabColorIndex {
+            return []
+        }
         if let tag = item.tag {
             let parentFiltered = allMemos.filter { memo in
                 memo.tags.contains { $0.id == tag.id }
@@ -341,7 +370,14 @@ struct TabbedMemoListView: View {
     }
 
     private var currentColor: Color {
-        tagColor(for: tabItems[selectedTabIndex].colorIndex)
+        let ci = tabItems[selectedTabIndex].colorIndex
+        if ci == allTabColorIndex && allTabCustomColor >= 0 {
+            return tabColors[allTabCustomColor % tabColors.count]
+        }
+        if ci == frequentTabColorIndex && frequentTabCustomColor >= 0 {
+            return tabColors[frequentTabCustomColor % tabColors.count]
+        }
+        return tagColor(for: ci)
     }
 
     // 選択中の子タグ名（フィルター中のみ）
@@ -387,7 +423,16 @@ struct TabbedMemoListView: View {
                     },
                     onDeleteTag: { tag, withMemos in
                         deleteTag(tag, withMemos: withMemos)
-                    }
+                    },
+                    onChangeSpecialTabColor: { tabColorIndex, newColor in
+                        if tabColorIndex == -1 {
+                            allTabCustomColor = newColor
+                        } else if tabColorIndex == -2 {
+                            frequentTabCustomColor = newColor
+                        }
+                    },
+                    allTabCustomColor: allTabCustomColor,
+                    frequentTabCustomColor: frequentTabCustomColor
                 )
 
                 // ── 通常モード: メモ一覧 ──
@@ -631,7 +676,10 @@ struct TabbedMemoListView: View {
                 // メモコンテンツ（タブごとにトランジション）
                 ZStack {
 
-                    if filteredMemos.isEmpty {
+                    if isFrequentTab {
+                        // 「よく見る」特殊レイアウト: 左右分割
+                        frequentTabContent(geo: geo)
+                    } else if filteredMemos.isEmpty {
                         VStack(spacing: 8) {
                             Image(systemName: "note.text")
                                 .font(.title2)
@@ -742,6 +790,13 @@ struct TabbedMemoListView: View {
                                     .foregroundStyle(.secondary)
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 4)
+                            } else if isFrequentTab {
+                                HStack(spacing: 6) {
+                                    Text("よく見るメモと最近見たメモ")
+                                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                                        .foregroundStyle(darkenedColor)
+                                    Spacer()
+                                }
                             } else {
                                 HStack(spacing: 6) {
                                     Text("\(filteredMemos.count)枚のメモ")
@@ -950,6 +1005,83 @@ struct TabbedMemoListView: View {
                 }
             }
             .animation(.easeInOut(duration: 0.2), value: currentGridSize)
+        }
+    }
+
+    // MARK: - 「よく見る」タブ特殊レイアウト
+
+    private func frequentTabContent(geo: GeometryProxy) -> some View {
+        let columns2x6 = [
+            GridItem(.flexible(), spacing: 8),
+            GridItem(.flexible(), spacing: 8)
+        ]
+        let hasFrequent = !frequentMemos.isEmpty
+        let hasRecent = !recentMemos.isEmpty
+
+        return ScrollView {
+            VStack(spacing: 0) {
+                // 上部スペーサー（枚数行分）
+                Color.clear
+                    .frame(height: drawerBandHeight)
+                    .allowsHitTesting(false)
+
+                if !hasFrequent && !hasRecent {
+                    VStack(spacing: 8) {
+                        Image(systemName: "doc.text")
+                            .font(.title2)
+                            .foregroundStyle(.secondary)
+                        Text("使い始めると\n表示されるようになります")
+                            .font(.system(size: 14, design: .rounded))
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 40)
+                } else {
+                    // 左右分割: よく見る | 最近
+                    HStack(alignment: .top, spacing: 8) {
+                        // 左列: よく見る
+                        VStack(spacing: 8) {
+                            Text("よく見る")
+                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            LazyVGrid(columns: [GridItem(.flexible())], spacing: 8) {
+                                ForEach(frequentMemos) { memo in
+                                    memoGridItem(memo: memo, availableHeight: geo.size.height)
+                                }
+                            }
+                        }
+                        .padding(8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(Color.orange.opacity(0.08))
+                        )
+                        .frame(maxWidth: .infinity)
+
+                        // 右列: 最近
+                        VStack(spacing: 8) {
+                            Text("最近見た")
+                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            LazyVGrid(columns: [GridItem(.flexible())], spacing: 8) {
+                                ForEach(recentMemos) { memo in
+                                    memoGridItem(memo: memo, availableHeight: geo.size.height)
+                                }
+                            }
+                        }
+                        .padding(8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(Color(red: 0.93, green: 0.91, blue: 0.84).opacity(0.6))
+                        )
+                        .frame(maxWidth: .infinity)
+                    }
+                    .padding(.horizontal, 6)
+                }
+            }
+            .padding(.bottom, 40)
         }
     }
 
@@ -1287,7 +1419,6 @@ struct TabbedMemoListView: View {
                 .overlay(
                     RoundedRectangle(cornerRadius: 8)
                         .fill(Color.cyan.opacity(lastOpenedMemoID == memo.id ? 0.08 : 0))
-                        .animation(.easeOut(duration: 0.5), value: lastOpenedMemoID)
                         .allowsHitTesting(false)
                 )
         }
@@ -1662,12 +1793,23 @@ struct TabBarView: View {
     var onAddTag: () -> Void
     var onEditTag: ((Tag) -> Void)? = nil
     var onDeleteTag: ((Tag, Bool) -> Void)? = nil  // (tag, メモも削除するか)
+    // 特殊タブの色変更コールバック: (tabColorIndex, 新しいcolorIndex)
+    var onChangeSpecialTabColor: ((Int, Int) -> Void)? = nil
+    // カスタムカラーインデックス（-1=デフォルト色）
+    var allTabCustomColor: Int = -1
+    var frequentTabCustomColor: Int = -1
+    private let allTabColorIndex = -1
+    private let frequentTabColorIndex = -2
 
     // 削除ダイアログ管理
     @State private var pendingDeleteTag: Tag? = nil
     @State private var showDeleteChoiceAlert = false   // 1回目: メモどうする？
     @State private var showDeleteConfirmAlert = false   // 2回目: 最終確認
     @State private var deleteWithMemos = false           // メモも一緒に削除するか
+    // 特殊タブの色変更シート
+    @State private var showSpecialColorSheet = false
+    @State private var editingSpecialTabColorIndex: Int = -1  // allTabColorIndex or frequentTabColorIndex
+    @State private var editingColorValue: Int = 0
 
     // 各タブのスクロール内での位置を記録
     @State private var tabFrames: [Int: CGRect] = [:]
@@ -1748,9 +1890,31 @@ struct TabBarView: View {
         )
     }
 
+    private func tabColorFor(index: Int) -> Color {
+        let ci = tabItems[index].colorIndex
+        if ci == allTabColorIndex && allTabCustomColor >= 0 {
+            return tabColors[allTabCustomColor % tabColors.count]
+        }
+        if ci == frequentTabColorIndex && frequentTabCustomColor >= 0 {
+            return tabColors[frequentTabCustomColor % tabColors.count]
+        }
+        return tagColor(for: ci)
+    }
+
+    private func resolvedTabColor(index: Int) -> Color {
+        let ci = tabItems[index].colorIndex
+        if ci == allTabColorIndex && allTabCustomColor >= 0 {
+            return tabColors[allTabCustomColor % tabColors.count]
+        }
+        if ci == frequentTabColorIndex && frequentTabCustomColor >= 0 {
+            return tabColors[frequentTabCustomColor % tabColors.count]
+        }
+        return tagColor(for: ci)
+    }
+
     private func tabButton(index: Int) -> some View {
         let isSelected = selectedTabIndex == index
-        let color = tagColor(for: tabItems[index].colorIndex)
+        let color = resolvedTabColor(index: index)
 
         return Button {
             selectedTabIndex = index
@@ -1789,6 +1953,18 @@ struct TabBarView: View {
             }
         )
         .contextMenu {
+            let ci = tabItems[index].colorIndex
+            // 「すべて」「よく見る」は色変更のみ
+            if ci == allTabColorIndex || ci == frequentTabColorIndex {
+                Button {
+                    editingSpecialTabColorIndex = ci
+                    editingColorValue = ci == allTabColorIndex ? allTabCustomColor : frequentTabCustomColor
+                    if editingColorValue < 1 { editingColorValue = 1 }
+                    showSpecialColorSheet = true
+                } label: {
+                    Label("色の変更", systemImage: "paintpalette")
+                }
+            }
             Button {
                 onShowReorderSheet()
             } label: {
@@ -1841,6 +2017,51 @@ struct TabBarView: View {
             } else {
                 Text("タグ「\(pendingDeleteTag?.name ?? "")」が削除されます。メモは全て「タグなし」に移動されます。")
             }
+        }
+        // 特殊タブの色変更シート
+        .sheet(isPresented: $showSpecialColorSheet) {
+            NavigationStack {
+                VStack(spacing: 16) {
+                    // プレビュー
+                    let label = editingSpecialTabColorIndex == allTabColorIndex ? "すべて" : "よく見る"
+                    Text(label)
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundStyle(tagTextColor(for: editingColorValue))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(tagColor(for: editingColorValue))
+                        )
+                        .animation(.easeOut(duration: 0.15), value: editingColorValue)
+
+                    // カラー選択
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("カラー")
+                            .font(.system(size: 13, weight: .medium, design: .rounded))
+                            .foregroundStyle(.secondary)
+                        ColorPaletteGrid(selectedIndex: $editingColorValue)
+                    }
+
+                    Spacer()
+                }
+                .padding(20)
+                .navigationTitle("色の変更")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("キャンセル") { showSpecialColorSheet = false }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("保存") {
+                            onChangeSpecialTabColor?(editingSpecialTabColorIndex, editingColorValue)
+                            showSpecialColorSheet = false
+                        }
+                        .bold()
+                    }
+                }
+            }
+            .presentationDetents([.medium])
         }
     }
 }

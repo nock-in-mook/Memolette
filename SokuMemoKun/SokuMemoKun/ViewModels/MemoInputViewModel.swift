@@ -162,6 +162,9 @@ class MemoInputViewModel {
         selectedTagID = parentTag?.id
         selectedChildTagID = childTag?.id
         saveLastMemoID(memo.id)
+        // 閲覧追跡
+        memo.viewCount += 1
+        memo.lastViewedAt = Date()
         isLoadingMemo = false
         loadMemoCounter += 1
         resetUndoStack()

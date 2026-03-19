@@ -489,6 +489,17 @@ struct TabbedMemoListView: View {
         return tagColor(for: ci)
     }
 
+    // 「よく見る」タブの左右列の配色（同色グラデ）
+    private var frequentColumnColors: (left: Color, right: Color) {
+        let base = currentColor
+        let uiColor = UIColor(base)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        uiColor.getRed(&r, green: &g, blue: &b, alpha: &a)
+        let left = Color(red: r * 0.92, green: g * 0.92, blue: b * 0.92).opacity(0.3)
+        let right = Color(red: r * 0.96, green: g * 0.96, blue: b * 0.96).opacity(0.15)
+        return (left, right)
+    }
+
     // 選択中の子タグ名（フィルター中のみ）
     private var selectedChildTagName: String? {
         guard let childID = selectedChildFilterID else { return nil }
@@ -1246,7 +1257,7 @@ struct TabbedMemoListView: View {
                         .padding(8)
                         .background(
                             RoundedRectangle(cornerRadius: 10)
-                                .fill(Color.orange.opacity(0.08))
+                                .fill(frequentColumnColors.left)
                         )
                         .frame(maxWidth: .infinity)
 
@@ -1265,7 +1276,7 @@ struct TabbedMemoListView: View {
                         .padding(8)
                         .background(
                             RoundedRectangle(cornerRadius: 10)
-                                .fill(Color(red: 0.93, green: 0.91, blue: 0.84).opacity(0.6))
+                                .fill(frequentColumnColors.right)
                         )
                         .frame(maxWidth: .infinity)
                     }

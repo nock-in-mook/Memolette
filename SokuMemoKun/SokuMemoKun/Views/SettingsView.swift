@@ -82,6 +82,15 @@ struct SettingsView: View {
                     }
                 }
 
+                // カラーラボ
+                Section("カラーラボ") {
+                    NavigationLink {
+                        ColorLabView()
+                    } label: {
+                        Label("「よく見る」配色パターン", systemImage: "paintpalette")
+                    }
+                }
+
                 // 影ラボ
                 Section("影ラボ") {
                     NavigationLink { TextureLab1() } label: { Text("1: タブシェイプ影") }

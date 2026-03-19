@@ -637,9 +637,9 @@ struct TabbedMemoListView: View {
                         ScrollViewReader { scrollProxy in
                         ScrollView {
                             VStack(spacing: 0) {
-                                // 上部スペーサー（ツールバー分、タップ不可）
+                                // 上部スペーサー（メモ枚数行＋子タグドロワー分、タップ不可）
                                 Color.clear
-                                    .frame(height: (drawerReveal > 0 && canShowChildTagPanel) ? 50 + drawerBandHeight : 50)
+                                    .frame(height: (drawerReveal > 0 && canShowChildTagPanel) ? 32 + drawerBandHeight : 32)
                                     .allowsHitTesting(false)
 
                                 LazyVGrid(columns: currentColumns, spacing: 8) {
@@ -746,12 +746,16 @@ struct TabbedMemoListView: View {
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
                     }
+                    // スクロールしたメモが後ろに隠れるよう不透明背景（ドロワースペース含む）
+                    .background(currentColor)
+                    .zIndex(1)
 
                     // 子タグ引き出しドロワー
                     if !isCompact && canShowChildTagPanel {
                         childTagDrawer
                             .animation(.spring(response: 0.3), value: drawerReveal)
                             .animation(.spring(response: 0.3), value: drawerContentWidth)
+                            .zIndex(2)
                     }
 
                     // 左下: ゴミ箱ボタン

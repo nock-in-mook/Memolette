@@ -665,6 +665,26 @@ struct MemoInputView: View {
                     }
                 }
             }
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 20)
+                    .onEnded { value in
+                        let horizontal = value.translation.width
+                        // 右スワイプ → 完全収納
+                        if horizontal > 40 {
+                            withAnimation(.spring(response: 0.3)) {
+                                showParentDial = false
+                                trayHidden = true
+                            }
+                        }
+                        // 左スワイプ → 全開
+                        if horizontal < -40 {
+                            withAnimation(.spring(response: 0.3)) {
+                                trayHidden = false
+                                showParentDial = true
+                            }
+                        }
+                    }
+            )
         }
     }
 

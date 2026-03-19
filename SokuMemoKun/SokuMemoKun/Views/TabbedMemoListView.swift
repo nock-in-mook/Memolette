@@ -1063,8 +1063,8 @@ struct TabbedMemoListView: View {
                     }
                     }
 
-                    // 下部中央: メモ作成ボタン
-                    if !isCompact && !isSelectMode {
+                    // 下部中央: メモ作成ボタン（「すべて」「よく見る」タブでは非表示）
+                    if !isCompact && !isSelectMode && !isAllTab && !isFrequentTab {
                         VStack {
                             Spacer()
                             HStack {
@@ -1432,6 +1432,7 @@ struct TabbedMemoListView: View {
                     .stroke(Color.gray.opacity(0.4), lineWidth: 1.0)
             )
         }
+        .tint(.secondary)
     }
 
     // メモをトップに移動（manualSortOrderを現在の最大+1に）

@@ -19,6 +19,8 @@ struct MainView: View {
     // 「ここに保存」確認ダイアログ
     @State private var showSaveToTabAlert = false
     @State private var pendingSaveTagID: UUID? = nil
+    // フォルダタブ並び替えモード中フラグ
+    @State private var isTabReorderMode = false
     @AppStorage("defaultMarkdown") private var defaultMarkdown = false
     @AppStorage("markdownEnabled") private var markdownEnabled = false
     @Environment(\.modelContext) private var modelContext
@@ -68,7 +70,8 @@ struct MainView: View {
                             .frame(height: isInputExpanded ? geo.size.height * 0.92 : geo.size.height * 0.48 - 30)
 
                             // Specialメニュー用スペース（入力欄とフォルダの間）
-                            if !isInputExpanded {
+                            // 並び替えモード中は非表示（全体を上に詰める）
+                            if !isInputExpanded && !isTabReorderMode {
                                 Button {
                                     withAnimation(.spring(response: 0.35)) {
                                         isMemoListExpanded = true
@@ -419,7 +422,8 @@ struct MainView: View {
             onAddToCurrentTab: { tagID in
                 pendingSaveTagID = tagID
                 showSaveToTabAlert = true
-            }
+            },
+            isInReorderMode: $isTabReorderMode
         )
     }
 

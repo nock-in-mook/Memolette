@@ -1,6 +1,18 @@
 import SwiftUI
 import SwiftData
 
+// 条件付きクリップ（並び替え中のオーバーフロー許可用）
+extension View {
+    @ViewBuilder
+    func conditionalClipped(_ shouldClip: Bool) -> some View {
+        if shouldClip {
+            self.clipped()
+        } else {
+            self
+        }
+    }
+}
+
 // タグの色パレット（0=タグなし、1〜56=選択可能カラー）
 private let tabColors: [Color] = [
     // 0: タグなし
@@ -268,6 +280,10 @@ struct TabbedMemoListView: View {
     var isCompact = false
     // 「記入中のメモをここに保存」コールバック
     var onAddToCurrentTab: ((UUID?) -> Void)?
+    // 並び替えモード状態を親（MainView）に伝える
+    @Binding var isInReorderMode: Bool
+    // ドラッグ中のタブの色（背景色変更用）
+    @State private var draggingTabColor: Color? = nil
     // フラッシュ対象のメモID（保存直後にハイライト）
     @State private var flashMemoID: UUID?
     // タブフラッシュ
@@ -533,11 +549,15 @@ struct TabbedMemoListView: View {
                     },
                     onReorder: { newOrder in
                         applyTabOrder(newOrder)
-                    }
+                    },
+                    isInReorderMode: $isInReorderMode,
+                    draggingTabColor: $draggingTabColor
                 )
 
-                // ── 通常モード: メモ一覧 ──
-                normalMemoContent
+                // ── メモ一覧（並び替え中は非表示） ──
+                if !isInReorderMode {
+                    normalMemoContent
+                }
             }
         }
         // ★ 全体背景（タブ行〜メモ一覧まで一体で管理）
@@ -546,7 +566,13 @@ struct TabbedMemoListView: View {
                 // タグ色はnormalMemoContent領域だけ（タブ行は透明）
                 VStack(spacing: 0) {
                     Color.clear.frame(height: 36)
-                    currentColor
+                    // 並び替え中はドラッグ中タブの色、通常時はフォルダ色
+                    if isInReorderMode, let dragColor = draggingTabColor {
+                        dragColor
+                            .animation(.easeInOut(duration: 0.3), value: draggingTabColor)
+                    } else {
+                        currentColor
+                    }
                 }
                 // テクスチャ類もタブ行を避ける
                 VStack(spacing: 0) {
@@ -2030,6 +2056,10 @@ struct TabBarView: View {
     var getSpecialTabColor: ((Int) -> Int)? = nil
     var onOpenColorSheet: ((Int) -> Void)? = nil
     var onReorder: ([(label: String, tag: Tag?, colorIndex: Int)]) -> Void = { _ in }
+    // 並び替えモード状態を親に伝える
+    @Binding var isInReorderMode: Bool
+    // ドラッグ中のタブの色を親に伝える
+    @Binding var draggingTabColor: Color?
     private let allTabColorIndex = -1
     private let frequentTabColorIndex = -2
 
@@ -2105,8 +2135,7 @@ struct TabBarView: View {
                                     }
                             }
                         )
-                        .offset(x: reorderScrollOffset, y: draggingID != nil ? -10 : 0)
-                        .animation(.spring(response: 0.25, dampingFraction: 0.7), value: draggingID != nil)
+                        .offset(x: reorderScrollOffset)
                         .frame(width: UIScreen.main.bounds.width, alignment: .leading)
                         .clipped()
                     } else {
@@ -2189,8 +2218,9 @@ struct TabBarView: View {
                             .allowsHitTesting(false)
                     }
                 }
-                .frame(height: isReorderMode ? 50 : 36)
-                .clipped()
+                .frame(height: 36)
+                // 通常時はクリップ、並び替え中は上にはみ出せるようクリップ解除
+                .conditionalClipped(!isReorderMode)
                 .background(
                     GeometryReader { geo in
                         Color.clear.onAppear {
@@ -2202,31 +2232,53 @@ struct TabBarView: View {
                     }
                 )
 
-                // 並び替えモード: タブバーの下にキャンセル・完了ボタン
+                // 並び替えモード: 説明＋ボタン
                 if isReorderMode {
-                    HStack {
+                    Spacer()
+
+                    // 中央の説明
+                    VStack(spacing: 8) {
+                        Image(systemName: "arrow.left.arrow.right")
+                            .font(.system(size: 28, weight: .light))
+                            .foregroundStyle(.secondary.opacity(0.6))
+                        Text("ドラッグで並び替え")
+                            .font(.system(size: 14, weight: .medium, design: .rounded))
+                            .foregroundStyle(.secondary.opacity(0.7))
+                    }
+
+                    Spacer()
+
+                    // ボタン行
+                    HStack(spacing: 16) {
                         Button {
                             cancelReorder()
                         } label: {
                             Text("キャンセル")
-                                .font(.system(size: 13, weight: .medium, design: .rounded))
-                                .foregroundStyle(.secondary)
+                                .font(.system(size: 15, weight: .medium, design: .rounded))
+                                .foregroundStyle(.primary.opacity(0.7))
+                                .padding(.horizontal, 24)
+                                .padding(.vertical, 10)
+                                .background(
+                                    Capsule()
+                                        .fill(Color(uiColor: .systemGray5))
+                                )
                         }
-                        Spacer()
-                        Text("ドラッグで並び替え")
-                            .font(.system(size: 12, design: .rounded))
-                            .foregroundStyle(.tertiary)
-                        Spacer()
+
                         Button {
                             finishReorder()
                         } label: {
                             Text("完了")
-                                .font(.system(size: 13, weight: .bold, design: .rounded))
-                                .foregroundStyle(.blue)
+                                .font(.system(size: 15, weight: .bold, design: .rounded))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 32)
+                                .padding(.vertical, 10)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.blue)
+                                )
                         }
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 4)
+                    .padding(.bottom, 24)
                 }
             }
         )
@@ -2239,6 +2291,7 @@ struct TabBarView: View {
         wiggleTimer = nil
         stopAutoScroll()
         isReorderMode = false
+        isInReorderMode = false
         draggingID = nil
         dragTranslation = 0
         dragFloatingX = 0
@@ -2248,6 +2301,7 @@ struct TabBarView: View {
     private func startReorder() {
         reorderItems = tabItems
         isReorderMode = true
+        isInReorderMode = true
         wiggleTick = 0
         wiggleTimer = Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { _ in
             withAnimation(.easeInOut(duration: 0.15)) {
@@ -2261,6 +2315,7 @@ struct TabBarView: View {
         wiggleTimer = nil
         stopAutoScroll()
         isReorderMode = false
+        isInReorderMode = false
         draggingID = nil
         dragTranslation = 0
         dragFloatingX = 0
@@ -2335,6 +2390,8 @@ struct TabBarView: View {
                             draggingID = myID
                             dragStarted = false
                             dragFloatingX = value.startLocation.x
+                            // ドラッグ中のタブ色を親に伝える
+                            draggingTabColor = reorderResolvedColor(item: item)
                             let generator = UIImpactFeedbackGenerator(style: .heavy)
                             generator.impactOccurred()
                             startAutoScroll()
@@ -2383,6 +2440,7 @@ struct TabBarView: View {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                             draggingID = nil
                             dragStarted = false
+                            // 色はそのまま維持（最後に掴んだタブの色を残す）
                         }
                     }
             )

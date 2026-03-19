@@ -2,23 +2,26 @@
 
 ## 現在の状況
 - **experiment/frosted-folder** ブランチで作業中
-- セッション029でメモ枚数スクロールかぶり修正、「よく見る」フォルダ追加、特殊タブ色変更等を実装
+- セッション030でタグ編集プレビュー改善、設定画面タグ並び替え等を実装
 
-### セッション029の主な変更点
-- メモ枚数表示のスクロール時かぶり修正（不透明背景+zIndex調整）
-- メモ一覧の上余白をドロワー高さに連動
-- メモ開閉アニメーション時短（開く0.2s、戻るアニメなし）
-- 親タグ-子タグバッジ表示（子タグフィルター中）
-- 最後に開いたメモのうっすら水色ハイライト
-- 「よく見る」タブ追加（左: よく見る順、右: 最近見た順の2列表示）
-- Memoモデルに viewCount / lastViewedAt 追加
-- 「すべて」「よく見る」タブの長押し色変更（カラーパレットシート）
-- SpecialColorEditSheet独立View化（sheet再利用バグ修正）
-- 長押しメニュー順序変更（フォルダ並び替えを最上部に）
+### セッション030の主な変更点
+- TagDetailEditViewのプレビューをリアルなタブデザインに変更（TrapezoidTabShape+ドロップシャドウ+テクスチャドット）
+- NewTagSheetViewの親タグ追加時のみリアルなタブプレビュー（子タグは従来のバッジ）
+- 新規タグ追加画面のタイトル順序変更（「親タグの追加（フォルダの追加）」）
+- サブタイトルフォントサイズ調整（11→13）
+- 設定画面タグ編集：ドラッグ並び替え対応（sortOrder順表示、親タグのみ表示）
+- タグ編集画面の並び替え説明をタイトル下に移動
+- List内ボタン干渉修正（.buttonStyle(.borderless)）
+- 全シートから色変更時の `.animation` 削除（シート伸縮防止）
+
+### 未解決: シートの伸び縮み問題
+- 全ての `.presentationDetents([.medium])` シートで、どこをタップしても全体が少し広がって戻る現象
+- NavigationStack除去、固定高さ、animation削除いずれも効果なし
+- iOS 26シミュレータ固有のバグの可能性 → **実機で確認してから判断**
 
 ## ブランチ構成
 - **main**: セッション027まで
-- **experiment/frosted-folder**: セッション028-029（テクスチャ・影・UI改善・よく見るフォルダ）← 現在
+- **experiment/frosted-folder**: セッション028-030（テクスチャ・影・UI改善・よく見るフォルダ・タグ編集改善）← 現在
 
 ## 主要ファイル
 - **TabbedMemoListView.swift**: メモ一覧、フォルダタブ、子タグドロワー、背景一元管理、よく見るタブ、色変更シート
@@ -26,18 +29,19 @@
 - **MainView.swift**: iPad対応、子タグ反映修正、アニメーション時短
 - **MemoInputViewModel.swift**: Undo/Redoスタック、hasText判定、閲覧追跡
 - **Memo.swift**: viewCount / lastViewedAt 追加
-- **TagEditView.swift**: ColorPaletteGrid、TagDetailEditView
+- **TagEditView.swift**: ColorPaletteGrid、TagDetailEditView（リアルタブプレビュー）、ドラッグ並び替え
+- **NewTagSheetView.swift**: 親タグ時リアルタブプレビュー
 
 ## 環境
 - **Mac②（新）**: MacBook Air — Xcode 26.3, シミュレータ iPhone 17 Pro Max (iOS 26.3.1)
 - 実機: 15promax (26.3.1) (00008130-0006252E2E40001C)
 
 ## 次のアクション
-1. **通常タグの編集プレビューをリアルなタブデザインに**: TagDetailEditViewのプレビューを、TrapezoidTabShape+ドロップシャドウ+テクスチャドット付きの実際のタブと同じ見た目にする（SpecialColorEditSheetと同じ方式）
+1. **シートの伸び縮み問題を実機で確認** → シミュレータ固有なら無視
 2. **タブの並び替えグラフィカルモード**: 長押し→「フォルダの並び替え」→タブバー上で直接ドラッグ（ぷるぷるアニメ、完了ボタン）
-2. ブランチをmainにマージするか判断
-3. Specialメニュー（爆速整理モード等）
-4. その他ROADMAPのタスク
+3. ブランチをmainにマージするか判断
+4. Specialメニュー（爆速整理モード等）
+5. その他ROADMAPのタスク
 
 ## 注意点
 - DerivedData キャッシュ → `rm -rf ~/Library/Developer/Xcode/DerivedData/SokuMemoKun-*`

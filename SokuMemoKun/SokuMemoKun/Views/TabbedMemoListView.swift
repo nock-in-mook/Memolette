@@ -548,38 +548,44 @@ struct TabbedMemoListView: View {
                     Color.clear.frame(height: 36)
                     currentColor
                 }
-                // PaperTexture（ドット2000）
-                Canvas { context, size in
-                    for _ in 0..<2000 {
-                        let x = CGFloat.random(in: 0...size.width)
-                        let y = CGFloat.random(in: 0...size.height)
-                        let op = Double.random(in: 0.02...0.08)
-                        let d = CGFloat.random(in: 0.5...1.5)
-                        context.fill(Path(ellipseIn: CGRect(x: x, y: y, width: d, height: d)), with: .color(.black.opacity(op)))
-                    }
-                }
-                .drawingGroup()
-                .allowsHitTesting(false)
-                // ノイズ画像タイル opacity=0.4
-                Image("NoiseTexture")
-                    .resizable(resizingMode: .tile)
-                    .opacity(0.4)
-                // 凹凸ドット（間隔2 弱）
-                Canvas { context, size in
-                    for row in stride(from: 0, to: Int(size.height), by: 2) {
-                        for col in stride(from: 0, to: Int(size.width), by: 2) {
-                            let h = abs(sin(Double(col * 127 + row * 311)) * 43758.5453)
-                            let v = h - Double(Int(h))
-                            if v > 0.5 {
-                                context.fill(Path(ellipseIn: CGRect(x: CGFloat(col), y: CGFloat(row), width: 1, height: 1)), with: .color(.white.opacity(0.08)))
-                            } else {
-                                context.fill(Path(ellipseIn: CGRect(x: CGFloat(col) + 1, y: CGFloat(row) + 1, width: 1, height: 1)), with: .color(.black.opacity(0.05)))
+                // テクスチャ類もタブ行を避ける
+                VStack(spacing: 0) {
+                    Color.clear.frame(height: 36)
+                    ZStack {
+                        // PaperTexture（ドット2000）
+                        Canvas { context, size in
+                            for _ in 0..<2000 {
+                                let x = CGFloat.random(in: 0...size.width)
+                                let y = CGFloat.random(in: 0...size.height)
+                                let op = Double.random(in: 0.02...0.08)
+                                let d = CGFloat.random(in: 0.5...1.5)
+                                context.fill(Path(ellipseIn: CGRect(x: x, y: y, width: d, height: d)), with: .color(.black.opacity(op)))
                             }
                         }
+                        .drawingGroup()
+                        .allowsHitTesting(false)
+                        // ノイズ画像タイル opacity=0.4
+                        Image("NoiseTexture")
+                            .resizable(resizingMode: .tile)
+                            .opacity(0.4)
+                        // 凹凸ドット（間隔2 弱）
+                        Canvas { context, size in
+                            for row in stride(from: 0, to: Int(size.height), by: 2) {
+                                for col in stride(from: 0, to: Int(size.width), by: 2) {
+                                    let h = abs(sin(Double(col * 127 + row * 311)) * 43758.5453)
+                                    let v = h - Double(Int(h))
+                                    if v > 0.5 {
+                                        context.fill(Path(ellipseIn: CGRect(x: CGFloat(col), y: CGFloat(row), width: 1, height: 1)), with: .color(.white.opacity(0.08)))
+                                    } else {
+                                        context.fill(Path(ellipseIn: CGRect(x: CGFloat(col) + 1, y: CGFloat(row) + 1, width: 1, height: 1)), with: .color(.black.opacity(0.05)))
+                                    }
+                                }
+                            }
+                        }
+                        .drawingGroup()
+                        .allowsHitTesting(false)
                     }
                 }
-                .drawingGroup()
-                .allowsHitTesting(false)
             }
             .ignoresSafeArea(edges: .bottom)
         )
@@ -2421,14 +2427,15 @@ struct TabBarView: View {
                 .background(
                     TrapezoidTabShape()
                         .fill(color)
-                        .shadow(color: isSelected ? .black.opacity(0.35) : .clear, radius: 2, x: -2, y: 2)
+                        .shadow(color: isSelected ? .black.opacity(0.3) : .clear, radius: 4, x: -3, y: 3)
                 )
                 .overlay(
                     TrapezoidTabShape()
                         .fill(Color.white.opacity(flashTabIndex == index ? 0.7 : 0))
                         .animation(.easeInOut(duration: 0.3).repeatCount(3, autoreverses: true), value: flashTabIndex)
                 )
-                .offset(y: isSelected ? 2 : 0)
+                .scaleEffect(isSelected ? 1.08 : 1.0, anchor: .bottom)
+                .animation(nil, value: selectedTabIndex)
         }
         .buttonStyle(.plain)
         .zIndex(isSelected ? 1 : 0)

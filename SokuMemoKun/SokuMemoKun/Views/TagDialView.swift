@@ -349,16 +349,19 @@ struct TagDialView: View {
             sector.closeSubpath()
 
             let isSelected = hasTag && dist < itemAngle / 2
-            context.opacity = fade
+            // セクターは常に不透明で描画
+            context.opacity = 1.0
             // セクター塗り
             if hasTag && isOpen {
                 let option = options[rawIndex]
                 let isNone = option.id == "none"
-                context.fill(sector, with: .color(isNone ? .white.opacity(isSelected ? 1.0 : 0.95) : option.color.opacity(isSelected ? 1.0 : 0.85)))
+                context.fill(sector, with: .color(isNone ? .white : option.color))
             } else {
-                context.fill(sector, with: .color(hasTag ? .white.opacity(isSelected ? 1.0 : 0.95) : Color(white: 0.92)))
+                context.fill(sector, with: .color(hasTag ? .white : Color(white: 0.92)))
             }
 
+            // テキスト・仕切り線にはfadeを適用
+            context.opacity = fade
             // 仕切り線
             if !isOpen || hasTag {
                 let divCG = Double(cgEnd) * .pi / 180
@@ -388,32 +391,58 @@ struct TagDialView: View {
             let cgMid = (180.0 - Double(displayAngle)) * .pi / 180
             let textX = cx + midR * CGFloat(cos(cgMid))
             let textY = cy + midR * CGFloat(sin(cgMid))
-            let displayName = option.name.count > maxChars ? String(option.name.prefix(maxChars)) + "…" : option.name
-            let nameLen = displayName.count
             let isParent = maxChars >= 10
-            let baseFontSize: CGFloat = {
-                if isParent {
-                    if nameLen <= 2 { return 24 }; if nameLen <= 3 { return 21 }
-                    if nameLen <= 4 { return 18 }; if nameLen <= 6 { return 15 }
-                    if nameLen <= 8 { return 13 }; return 11
-                } else {
-                    if nameLen <= 2 { return 16 }; if nameLen <= 3 { return 14 }
-                    if nameLen <= 5 { return 12 }; return 10
-                }
-            }()
             let isNoneTag = option.id == "none"
-            let fontSize: CGFloat = isNoneTag ? (isParent ? 16 : 14) : (isSelected ? baseFontSize : max(baseFontSize - 2, 9))
-            let textColor: Color = isNoneTag ? Color(white: 0.55) : .black
+            let textColor: Color = isNoneTag ? Color(white: 0.55) : (isSelected ? .black : Color(white: 0.25))
+            let fontWeight: Font.Weight = isSelected ? .bold : .semibold
 
-            let resolved = context.resolve(
-                Text(displayName)
-                    .font(.system(size: fontSize, weight: isSelected ? .bold : .semibold, design: .rounded))
-                    .foregroundColor(textColor)
-            )
+            // 表示文字数を制限（半角幅換算: 親10、子7）
+            let maxHalfWidthUnits: CGFloat = isParent ? 12 : 10
+            let displayName: String = {
+                var width: CGFloat = 0
+                var result = ""
+                for ch in option.name {
+                    let w: CGFloat = ch.isASCII ? 1.0 : 2.0
+                    if width + w > maxHalfWidthUnits {
+                        return result + "…"
+                    }
+                    width += w
+                    result.append(ch)
+                }
+                return result
+            }()
+
+            // セクターの弧の長さ
+            let sectorWidth = (outerR - innerR) * 0.9  // セクターの放射方向の幅の90%
+
+            // 最大フォントサイズからresolveで実測して収まる最大を探す
+            let maxFont: CGFloat = isNoneTag ? (isParent ? 16 : 14) : (isParent ? 22 : 16)
+            let minFont: CGFloat = isParent ? 13 : 11
+            var finalResolved: GraphicsContext.ResolvedText!
+
+            for fs in stride(from: maxFont, through: minFont, by: -0.5) {
+                let resolved = context.resolve(
+                    Text(displayName)
+                        .font(.system(size: fs, weight: fontWeight, design: .rounded))
+                        .foregroundColor(textColor)
+                )
+                let measuredWidth = resolved.measure(in: CGSize(width: 9999, height: 9999)).width
+                if measuredWidth <= sectorWidth {
+                    finalResolved = resolved
+                    break
+                }
+                if fs <= minFont {
+                    finalResolved = resolved
+                }
+            }
+
             var rotCtx = context
             rotCtx.translateBy(x: textX, y: textY)
             rotCtx.rotate(by: Angle.degrees(-Double(displayAngle)))
-            rotCtx.draw(resolved, at: .zero, anchor: .center)
+            if isSelected && !isNoneTag {
+                rotCtx.addFilter(.shadow(color: .black.opacity(0.4), radius: 1.5, x: -1, y: 1))
+            }
+            rotCtx.draw(finalResolved, at: .zero, anchor: .center)
             context.opacity = 1.0
         }
     }
@@ -518,25 +547,28 @@ struct TagDialView: View {
                         arc.fill(Color.gray.opacity(0.05))
                     }
 
-                    // 仕切り線（上端）
-                    dividerLine(center: center, angle: cgEnd,
-                                innerR: innerR, outerR: outerR, fade: fade)
-
-                    // 最後のセクターは下端にも仕切り線
-                    if rawIndex == options.count - 1 {
-                        dividerLine(center: center, angle: cgStart,
+                    // 仕切り線・テキストにはfade適用
+                    Group {
+                        // 仕切り線（上端）
+                        dividerLine(center: center, angle: cgEnd,
                                     innerR: innerR, outerR: outerR, fade: fade)
-                    }
 
-                    // テキスト
-                    sectorTextView(
-                        option: option, center: center,
-                        midR: (innerR + outerR) / 2,
-                        displayAngle: displayAngle, isSelected: isSelected,
-                        maxChars: maxChars
-                    )
+                        // 最後のセクターは下端にも仕切り線
+                        if rawIndex == options.count - 1 {
+                            dividerLine(center: center, angle: cgStart,
+                                        innerR: innerR, outerR: outerR, fade: fade)
+                        }
+
+                        // テキスト
+                        sectorTextView(
+                            option: option, center: center,
+                            midR: (innerR + outerR) / 2,
+                            displayAngle: displayAngle, isSelected: isSelected,
+                            maxChars: maxChars
+                        )
+                    }
+                    .opacity(fade)
                 }
-                .opacity(fade)
                 .contentShape(arc)
                 // タップでそのタグにスナップ回転（新機能）
                 .onTapGesture {
@@ -571,12 +603,10 @@ struct TagDialView: View {
         isSelected: Bool
     ) -> Color {
         if isOpen {
-            if option.id == "none" {
-                return .white.opacity(isSelected ? 1.0 : 0.95)
-            }
-            return option.color.opacity(isSelected ? 1.0 : 0.85)
+            if option.id == "none" { return .white }
+            return option.color
         } else {
-            return .white.opacity(isSelected ? 1.0 : 0.95)
+            return .white
         }
     }
 
@@ -589,48 +619,46 @@ struct TagDialView: View {
         displayAngle: CGFloat, isSelected: Bool,
         maxChars: Int
     ) -> some View {
-        let displayName = option.name.count > maxChars
-            ? String(option.name.prefix(maxChars)) + "…"
-            : option.name
-        let nameLen = displayName.count
         let isNoneTag = option.id == "none"
         let isParent = maxChars >= 10
+        let maxFontSize: CGFloat = isNoneTag ? (isParent ? 16 : 14) : (isParent ? 22 : 16)
+        let textColor: Color = isNoneTag ? Color(white: 0.55) : (isSelected ? .black : Color(white: 0.25))
 
-        // フォントサイズ: セクター幅と文字数に応じて可変
-        let baseFontSize: CGFloat = {
-            if isParent {
-                if nameLen <= 2 { return 24 }
-                if nameLen <= 3 { return 21 }
-                if nameLen <= 4 { return 18 }
-                if nameLen <= 6 { return 15 }
-                if nameLen <= 8 { return 13 }
-                return 11
-            } else {
-                if nameLen <= 2 { return 16 }
-                if nameLen <= 3 { return 14 }
-                if nameLen <= 5 { return 12 }
-                return 10
+        // 文字数制限（半角幅換算）
+        let maxHalfWidthUnits: CGFloat = isParent ? 10 : 7
+        let displayName: String = {
+            var width: CGFloat = 0
+            var result = ""
+            for ch in option.name {
+                let w: CGFloat = ch.isASCII ? 1.0 : 2.0
+                if width + w > maxHalfWidthUnits {
+                    return result + "…"
+                }
+                width += w
+                result.append(ch)
             }
+            return result
         }()
-        let fontSize: CGFloat = isNoneTag
-            ? (isParent ? 16 : 14)
-            : (isSelected ? baseFontSize : max(baseFontSize - 2, 9))
 
-        // テキスト色
-        let textColor = textColorFor(option: option)
+        // セクターの放射方向幅（midRから近似）
+        let sectorWidth = midR * (isParent ? 0.55 : 0.4)
 
-        // テキスト位置: セクター中央（弧の中点）
+        // テキスト位置
         let cgMid = (180.0 - Double(displayAngle)) * .pi / 180
         let textX = center.x + midR * CGFloat(cos(cgMid))
         let textY = center.y + midR * CGFloat(sin(cgMid))
 
         Text(displayName)
             .font(.system(
-                size: fontSize,
+                size: maxFontSize,
                 weight: isSelected ? .bold : .semibold,
                 design: .rounded
             ))
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
+            .frame(maxWidth: sectorWidth)
             .foregroundColor(textColor)
+            .shadow(color: isSelected && !isNoneTag ? .black.opacity(0.4) : .clear, radius: 1.5, x: -1, y: 1)
             .rotationEffect(.degrees(-Double(displayAngle)))
             .position(x: textX, y: textY)
     }

@@ -902,12 +902,10 @@ struct TabbedMemoListView: View {
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 4)
                             } else if isFrequentTab {
-                                HStack(spacing: 6) {
-                                    Text("よく見るメモと最近見たメモ")
-                                        .font(.system(size: 13, weight: .medium, design: .rounded))
-                                        .foregroundStyle(darkenedColor)
-                                    Spacer()
-                                }
+                                Text("よく見るメモと最近見たメモ")
+                                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                                    .foregroundStyle(darkenedColor)
+                                    .frame(maxWidth: .infinity, alignment: .center)
                             } else {
                                 HStack(spacing: 6) {
                                     Text("\(filteredMemos.count)枚のメモ")

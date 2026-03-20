@@ -387,20 +387,61 @@ struct MemoInputView: View {
                     .foregroundStyle(.tertiary)
             } else {
                 let info = selectedTagInfo
-                Text(info.name.prefix(4) + (info.name.count > 4 ? "…" : ""))
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(RoundedRectangle(cornerRadius: 5).fill(info.color))
                 if let childInfo = selectedChildTagInfo {
-                    Text(childInfo.name.prefix(3) + (childInfo.name.count > 3 ? "…" : ""))
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 1)
-                        .background(RoundedRectangle(cornerRadius: 4).fill(childInfo.color))
+                    // 表示名を半角幅換算で制限（親: 10単位=全角5/半角10、子: 8単位=全角4/半角8）
+                    let parentDisplay = truncateByWidth(info.name, maxWidth: 10)
+                    let childDisplay = truncateByWidth(childInfo.name, maxWidth: 10)
+                    // 親タグ＋右下に子タグめり込みデザイン
+                    HStack(alignment: .bottom, spacing: -6) {
+                        // 親タグ
+                        Text(parentDisplay)
+                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                            .padding(.leading, 10)
+                            .padding(.trailing, 14)
+                            .padding(.vertical, 5)
+                            .background(RoundedRectangle(cornerRadius: 7).fill(info.color))
+                        // 子タグ
+                        Text(childDisplay)
+                            .font(.system(size: 13, weight: .medium, design: .rounded))
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(
+                                RoundedRectangle(cornerRadius: 5).fill(childInfo.color)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 5)
+                                    .stroke(Color.white, lineWidth: 1.5)
+                            )
+                    }
+                } else {
+                    // 親タグのみ
+                    Text(truncateByWidth(info.name, maxWidth: 12))
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(RoundedRectangle(cornerRadius: 7).fill(info.color))
                 }
             }
         }
+    }
+
+    // 半角幅換算で文字列を切り詰める（全角=2、半角=1）
+    private func truncateByWidth(_ text: String, maxWidth: CGFloat) -> String {
+        var width: CGFloat = 0
+        var result = ""
+        for ch in text {
+            let w: CGFloat = ch.isASCII ? 1.0 : 2.0
+            if width + w > maxWidth {
+                return result + "…"
+            }
+            width += w
+            result.append(ch)
+        }
+        return result
     }
 
     // MARK: - フッター（左=削除 右=コピー+閉じる）

@@ -227,7 +227,7 @@ enum GridSizeOption: Int, CaseIterable {
         case .grid2x3: return "2×3"
         case .grid1x2: return "1×2"
         case .full: return "1(全文)"
-        case .titleOnly: return "タイトル"
+        case .titleOnly: return "タイトルのみ"
         }
     }
 
@@ -265,8 +265,8 @@ enum FrequentGridOption: Int, CaseIterable {
         case .grid2x8: return "2×8"
         case .grid2x6: return "2×6"
         case .grid2x3: return "2×3"
-        case .full: return "2(全文)"
-        case .titleOnly: return "タイトル"
+        case .full: return "2×1(全文)"
+        case .titleOnly: return "タイトルのみ"
         }
     }
 
@@ -1319,15 +1319,12 @@ struct TabbedMemoListView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.top, 40)
                 } else if isTitleMode {
-                    // タイトルのみモード（1列リスト）
-                    VStack(spacing: 0) {
-                        if hasFrequent {
-                            frequentTitleSection(title: "よく見る", memos: frequentMemos, color: frequentColumnColors.left)
-                        }
-                        if hasRecent {
-                            frequentTitleSection(title: "最近見た", memos: recentMemos, color: frequentColumnColors.right)
-                                .padding(.top, hasFrequent ? 12 : 0)
-                        }
+                    // タイトルのみモード（左右2列維持）
+                    HStack(alignment: .top, spacing: 8) {
+                        frequentTitleSection(title: "よく見る", memos: frequentMemos, color: frequentColumnColors.left)
+                            .frame(maxWidth: .infinity)
+                        frequentTitleSection(title: "最近見た", memos: recentMemos, color: frequentColumnColors.right)
+                            .frame(maxWidth: .infinity)
                     }
                     .padding(.horizontal, 6)
                 } else {

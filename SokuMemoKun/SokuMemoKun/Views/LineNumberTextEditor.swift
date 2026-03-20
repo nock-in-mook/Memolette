@@ -190,15 +190,15 @@ struct ReadOnlyLineNumbers: View {
     let text: String
 
     var body: some View {
-        VStack(alignment: .trailing, spacing: 0) {
-            let lines = text.components(separatedBy: "\n")
-            ForEach(Array(lines.enumerated()), id: \.offset) { index, _ in
-                Text("\(index + 1)")
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(.tertiary)
-                    .frame(height: 22, alignment: .top)
-            }
-        }
-        .padding(.top, 2)
+        // 全行番号を1つのTextにまとめて描画（ForEachより大幅に軽量）
+        let lineCount = max(text.components(separatedBy: "\n").count, 1)
+        let numbers = (1...lineCount).map { String($0) }.joined(separator: "\n")
+        Text(numbers)
+            .font(.system(size: 11, design: .monospaced))
+            .foregroundStyle(.tertiary)
+            .lineSpacing(5.2)
+            .multilineTextAlignment(.trailing)
+            .frame(width: 32, alignment: .trailing)
+            .padding(.top, 2)
     }
 }

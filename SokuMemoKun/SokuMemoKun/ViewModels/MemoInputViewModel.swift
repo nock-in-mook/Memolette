@@ -26,43 +26,58 @@ class MemoInputViewModel {
     // loadMemoが呼ばれた回数（Viewが閲覧モードに切り替えるトリガー）
     var loadMemoCounter: Int = 0
 
-    // Undo/Redo
-    private var undoStack: [String] = []
-    private var redoStack: [String] = []
-    private var lastSnapshot: String = ""
+    // Undo/Redo（本文・タイトル・タグをまとめてスナップショット）
+    private struct Snapshot: Equatable {
+        var text: String
+        var title: String
+        var tagID: UUID?
+        var childTagID: UUID?
+    }
+    private var undoStack: [Snapshot] = []
+    private var redoStack: [Snapshot] = []
+    private var lastSnapshot = Snapshot(text: "", title: "", tagID: nil, childTagID: nil)
     var canUndo: Bool { !undoStack.isEmpty }
     var canRedo: Bool { !redoStack.isEmpty }
 
-    // テキスト変更時に呼ぶ（一定間隔でスナップショットを保存）
+    private var currentSnapshot: Snapshot {
+        Snapshot(text: inputText, title: titleText, tagID: selectedTagID, childTagID: selectedChildTagID)
+    }
+
+    // 変更時に呼ぶ（差分があればスナップショットを保存）
     func pushUndoIfNeeded() {
-        let current = inputText
+        let current = currentSnapshot
         if current != lastSnapshot {
             undoStack.append(lastSnapshot)
             redoStack.removeAll()
             lastSnapshot = current
-            // スタック上限
             if undoStack.count > 50 { undoStack.removeFirst() }
         }
     }
 
     func undo() {
         guard let previous = undoStack.popLast() else { return }
-        redoStack.append(inputText)
-        inputText = previous
-        lastSnapshot = previous
+        redoStack.append(currentSnapshot)
+        applySnapshot(previous)
     }
 
     func redo() {
         guard let next = redoStack.popLast() else { return }
-        undoStack.append(inputText)
-        inputText = next
-        lastSnapshot = next
+        undoStack.append(currentSnapshot)
+        applySnapshot(next)
+    }
+
+    private func applySnapshot(_ s: Snapshot) {
+        inputText = s.text
+        titleText = s.title
+        selectedTagID = s.tagID
+        selectedChildTagID = s.childTagID
+        lastSnapshot = s
     }
 
     func resetUndoStack() {
         undoStack.removeAll()
         redoStack.removeAll()
-        lastSnapshot = inputText
+        lastSnapshot = currentSnapshot
     }
 
     // テキストがあるか（確定ボタンの有効/無効）

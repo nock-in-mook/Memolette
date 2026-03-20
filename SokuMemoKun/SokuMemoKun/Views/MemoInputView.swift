@@ -301,6 +301,7 @@ struct MemoInputView: View {
         .padding(.vertical, 6)
         .alert("本文をクリアします。よろしいですか？", isPresented: $showClearBodyAlert) {
             Button("クリア", role: .destructive) {
+                viewModel.pushUndoIfNeeded()
                 viewModel.inputText = ""
             }
             Button("キャンセル", role: .cancel) {}
@@ -399,14 +400,18 @@ struct MemoInputView: View {
             viewModel.onContentChanged(context: modelContext, tags: tags)
         }
         .onChange(of: viewModel.titleText) { _, _ in
+            viewModel.pushUndoIfNeeded()
             viewModel.onTitleChanged()
         }
         .onChange(of: viewModel.selectedTagID) { _, newTagID in
-            if !viewModel.isLoadingMemo { viewModel.selectedChildTagID = nil }
+            if !viewModel.isLoadingMemo {
+                viewModel.pushUndoIfNeeded()
+                viewModel.selectedChildTagID = nil
+            }
             viewModel.onTagChanged(tags: tags)
-            // フォルダ移動はルーレット操作時のみ（switchToTabはTagDialViewから直接発火）
         }
         .onChange(of: viewModel.selectedChildTagID) { _, _ in
+            viewModel.pushUndoIfNeeded()
             viewModel.onTagChanged(tags: tags)
         }
         .onAppear {
@@ -455,6 +460,7 @@ struct MemoInputView: View {
                 // タイトル×ボタン（テキストがあるときだけ表示）
                 if !viewModel.titleText.isEmpty {
                     Button {
+                        viewModel.pushUndoIfNeeded()
                         viewModel.titleText = ""
                     } label: {
                         Image(systemName: "xmark.circle.fill")
@@ -483,6 +489,7 @@ struct MemoInputView: View {
                 // タグ×ボタン（タグ選択中のみ表示）
                 if viewModel.selectedTagID != nil {
                     Button {
+                        viewModel.pushUndoIfNeeded()
                         viewModel.selectedTagID = nil
                         viewModel.selectedChildTagID = nil
                     } label: {

@@ -188,97 +188,101 @@ struct TagDialView: View {
 
     @ViewBuilder
     private func sectorActionDialog(name: String, color: Color, isChild: Bool, id: String) -> some View {
-        ZStack {
-            Color.black.opacity(0.3)
-                .ignoresSafeArea()
-                .onTapGesture {
-                    withAnimation(.easeOut(duration: 0.2)) { showSectorMenu = false }
-                }
+        // 画面全体を覆うために固定サイズで表示
+        GeometryReader { geo in
+            ZStack {
+                Color.black.opacity(0.3)
+                    .onTapGesture {
+                        withAnimation(.easeOut(duration: 0.2)) { showSectorMenu = false }
+                    }
 
-            VStack(spacing: 0) {
-                // ヘッダー
-                VStack(spacing: 8) {
-                    Circle()
-                        .fill(color)
-                        .frame(width: 32, height: 32)
-                        .shadow(color: .black.opacity(0.15), radius: 2, y: 1)
+                VStack(spacing: 0) {
+                    // ヘッダー
+                    VStack(spacing: 8) {
+                        Circle()
+                            .fill(color)
+                            .frame(width: 32, height: 32)
+                            .shadow(color: .black.opacity(0.15), radius: 2, y: 1)
 
-                    Text(name)
-                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        Text(name)
+                            .font(.system(size: 17, weight: .bold, design: .rounded))
 
-                    Text(isChild ? "子タグ" : "親タグ")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.top, 20)
-                .padding(.bottom, 16)
-
-                Divider()
-
-                // 編集
-                Button {
-                    withAnimation(.easeOut(duration: 0.2)) { showSectorMenu = false }
-                    onEditTag?(id, isChild)
-                } label: {
-                    HStack(spacing: 10) {
-                        Image(systemName: "pencil")
-                            .font(.system(size: 16))
-                            .foregroundStyle(.blue)
-                        Text("タグ名・色を編集")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundStyle(.primary)
-                        Spacer()
-                        Image(systemName: "chevron.right")
+                        Text(isChild ? "子タグ" : "親タグ")
                             .font(.system(size: 12))
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(.secondary)
                     }
-                    .contentShape(Rectangle())
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 14)
-                }
-                .buttonStyle(.plain)
+                    .padding(.top, 20)
+                    .padding(.bottom, 16)
 
-                Divider().padding(.leading, 50)
+                    Divider()
 
-                // 削除
-                Button {
-                    withAnimation(.easeOut(duration: 0.2)) { showSectorMenu = false }
-                    onDeleteTag?(id)
-                } label: {
-                    HStack(spacing: 10) {
-                        Image(systemName: "trash")
-                            .font(.system(size: 16))
-                            .foregroundStyle(.red)
-                        Text("削除")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundStyle(.red)
-                        Spacer()
-                    }
-                    .contentShape(Rectangle())
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 14)
-                }
-                .buttonStyle(.plain)
-
-                Divider()
-
-                // 閉じる
-                Button {
-                    withAnimation(.easeOut(duration: 0.2)) { showSectorMenu = false }
-                } label: {
-                    Text("閉じる")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity)
+                    // 編集
+                    Button {
+                        withAnimation(.easeOut(duration: 0.2)) { showSectorMenu = false }
+                        onEditTag?(id, isChild)
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "pencil")
+                                .font(.system(size: 16))
+                                .foregroundStyle(.blue)
+                            Text("タグ名・色を編集")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12))
+                                .foregroundStyle(.tertiary)
+                        }
+                        .contentShape(Rectangle())
+                        .padding(.horizontal, 20)
                         .padding(.vertical, 14)
+                    }
+                    .buttonStyle(.plain)
+
+                    Divider().padding(.leading, 50)
+
+                    // 削除
+                    Button {
+                        withAnimation(.easeOut(duration: 0.2)) { showSectorMenu = false }
+                        onDeleteTag?(id)
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "trash")
+                                .font(.system(size: 16))
+                                .foregroundStyle(.red)
+                            Text("削除")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(.red)
+                            Spacer()
+                        }
+                        .contentShape(Rectangle())
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 14)
+                    }
+                    .buttonStyle(.plain)
+
+                    Divider()
+
+                    // 閉じる
+                    Button {
+                        withAnimation(.easeOut(duration: 0.2)) { showSectorMenu = false }
+                    } label: {
+                        Text("閉じる")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
+                .frame(width: min(geo.size.width - 60, 300))
+                .background(Color(uiColor: .systemBackground))
+                .cornerRadius(16)
+                .shadow(color: .black.opacity(0.15), radius: 12, y: 4)
             }
-            .background(Color(uiColor: .systemBackground))
-            .cornerRadius(16)
-            .shadow(color: .black.opacity(0.15), radius: 12, y: 4)
-            .padding(.horizontal, 40)
+            .frame(width: geo.size.width, height: geo.size.height)
         }
+        .ignoresSafeArea()
         .transition(.opacity)
     }
 

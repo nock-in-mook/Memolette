@@ -1777,7 +1777,7 @@ struct TabbedMemoListView: View {
                 } else {
                     Image(systemName: selectedMemoIDs.contains(memo.id) ? "checkmark.circle.fill" : "circle")
                         .font(.system(size: 20))
-                        .foregroundStyle(selectedMemoIDs.contains(memo.id) ? .red : .gray.opacity(0.6))
+                        .foregroundStyle(selectedMemoIDs.contains(memo.id) ? .blue : .gray.opacity(0.6))
                         .contentShape(Rectangle())
                         .onTapGesture {
                             handleMemoTap(memo)

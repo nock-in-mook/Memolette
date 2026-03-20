@@ -9,6 +9,11 @@ class MemoInputViewModel {
     var selectedChildTagID: UUID?  // 子タグ
     var isMarkdown: Bool = UserDefaults.standard.bool(forKey: "defaultMarkdown")
 
+    // タグサジェストエンジン（外部から注入）
+    var suggestEngine: TagSuggestEngine?
+    // サジェスト学習用のModelContext（外部から注入）
+    var suggestContext: ModelContext?
+
     // 現在編集中のメモ（自動保存の対象）
     var editingMemo: Memo?
     // マークダウンメモ読み込み時にFullEditorを自動起動するフラグ
@@ -139,6 +144,8 @@ class MemoInputViewModel {
 
     // 保存ボタン（入力欄をクリアして新規入力待ちに）
     func clearInput() {
+        // 確定時にサジェストエンジンに学習させる
+        learnFromCurrentMemo()
         editingMemo = nil
         inputText = ""
         titleText = ""
@@ -179,5 +186,17 @@ class MemoInputViewModel {
 
     private func saveLastMemoID(_ id: UUID) {
         UserDefaults.standard.set(id.uuidString, forKey: "lastEditingMemoID")
+    }
+
+    // MARK: - タグサジェスト学習
+
+    // 現在のメモからサジェストエンジンに学習させる
+    private func learnFromCurrentMemo() {
+        guard let engine = suggestEngine,
+              let ctx = suggestContext,
+              let memo = editingMemo else { return }
+        let tagIDs = memo.tags.map { $0.id }
+        guard !tagIDs.isEmpty else { return }
+        engine.learn(title: memo.title, body: memo.content, tagIDs: tagIDs, context: ctx)
     }
 }

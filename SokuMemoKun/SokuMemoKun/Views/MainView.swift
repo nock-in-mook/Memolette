@@ -3,6 +3,7 @@ import SwiftData
 
 struct MainView: View {
     @State private var viewModel = MemoInputViewModel()
+    @State private var suggestEngine = TagSuggestEngine()
     @State private var isKeyboardVisible = false
     @State private var showSettings = false
     @State private var focusInput = false
@@ -315,6 +316,8 @@ struct MainView: View {
                 Button("キャンセル", role: .cancel) {}
             }
             .onAppear {
+                viewModel.suggestEngine = suggestEngine
+                viewModel.suggestContext = modelContext
                 viewModel.restoreLastMemo(context: modelContext)
                 if !markdownEnabled {
                     viewModel.isMarkdown = false

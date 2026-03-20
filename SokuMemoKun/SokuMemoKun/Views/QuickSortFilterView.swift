@@ -108,8 +108,8 @@ struct QuickSortFilterView: View {
                 // 開始ボタン
                 Button {
                     let memos = filteredMemos
-                    dismiss()
                     onStart(memos)
+                    dismiss()
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "bolt.fill")

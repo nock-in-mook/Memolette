@@ -1,44 +1,39 @@
 # 引き継ぎメモ
 
 ## 現在の状況
-- **feature/tag-suggest-ui** ブランチで作業中（mainからの分岐）
-- セッション036でUI改善多数＋辞書20000語化＋グリッドメニュー改修
+- **main** ブランチで作業中
+- セッション037でUI改善多数＋爆速振り分けモード設計完了
 
-### セッション036の主な変更点
-- **フォルダタブ上部のクリップ切れ修正**: frame高さ36→44、top padding 4→10
-- **デバッグ表示を全削除**: 黄色バー・print文・lastDebugInfo・dictMatchLog
-- **タイトル・タグの×クリアボタン**: MemoInputView headerRow改修、縦線セパレータ追加
-- **タイトル動的フォント縮小**: 非フォーカス時にText+minimumScaleFactor(0.7)、フォーカス時はTextField
-- **本文クリア消しゴムボタン**: 本文エリア左下にオレンジ消しゴム、編集中のみ表示、確認ダイアログ付き
-- **タグバッジ縮小**: フォント13/11pt、パディング縮小でタイトルエリア確保
-- **タグサジェスト辞書 2,656語→19,999語**: 53カテゴリ、組み合わせ方式で体系的に拡充
-- **グリッド表示改修**:
-  - 「よく見る」フォルダ専用メニュー（2×8/2×6/2×3/2×1全文/タイトルのみ）
-  - 通常フォルダに「タイトルのみ」モード追加（2列）
-  - 無題メモはグレー「無題」表示
-  - 表示件数がグリッド設定に応じて可変
-- **カードのタイトル表示幅最大化**: 右上マークをZStack→overlayに変更
-- **ルーレット設計メモ**: iphone_reminder/ROULETTE_DESIGN.md 作成
-
-## ブランチ構成
-- **main**: ルーレット影修正＋サジェストエンジン基盤まで統合済み
-- **feature/tag-suggest-ui**: サジェストUI完成＋辞書20000語＋グリッド改修
+### セッション037の主な変更点
+- **feature/tag-suggest-ui → mainマージ**: 辞書20000語＋グリッド改修＋UI改善を統合
+- **メモ最大文字数制限**: 5万文字（MemoInputView + MemoDetailView）
+- **文字数カウンター**: 消しゴム右にフロートバッジ表示（設定でON/OFF）
+- **行番号表示**: TextKit1ベースUITextView + ガター（編集・閲覧両対応、設定でON/OFF）
+- **ルーレット展開パフォーマンス改善**: テキスト幅変更を廃止→半透明オーバーレイ方式
+- **UNDO/REDO統合**: 本文+タイトル+タグをスナップショットで一括管理
+- **フォルダタブのタグ名省略**: 全角5文字（半角10文字）で切り詰め
+- **タグサジェスト修正**: 確定後の誤表示防止、全画面時の位置修正、「タグの提案」タイトル追加
+- **サジェスト新規タグ作成**: リッチダイアログ（おまかせカラー/色指定/戻る）
+- **ルーレット長押しダイアログ**: カスタムUI化（色付きバッジ+編集+削除+閉じる）
+- **トップ移動チェックマーク**: 赤→青に変更
+- **テストデータV9**: 1万文字超テストメモ追加
 
 ## 次のアクション（優先順）
-1. **feature/tag-suggest-ui を main にマージ** — かなり機能が溜まっている
-2. **実機テスト** — 辞書20000語のパフォーマンス確認
-3. **新規タグ作成時に「色指定して追加」オプション**
-4. **爆速タグ付けモードへのサジェスト組み込み**
-5. **iphone_reminder でルーレットUI移植開始**
+1. **爆速振り分けモードの実装** — ROADMAP詳細設計済み（QuickSortView）
+2. **実機テスト** — 行番号・文字数カウンター・長文パフォーマンス確認
+3. **アプリアイコン**
+4. **編集時/閲覧時の文字サイズ変更**
+5. **有料版機能の詳細打ち合わせ**
 
 ## 主要ファイル
-- **TAG_SUGGEST_DESIGN.md**: サジェストシステムの詳細設計ドキュメント
-- **TagSuggestEngine.swift**: サジェストエンジン本体（Services/）
-- **TagSuggestDictionary.json**: 19,999語の事前辞書（478KB→約850KB）
-- **MainView.swift**: サジェストUI統合（3セクション表示、新規タグ作成、色自動割り当て）
-- **MemoInputView.swift**: ヘッダー改修（タイトル×ボタン・タグ×ボタン・縦線・消しゴム）
-- **TabbedMemoListView.swift**: グリッド改修（FrequentGridOption・タイトルのみモード・overlay化）
-- **iphone_reminder/ROULETTE_DESIGN.md**: ルーレット設計アドバイスメモ
+- **LineNumberTextEditor.swift**: 行番号付きUITextViewラッパー（新規）
+- **MemoInputViewModel.swift**: UNDO統合スナップショット、最大文字数定数
+- **MemoInputView.swift**: 文字数カウンター、ルーレット展開オーバーレイ、長押しカスタムダイアログ
+- **MainView.swift**: サジェスト位置修正、新規タグ作成リッチダイアログ
+- **TagDialView.swift**: 長押しをonLongPressコールバックに委譲
+- **TabbedMemoListView.swift**: タブ名省略、チェックマーク青化
+- **SettingsView.swift**: 文字数カウンター・行番号トグル追加
+- **NewTagSheetView.swift**: initialName/initialColorIndexパラメータ追加
 
 ## 環境
 - **Mac②（新）**: MacBook Air — Xcode 26.3, シミュレータ iPhone 17 Pro Max (iOS 26.3.1)
@@ -49,5 +44,5 @@
 - **ビルドキャッシュが頑固**: DerivedData削除+アンインストール+clean+フルリビルドが確実
 - SourceKitの偽陽性エラー多発→ビルドは成功する
 - **バンドルID**: com.sokumemokun.app
-- **テストデータバージョン**: sampleDataV8
+- **テストデータバージョン**: sampleDataV9
 - **MainViewのhueFromColorIndex内RGBテーブル**: tabColorsと同じ値を維持すること（別々に管理しているため同期注意）

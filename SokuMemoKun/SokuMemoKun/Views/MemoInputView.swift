@@ -88,6 +88,109 @@ struct MemoInputView: View {
         longPressedTagID = nil
     }
 
+    // タグ長押しカスタムダイアログ
+    @ViewBuilder
+    private func tagActionDialog(tag: Tag) -> some View {
+        ZStack {
+            Color.black.opacity(0.3)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    withAnimation(.easeOut(duration: 0.2)) { showTagActionSheet = false }
+                }
+
+            VStack(spacing: 0) {
+                // ヘッダー: タグ色 + タグ名
+                VStack(spacing: 8) {
+                    Circle()
+                        .fill(tagColor(for: tag.colorIndex))
+                        .frame(width: 32, height: 32)
+                        .shadow(color: .black.opacity(0.15), radius: 2, y: 1)
+
+                    Text(tag.name)
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+
+                    Text(longPressedIsChild ? "子タグ" : "親タグ")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.top, 20)
+                .padding(.bottom, 16)
+
+                Divider()
+
+                // 編集
+                Button {
+                    withAnimation(.easeOut(duration: 0.2)) { showTagActionSheet = false }
+                    showTagEditSheet = true
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "pencil")
+                            .font(.system(size: 16))
+                            .foregroundStyle(.blue)
+                        Text("タグ名・色を編集")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .contentShape(Rectangle())
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 14)
+                }
+                .buttonStyle(.plain)
+
+                Divider().padding(.leading, 50)
+
+                // 削除
+                Button {
+                    withAnimation(.easeOut(duration: 0.2)) { showTagActionSheet = false }
+                    showTagDeleteAlert = true
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "trash")
+                            .font(.system(size: 16))
+                            .foregroundStyle(.red)
+                        if tag.memos.count > 0 {
+                            Text("削除（メモ\(tag.memos.count)件あり）")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(.red)
+                        } else {
+                            Text("削除")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(.red)
+                        }
+                        Spacer()
+                    }
+                    .contentShape(Rectangle())
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 14)
+                }
+                .buttonStyle(.plain)
+
+                Divider()
+
+                // 閉じる
+                Button {
+                    withAnimation(.easeOut(duration: 0.2)) { showTagActionSheet = false }
+                } label: {
+                    Text("閉じる")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                }
+                .buttonStyle(.plain)
+            }
+            .background(Color(uiColor: .systemBackground))
+            .cornerRadius(16)
+            .shadow(color: .black.opacity(0.15), radius: 12, y: 4)
+            .padding(.horizontal, 40)
+        }
+        .transition(.opacity)
+    }
+
     private func tabIndex(for tagID: UUID?) -> Int {
         // TabbedMemoListViewのtabItemsと同じ並び順で計算
         // label: "all"=すべて, "none"=タグなし, それ以外=タグID
@@ -343,19 +446,11 @@ struct MemoInputView: View {
         } message: {
             Text("子タグを追加するには、先にルーレットで親タグを選択してください。")
         }
-        // タグ長押しアクションシート
-        .confirmationDialog(
-            longPressedTag != nil ? "「\(longPressedTag!.name)」" : "タグの操作",
-            isPresented: $showTagActionSheet,
-            titleVisibility: .visible
-        ) {
-            Button("タグ名・色を編集") { showTagEditSheet = true }
-            if let tag = longPressedTag, tag.memos.count > 0 {
-                Button("削除（メモ\(tag.memos.count)件あり）", role: .destructive) { showTagDeleteAlert = true }
-            } else {
-                Button("削除", role: .destructive) { showTagDeleteAlert = true }
+        // タグ長押しアクションシート（カスタムダイアログ）
+        .overlay {
+            if showTagActionSheet, let tag = longPressedTag {
+                tagActionDialog(tag: tag)
             }
-            Button("キャンセル", role: .cancel) {}
         }
         // タグ編集シート
         .sheet(isPresented: $showTagEditSheet) {

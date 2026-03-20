@@ -194,22 +194,34 @@ struct ColorPaletteGrid: View {
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 5), count: 8)
 
     var body: some View {
-        LazyVGrid(columns: columns, spacing: 5) {
-            ForEach(1...56, id: \.self) { index in
-                Button {
-                    selectedIndex = index
-                } label: {
-                    RoundedRectangle(cornerRadius: 5)
-                        .fill(tagColor(for: index))
-                        .frame(height: 26)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 5)
-                                .stroke(
-                                    selectedIndex == index
-                                        ? Color.primary : Color.clear,
-                                    lineWidth: 2
-                                )
-                        )
+        VStack(alignment: .leading, spacing: 6) {
+            // 選択中の色名を表示
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(tagColor(for: selectedIndex))
+                    .frame(width: 12, height: 12)
+                Text(tagColorName(for: selectedIndex))
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(.secondary)
+            }
+
+            LazyVGrid(columns: columns, spacing: 5) {
+                ForEach(1...72, id: \.self) { index in
+                    Button {
+                        selectedIndex = index
+                    } label: {
+                        RoundedRectangle(cornerRadius: 5)
+                            .fill(tagColor(for: index))
+                            .frame(height: 26)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 5)
+                                    .stroke(
+                                        selectedIndex == index
+                                            ? Color.primary : Color.clear,
+                                        lineWidth: 2
+                                    )
+                            )
+                    }
                 }
             }
         }

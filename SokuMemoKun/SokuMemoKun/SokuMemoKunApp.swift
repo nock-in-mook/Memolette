@@ -23,7 +23,7 @@ struct SokuMemoKunApp: App {
 
     // 全データ削除→バリエーション豊富なサンプル投入
     private static func resetAndInsertSamples(container: ModelContainer) {
-        let key = "sampleDataV8"
+        let key = "sampleDataV9"
         guard !UserDefaults.standard.bool(forKey: key) else { return }
 
         let context = ModelContext(container)
@@ -548,5 +548,275 @@ struct SokuMemoKunApp: App {
                 context.insert(m)
             }
         }
+
+        // ── 1万文字超テストメモ ──
+        let longTestMemo = Memo(content: generateLongText(), isMarkdown: false)
+        longTestMemo.title = "【テスト】1万文字超メモ"
+        longTestMemo.tags.append(tags.parents[0]) // 仕事タグ
+        longTestMemo.createdAt = Date()
+        longTestMemo.updatedAt = Date()
+        context.insert(longTestMemo)
+    }
+
+    // 1万2千文字程度のテストテキスト生成
+    private static func generateLongText() -> String {
+        let sections = [
+            """
+            ■ 第1章: プロジェクト概要
+
+            本プロジェクトは、社内業務管理システムの全面刷新を目的としている。
+            現行システムは2015年に構築されたもので、技術的負債が蓄積し、
+            日常的な運用にも支障をきたすレベルに達している。
+
+            特に以下の問題が深刻である：
+            1. レスポンスタイムの悪化（平均3秒→5秒に劣化）
+            2. モバイル対応の欠如（スマートフォンからの利用率が40%を超えている）
+            3. セキュリティパッチの適用が困難（フレームワークのサポート終了）
+            4. 新機能追加のコストが年々増大（技術的負債による開発速度の低下）
+            5. データベースの肥大化（不要なログが10年分蓄積）
+
+            これらの問題を解決するため、最新技術スタックでの再構築を提案する。
+            移行期間は12ヶ月を想定し、段階的にリリースしていく方針とする。
+            """,
+            """
+            ■ 第2章: 技術選定
+
+            フロントエンド：
+            - React 19 + TypeScript 5.x
+            - TailwindCSS v4（ユーティリティファースト）
+            - Tanstack Query（サーバー状態管理）
+            - Zustand（クライアント状態管理）
+
+            バックエンド：
+            - Go 1.23（高パフォーマンス、低メモリ消費）
+            - gRPC + Connect（型安全なAPI）
+            - PostgreSQL 17（メインDB）
+            - Redis 8（キャッシュ・セッション管理）
+
+            インフラ：
+            - AWS ECS Fargate（コンテナオーケストレーション）
+            - Amazon Aurora PostgreSQL（マネージドDB）
+            - Amazon ElastiCache（マネージドRedis）
+            - CloudFront + S3（静的アセット配信）
+            - Terraform（Infrastructure as Code）
+
+            CI/CD：
+            - GitHub Actions（ビルド・テスト・デプロイ自動化）
+            - ArgoCD（Kubernetes用、将来の移行を見据えて）
+
+            モニタリング：
+            - Datadog（APM、ログ集約、ダッシュボード）
+            - PagerDuty（アラート・オンコール管理）
+            - Sentry（エラートラッキング）
+
+            選定理由：
+            GoはJavaに比べてメモリ使用量が約1/5で、コンテナ環境との相性が良い。
+            Reactは社内のフロントエンドエンジニアの80%が経験があり、採用コストが低い。
+            PostgreSQLはJSON型サポートが充実しており、柔軟なデータモデリングが可能。
+            """,
+            """
+            ■ 第3章: データベース設計
+
+            主要テーブル：
+
+            users（ユーザー管理）
+            - id: UUID PRIMARY KEY
+            - email: VARCHAR(255) UNIQUE NOT NULL
+            - name: VARCHAR(100) NOT NULL
+            - department_id: UUID REFERENCES departments(id)
+            - role: ENUM('admin', 'manager', 'member')
+            - created_at: TIMESTAMPTZ DEFAULT NOW()
+            - updated_at: TIMESTAMPTZ DEFAULT NOW()
+
+            departments（部署管理）
+            - id: UUID PRIMARY KEY
+            - name: VARCHAR(100) NOT NULL
+            - parent_id: UUID REFERENCES departments(id)（階層構造）
+            - sort_order: INTEGER DEFAULT 0
+            - created_at: TIMESTAMPTZ DEFAULT NOW()
+
+            projects（プロジェクト管理）
+            - id: UUID PRIMARY KEY
+            - name: VARCHAR(200) NOT NULL
+            - description: TEXT
+            - status: ENUM('draft', 'active', 'completed', 'archived')
+            - owner_id: UUID REFERENCES users(id)
+            - budget: DECIMAL(12, 2)
+            - start_date: DATE
+            - end_date: DATE
+            - created_at: TIMESTAMPTZ DEFAULT NOW()
+            - updated_at: TIMESTAMPTZ DEFAULT NOW()
+
+            tasks（タスク管理）
+            - id: UUID PRIMARY KEY
+            - project_id: UUID REFERENCES projects(id)
+            - title: VARCHAR(300) NOT NULL
+            - description: TEXT
+            - assignee_id: UUID REFERENCES users(id)
+            - status: ENUM('todo', 'in_progress', 'review', 'done')
+            - priority: ENUM('low', 'medium', 'high', 'urgent')
+            - due_date: DATE
+            - estimated_hours: DECIMAL(5, 1)
+            - actual_hours: DECIMAL(5, 1)
+            - created_at: TIMESTAMPTZ DEFAULT NOW()
+            - updated_at: TIMESTAMPTZ DEFAULT NOW()
+
+            expenses（経費管理）
+            - id: UUID PRIMARY KEY
+            - user_id: UUID REFERENCES users(id)
+            - project_id: UUID REFERENCES projects(id)
+            - category: ENUM('travel', 'supplies', 'meeting', 'training', 'other')
+            - amount: DECIMAL(10, 2) NOT NULL
+            - description: VARCHAR(500)
+            - receipt_url: VARCHAR(500)
+            - status: ENUM('draft', 'submitted', 'approved', 'rejected')
+            - submitted_at: TIMESTAMPTZ
+            - approved_by: UUID REFERENCES users(id)
+            - approved_at: TIMESTAMPTZ
+            - created_at: TIMESTAMPTZ DEFAULT NOW()
+
+            インデックス設計：
+            - users: (email), (department_id)
+            - tasks: (project_id, status), (assignee_id, status), (due_date)
+            - expenses: (user_id, status), (project_id), (submitted_at)
+
+            パーティショニング：
+            - expenses: 月別レンジパーティション（過去データの検索高速化）
+            - audit_logs: 月別レンジパーティション（古いデータの自動アーカイブ）
+            """,
+            """
+            ■ 第4章: API設計
+
+            認証・認可：
+            POST /api/v1/auth/login          ログイン
+            POST /api/v1/auth/logout         ログアウト
+            POST /api/v1/auth/refresh        トークン更新
+            GET  /api/v1/auth/me             自分の情報取得
+
+            ユーザー管理：
+            GET    /api/v1/users             ユーザー一覧（ページネーション付き）
+            GET    /api/v1/users/:id         ユーザー詳細
+            POST   /api/v1/users             ユーザー作成（admin権限）
+            PUT    /api/v1/users/:id         ユーザー更新
+            DELETE /api/v1/users/:id         ユーザー削除（論理削除）
+
+            プロジェクト管理：
+            GET    /api/v1/projects          プロジェクト一覧
+            GET    /api/v1/projects/:id      プロジェクト詳細
+            POST   /api/v1/projects          プロジェクト作成
+            PUT    /api/v1/projects/:id      プロジェクト更新
+            DELETE /api/v1/projects/:id      プロジェクト削除
+
+            タスク管理：
+            GET    /api/v1/projects/:id/tasks タスク一覧
+            POST   /api/v1/projects/:id/tasks タスク作成
+            PUT    /api/v1/tasks/:id          タスク更新
+            DELETE /api/v1/tasks/:id          タスク削除
+            PATCH  /api/v1/tasks/:id/status   ステータス変更
+
+            経費管理：
+            GET    /api/v1/expenses           経費一覧（自分の）
+            POST   /api/v1/expenses           経費申請
+            PUT    /api/v1/expenses/:id       経費修正
+            POST   /api/v1/expenses/:id/submit 経費提出
+            POST   /api/v1/expenses/:id/approve 経費承認（manager権限）
+            POST   /api/v1/expenses/:id/reject  経費却下（manager権限）
+
+            共通仕様：
+            - 認証: Bearer Token（JWT、有効期限30分）
+            - ページネーション: ?page=1&per_page=20
+            - ソート: ?sort=created_at&order=desc
+            - フィルタ: ?status=active&department_id=xxx
+            - レスポンス形式: JSON（envelope: { data, meta, errors }）
+            - エラーコード: RFC 7807準拠のProblem Details
+            - レート制限: 100リクエスト/分/ユーザー
+            """,
+            """
+            ■ 第5章: セキュリティ対策
+
+            認証・認可：
+            - OAuth 2.0 + OpenID Connect（Azure AD連携）
+            - MFA必須化（TOTP or WebAuthn）
+            - RBAC（Role-Based Access Control）による細粒度アクセス制御
+            - セッションの自動失効（30分無操作でログアウト）
+
+            通信セキュリティ：
+            - TLS 1.3必須（1.2以下は拒否）
+            - HSTS有効化（max-age=31536000）
+            - Certificate Pinning（モバイルアプリ用）
+
+            データ保護：
+            - AES-256暗号化（保存時）
+            - 個人情報のマスキング（ログ出力時）
+            - バックアップの暗号化（AWS KMS）
+            - データ保持期間ポリシー（7年保持→自動削除）
+
+            アプリケーションセキュリティ：
+            - SQLインジェクション対策（プリペアドステートメント必須）
+            - XSS対策（CSP、自動エスケープ）
+            - CSRF対策（SameSite Cookie + CSRFトークン）
+            - ファイルアップロード検証（MIME type、サイズ上限10MB）
+            - レート制限（DDoS緩和）
+
+            監査・コンプライアンス：
+            - 全操作の監査ログ記録
+            - ログの改ざん防止（追記のみ、削除不可）
+            - 定期的なペネトレーションテスト（四半期ごと）
+            - SOC 2 Type II準拠を目標
+            - 個人情報保護法・GDPR対応
+
+            インシデント対応：
+            - 24時間以内の初動対応
+            - 72時間以内の影響範囲特定
+            - 関係者への通知フロー整備
+            - ポストモーテムの実施と改善策の展開
+            """,
+            """
+            ■ 第6章: 移行計画とスケジュール
+
+            Phase 1（1-3ヶ月目）: 基盤構築
+            - インフラ環境構築（開発・ステージング・本番）
+            - CI/CDパイプライン構築
+            - 認証基盤の実装
+            - 共通コンポーネント開発
+            - DB設計・マイグレーション基盤
+
+            Phase 2（4-6ヶ月目）: コア機能開発
+            - ユーザー管理機能
+            - プロジェクト管理機能
+            - タスク管理機能
+            - ダッシュボード（基本版）
+
+            Phase 3（7-9ヶ月目）: 拡張機能開発
+            - 経費管理機能
+            - レポート・分析機能
+            - 通知システム（メール・Slack連携）
+            - モバイルレスポンシブ対応
+
+            Phase 4（10-12ヶ月目）: 移行・安定化
+            - データ移行スクリプト開発
+            - 並行稼動期間（旧システムと新システムを同時運用）
+            - ユーザー研修（部署ごと、計20回想定）
+            - 段階的な旧システム停止
+            - 本番リリース・安定化
+
+            リスク管理：
+            - 移行データの整合性検証（自動チェックツール作成）
+            - ロールバック手順の整備（最悪の場合、旧システムに戻せるように）
+            - 段階的リリース（カナリアリリース方式）
+            - ユーザーサポート体制の強化（移行後1ヶ月は専任チーム配置）
+
+            体制：
+            - PM: 1名
+            - テックリード: 1名
+            - バックエンド: 3名
+            - フロントエンド: 2名
+            - インフラ: 1名
+            - QA: 1名
+            - デザイナー: 1名（非常勤）
+            合計: 10名（ピーク時）
+            """,
+        ]
+        return sections.joined(separator: "\n\n")
     }
 }

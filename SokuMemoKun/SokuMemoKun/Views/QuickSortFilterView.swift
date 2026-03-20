@@ -1,5 +1,8 @@
 import SwiftUI
 import SwiftData
+import os
+
+private let logger = Logger(subsystem: "com.sokumemokun.app", category: "QuickSort")
 
 // 爆速振り分けモード: 事前フィルタ選択シート
 struct QuickSortFilterView: View {
@@ -108,6 +111,8 @@ struct QuickSortFilterView: View {
                 // 開始ボタン
                 Button {
                     let memos = filteredMemos
+                    logger.warning("filteredMemos.count = \(memos.count), allMemos.count = \(self.allMemos.count)")
+                    logger.warning("filterAll=\(self.filterAll) noTag=\(self.filterNoTag) noTitle=\(self.filterNoTitle) old=\(self.filterOld)")
                     onStart(memos)
                     dismiss()
                 } label: {

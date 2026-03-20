@@ -1,5 +1,14 @@
 import SwiftUI
 import SwiftData
+import os
+
+private let qsLogger = Logger(subsystem: "com.sokumemokun.app", category: "QuickSort")
+
+// 爆速振り分けモード用のラッパー（fullScreenCover(item:)で確実にデータを渡すため）
+struct QuickSortItem: Identifiable {
+    let id = UUID()
+    let memos: [Memo]
+}
 
 struct MainView: View {
     @State private var viewModel = MemoInputViewModel()
@@ -28,8 +37,8 @@ struct MainView: View {
     @State private var isTabReorderMode = false
     // 爆速振り分けモード
     @State private var showQuickSortFilter = false
-    @State private var showQuickSort = false
     @State private var quickSortMemos: [Memo] = []
+    @State private var quickSortItem: QuickSortItem? = nil
     // サジェスト新規タグ作成ダイアログ
     @State private var showNewTagConfirm = false
     @State private var pendingNewTagName = ""
@@ -282,19 +291,18 @@ struct MainView: View {
             .sheet(isPresented: $showQuickSortFilter, onDismiss: {
                 // シートが完全に閉じた後にfullScreenCoverを表示
                 if !quickSortMemos.isEmpty {
-                    showQuickSort = true
+                    quickSortItem = QuickSortItem(memos: quickSortMemos)
+                    quickSortMemos = []
                 }
             }) {
                 QuickSortFilterView { memos in
                     quickSortMemos = memos
                 }
             }
-            .fullScreenCover(isPresented: $showQuickSort, onDismiss: {
-                quickSortMemos = []
-            }) {
+            .fullScreenCover(item: $quickSortItem) { item in
                 QuickSortView(
-                    targetMemos: quickSortMemos,
-                    onDismiss: { showQuickSort = false }
+                    targetMemos: item.memos,
+                    onDismiss: { quickSortItem = nil }
                 )
             }
             .sheet(isPresented: $showSettings, onDismiss: {

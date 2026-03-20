@@ -296,8 +296,8 @@ struct TagDialView: View {
             // ポインター
             drawCanvasPointer(context: &context, cy: cy)
             // インナーシャドウ（弧の左端位置を計算して、弧の外にはみ出さないようにする）
-            let shadowSize: CGFloat = 5
-            let shadowColor = Color.black.opacity(0.15)
+            let shadowSize: CGFloat = 7
+            let shadowColor = Color.black.opacity(0.3)
             let clear = Color.clear
             let sinAngle = min(1.0, cy / parentOuterR)
             let cosAngle = sqrt(1.0 - sinAngle * sinAngle)

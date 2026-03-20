@@ -582,7 +582,8 @@ struct MemoInputView: View {
                         }
                     }
                 )
-                .shadow(color: .black.opacity(0.3), radius: 6, x: -3, y: 3)
+                .shadow(color: .black.opacity(0.3), radius: 6, x: -3, y: 0)
+                .mask(Rectangle().padding(.leading, -20))
                 .offset(x: showParentDial ? -27 : -50, y: -10) // 開き時は右寄せ、閉じ時はチラ見せ
                 .allowsHitTesting(showParentDial) // チラ見せ時はタッチ無効
                 // 引き出し時: 右端の余白に「しまう」ボタン
@@ -646,7 +647,7 @@ struct MemoInputView: View {
                     bodyPeek: showParentDial ? 0 : peekAmount
                 )
                 .fill(trayColor)
-                .shadow(color: .black.opacity(0.2), radius: 3, x: -2, y: 2)
+                .shadow(color: .black.opacity(0.2), radius: 3, x: -2, y: 0)
                 .onAppear { trayTotalWidth = geo.size.width }
                 .onChange(of: geo.size.width) { _, newW in trayTotalWidth = newW }
             }
@@ -831,6 +832,18 @@ struct TrayWithTabShape: Shape {
         // 8. タブ左辺を上へ → 始点に戻る
         p.closeSubpath()
 
+        return p
+    }
+}
+
+// shadowクリップ用: 左端の縦帯のみ（I字カット）
+struct ShadowClipShape: Shape {
+    var leftStripWidth: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        p.addRect(CGRect(x: rect.minX - 200, y: rect.minY - 200,
+                         width: leftStripWidth + 200, height: rect.height + 400))
         return p
     }
 }

@@ -483,8 +483,11 @@ struct MainView: View {
     private var tagSuggestOverlay: some View {
         if shouldShowSuggestions {
             VStack(spacing: 4) {
-                // 閉じるボタン
+                // タイトル + 閉じるボタン
                 HStack {
+                    Text("タグの提案")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.secondary)
                     Spacer()
                     Button {
                         suggestDismissed = true
@@ -496,7 +499,7 @@ struct MainView: View {
                     }
                 }
                 .padding(.horizontal, 12)
-                .padding(.top, 4)
+                .padding(.top, 6)
 
                 // セクション1: おすすめタグ
                 if !dictSuggestions.isEmpty {

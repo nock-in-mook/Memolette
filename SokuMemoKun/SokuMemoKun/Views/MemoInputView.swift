@@ -354,7 +354,11 @@ struct MemoInputView: View {
             isEditing = false
             isTextEditorFocused = false
         }
-        .onChange(of: viewModel.inputText) { _, _ in
+        .onChange(of: viewModel.inputText) { _, newValue in
+            // 最大文字数制限
+            if newValue.count > MemoInputViewModel.maxCharacterCount {
+                viewModel.inputText = String(newValue.prefix(MemoInputViewModel.maxCharacterCount))
+            }
             viewModel.pushUndoIfNeeded()
             viewModel.onContentChanged(context: modelContext, tags: tags)
         }

@@ -3,6 +3,9 @@ import SwiftData
 
 @Observable
 class MemoInputViewModel {
+    // メモ本文の最大文字数
+    static let maxCharacterCount = 50_000
+
     var inputText: String = ""
     var titleText: String = ""
     var selectedTagID: UUID?       // 親タグ

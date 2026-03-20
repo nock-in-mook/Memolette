@@ -232,6 +232,11 @@ struct MemoDetailView: View {
                 .padding(.top, 4)
                 .focused($isBodyFocused)
                 .frame(maxHeight: .infinity)
+                .onChange(of: editText) { _, newValue in
+                    if newValue.count > MemoInputViewModel.maxCharacterCount {
+                        editText = String(newValue.prefix(MemoInputViewModel.maxCharacterCount))
+                    }
+                }
         } else {
             // 閲覧モード — タップで即編集（textSelection なし→1タップで反応）
             ScrollView {

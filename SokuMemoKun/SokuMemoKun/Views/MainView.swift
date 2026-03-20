@@ -835,6 +835,7 @@ struct MainView: View {
                             .font(.system(size: 12))
                             .foregroundStyle(.tertiary)
                     }
+                    .contentShape(Rectangle())
                     .padding(.horizontal, 20)
                     .padding(.vertical, 14)
                 }
@@ -859,6 +860,7 @@ struct MainView: View {
                             .font(.system(size: 12))
                             .foregroundStyle(.tertiary)
                     }
+                    .contentShape(Rectangle())
                     .padding(.horizontal, 20)
                     .padding(.vertical, 14)
                 }

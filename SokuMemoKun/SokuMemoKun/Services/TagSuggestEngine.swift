@@ -10,6 +10,9 @@ class TagSuggestEngine {
     private var dictionary: [String: [String]] = [:]
     // 直近使用したタグID（連続入力パターン用）
     private(set) var recentTagIDs: [UUID] = []
+    // デバッグ用
+    var lastExtractedWords: [String] = []
+    var lastDebugInfo: String = ""
     private let maxRecent = 10
 
     init() {
@@ -23,9 +26,11 @@ class TagSuggestEngine {
               let data = try? Data(contentsOf: url),
               let dict = try? JSONSerialization.jsonObject(with: data) as? [String: [String]]
         else { return }
-        // 全キーを小文字正規化
-        dictionary = Dictionary(uniqueKeysWithValues: dict.map { (key, value) in
+        // 全キーを小文字正規化（重複キーは値をマージ）
+        dictionary = Dictionary(dict.map { (key, value) in
             (key.lowercased(), value)
+        }, uniquingKeysWith: { existing, new in
+            Array(Set(existing + new))
         })
     }
 
@@ -53,7 +58,16 @@ class TagSuggestEngine {
     ) -> [Suggestion] {
         // テキストから単語を抽出
         let words = extractWords(from: title, body: body)
+        lastExtractedWords = words
         guard !words.isEmpty || !recentTagIDs.isEmpty else { return [] }
+
+        // デバッグ: 辞書ヒット確認
+        for word in words {
+            let key = word.lowercased()
+            if let cats = dictionary[key] {
+                print("[Suggest] 辞書ヒット: '\(key)' → \(cats)")
+            }
+        }
 
         let now = Date()
         let calendar = Calendar.current
@@ -68,14 +82,33 @@ class TagSuggestEngine {
             tagNames[tag.id] = tag.name
         }
 
-        // ① 事前辞書マッチ
+        // ① 事前辞書マッチ（完全一致＋部分一致）
+        var dictMatchLog: [String] = []
         for word in words {
             let key = word.lowercased()
+            // 完全一致
             if let categories = dictionary[key] {
                 for category in categories {
-                    // カテゴリ名とタグ名をマッチング
+                    var matched = false
                     for tag in tags where tag.name == category || tag.name.contains(category) || category.contains(tag.name) {
                         scores[tag.id, default: 0] += 1.0
+                        dictMatchLog.append("\(category)→\(tag.name)✓")
+                        matched = true
+                    }
+                    if !matched {
+                        dictMatchLog.append("\(category)→✗")
+                    }
+                }
+            }
+            // 部分一致: 入力単語が辞書キーを含む or 辞書キーが入力単語を含む
+            if key.count >= 2 {
+                for (dictKey, categories) in dictionary {
+                    if key != dictKey && (key.contains(dictKey) || dictKey.contains(key)) {
+                        for category in categories {
+                            for tag in tags where tag.name == category || tag.name.contains(category) || category.contains(tag.name) {
+                                scores[tag.id, default: 0] += 0.5 // 部分一致は低めのスコア
+                            }
+                        }
                     }
                 }
             }
@@ -113,6 +146,16 @@ class TagSuggestEngine {
         for (tagID, penalty) in dismissals {
             scores[tagID, default: 0] -= penalty
         }
+
+        // デバッグ: スコア確認
+        let nonZero = scores.filter { $0.value > 0 }
+        let allScores = scores.map { "\(tagNames[$0.key] ?? "?"): \($0.value)" }
+        let dictHits = words.compactMap { w -> String? in
+            let k = w.lowercased()
+            if let c = dictionary[k] { return "\(k)→\(c)" }
+            return nil
+        }
+        lastDebugInfo = "match=\(dictMatchLog) scores=\(allScores.prefix(5))"
 
         // 親タグと子タグを分類
         let parentTags = tags.filter { $0.parentTagID == nil }

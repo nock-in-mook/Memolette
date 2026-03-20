@@ -34,6 +34,7 @@
 		TAGSUG0000000000000004 /* TagCooccurrence.swift in Sources */ = {isa = PBXBuildFile; fileRef = TAGSUG0000000000000003 /* TagCooccurrence.swift */; };
 		TAGSUG0000000000000006 /* TagSuggestDismissal.swift in Sources */ = {isa = PBXBuildFile; fileRef = TAGSUG0000000000000005 /* TagSuggestDismissal.swift */; };
 		TAGSUG0000000000000008 /* TagSuggestEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = TAGSUG0000000000000007 /* TagSuggestEngine.swift */; };
+		TAGSUG000000000000000A /* TagSuggestDictionary.json in Resources */ = {isa = PBXBuildFile; fileRef = TAGSUG0000000000000009 /* TagSuggestDictionary.json */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -47,6 +48,7 @@
 		TAGSUG0000000000000003 /* TagCooccurrence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagCooccurrence.swift; sourceTree = "<group>"; };
 		TAGSUG0000000000000005 /* TagSuggestDismissal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagSuggestDismissal.swift; sourceTree = "<group>"; };
 		TAGSUG0000000000000007 /* TagSuggestEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TagSuggestEngine.swift; path = SokuMemoKun/Services/TagSuggestEngine.swift; sourceTree = SOURCE_ROOT; };
+		TAGSUG0000000000000009 /* TagSuggestDictionary.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = TagSuggestDictionary.json; sourceTree = "<group>"; };
 		'A10000000000000000001D' = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainView.swift; sourceTree = "<group>"; };
 		'A10000000000000000001E' = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoInputView.swift; sourceTree = "<group>"; };
 		'A10000000000000000001F' = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoListView.swift; sourceTree = "<group>"; };
@@ -97,6 +99,7 @@
 				C1000000000000000000A4,
 				C1000000000000000000A5,
 				TAGSUG00000000000000G1,
+				TAGSUG0000000000000009 /* TagSuggestDictionary.json */,
 			);
 			path = SokuMemoKun;
 			sourceTree = "<group>";
@@ -220,6 +223,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B1000000000000000000AE,
+				TAGSUG000000000000000A /* TagSuggestDictionary.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

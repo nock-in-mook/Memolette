@@ -4,6 +4,10 @@ import SwiftData
 struct MainView: View {
     @State private var viewModel = MemoInputViewModel()
     @State private var suggestEngine = TagSuggestEngine()
+    @State private var suggestions: [TagSuggestEngine.Suggestion] = []
+    @State private var suggestDismissed = false // そのメモ確定まで非表示
+    @State private var suggestDebounceTask: Task<Void, Never>?
+    @AppStorage("tagSuggestEnabled") private var tagSuggestEnabled = true
     @State private var isKeyboardVisible = false
     @State private var showSettings = false
     @State private var focusInput = false
@@ -103,10 +107,20 @@ struct MainView: View {
                         }
 
                         tabbedMemoList
+                            .overlay(alignment: .top) {
+                                tagSuggestOverlay
+                            }
                     }
                 }
             }
             .ignoresSafeArea(.keyboard)
+            .onChange(of: viewModel.inputText) { _, _ in triggerSuggest() }
+            .onChange(of: viewModel.titleText) { _, _ in triggerSuggest() }
+            .onChange(of: viewModel.selectedTagID) { _, newVal in
+                if newVal != nil {
+                    suggestions = [] // タグ選択されたら消す
+                }
+            }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 // 左: 展開時は「←」で縮小、最大化時は「↓」で戻す、通常時は「＋」で新規メモ
@@ -347,6 +361,8 @@ struct MainView: View {
         viewModel.clearInput()
         originalContent = ""
         originalTitle = ""
+        suggestDismissed = false // 新しいメモでサジェスト復活
+        suggestions = []
         showSavedToast = true
         if let memoID = savedMemoID {
             NotificationCenter.default.post(
@@ -437,5 +453,111 @@ struct MainView: View {
             return tag.name
         }
         return "タグなし"
+    }
+
+    // MARK: - タグサジェスト
+
+    // サジェスト表示条件: 設定ON & タグ未選択 & 閉じてない & 候補あり
+    private var shouldShowSuggestions: Bool {
+        tagSuggestEnabled
+        && viewModel.selectedTagID == nil
+        && !suggestDismissed
+        && !suggestions.isEmpty
+    }
+
+    // サジェストオーバーレイ
+    @ViewBuilder
+    private var tagSuggestOverlay: some View {
+        if shouldShowSuggestions {
+            VStack(spacing: 6) {
+                // 閉じるボタン
+                HStack {
+                    Text("おすすめタグ")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button {
+                        suggestDismissed = true
+                        suggestions = []
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 20))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.horizontal, 12)
+
+                // 候補リスト（縦に並べる、拡張可能）
+                ForEach(suggestions) { suggestion in
+                    Button {
+                        applySuggestion(suggestion)
+                    } label: {
+                        HStack(spacing: 6) {
+                            // 親タグ色の丸
+                            if let parentTag = tags.first(where: { $0.id == suggestion.parentID }) {
+                                Circle()
+                                    .fill(tagColor(for: parentTag.colorIndex))
+                                    .frame(width: 10, height: 10)
+                            }
+                            Text(suggestion.parentName)
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(.primary)
+                            if let childName = suggestion.childName {
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(.tertiary)
+                                Text(childName)
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(Color(uiColor: .systemBackground).opacity(0.95))
+                        .cornerRadius(8)
+                        .shadow(color: .black.opacity(0.08), radius: 2, y: 1)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.top, 6)
+            .padding(.bottom, 4)
+            .background(Color(uiColor: .secondarySystemBackground).opacity(0.9))
+            .cornerRadius(12)
+            .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
+            .padding(.horizontal, 12)
+            .padding(.top, 4)
+        }
+    }
+
+    // サジェストをタップ → ルーレット＋タグバッジに反映
+    private func applySuggestion(_ suggestion: TagSuggestEngine.Suggestion) {
+        viewModel.selectedTagID = suggestion.parentID
+        if let childID = suggestion.childID {
+            viewModel.selectedChildTagID = childID
+        }
+        viewModel.onTagChanged(tags: tags)
+        suggestions = []
+    }
+
+    // デバウンス付きサジェスト更新（1秒待つ）
+    private func triggerSuggest() {
+        suggestDebounceTask?.cancel()
+        guard tagSuggestEnabled && viewModel.selectedTagID == nil && !suggestDismissed else { return }
+        suggestDebounceTask = Task {
+            try? await Task.sleep(nanoseconds: 1_000_000_000) // 1秒
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                suggestions = suggestEngine.suggest(
+                    title: viewModel.titleText,
+                    body: viewModel.inputText,
+                    tags: tags,
+                    context: modelContext,
+                    limit: 3
+                )
+            }
+        }
     }
 }

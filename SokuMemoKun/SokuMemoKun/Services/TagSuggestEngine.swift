@@ -32,12 +32,15 @@ class TagSuggestEngine {
     // MARK: - サジェスト取得（メイン）
 
     struct Suggestion: Identifiable, Equatable {
-        let id: UUID       // タグのID
-        let name: String   // タグ名
-        var score: Double   // スコア（高いほど優先）
+        let id: UUID            // 一意識別用（parentID or 合成ID）
+        let parentID: UUID      // 親タグのID
+        let parentName: String  // 親タグ名
+        let childID: UUID?      // 子タグのID（nilなら親単体）
+        let childName: String?  // 子タグ名
+        var score: Double       // スコア（高いほど優先）
 
         static func == (lhs: Suggestion, rhs: Suggestion) -> Bool {
-            lhs.id == rhs.id
+            lhs.parentID == rhs.parentID && lhs.childID == rhs.childID
         }
     }
 
@@ -111,12 +114,56 @@ class TagSuggestEngine {
             scores[tagID, default: 0] -= penalty
         }
 
-        // スコア順でソート、上位N件を返す
-        return scores
-            .filter { $0.value > 0 && tagNames[$0.key] != nil }
-            .sorted { $0.value > $1.value }
+        // 親タグと子タグを分類
+        let parentTags = tags.filter { $0.parentTagID == nil }
+        let childTags = tags.filter { $0.parentTagID != nil }
+
+        // 親タグのスコアでソート
+        var parentScores: [(tag: Tag, score: Double)] = parentTags
+            .compactMap { tag in
+                let s = scores[tag.id, default: 0]
+                return s > 0 ? (tag, s) : nil
+            }
+            .sorted { $0.score > $1.score }
+
+        // 上位N件の親タグについて、子タグとのセットを構築
+        var results: [Suggestion] = []
+        for (parent, parentScore) in parentScores.prefix(limit * 2) {
+            // この親タグの子タグでスコアがあるものを探す
+            let children = childTags.filter { $0.parentTagID == parent.id }
+            let bestChild = children
+                .compactMap { child -> (tag: Tag, score: Double)? in
+                    let s = scores[child.id, default: 0]
+                    return s > 0 ? (child, s) : nil
+                }
+                .sorted { $0.score > $1.score }
+                .first
+
+            if let child = bestChild {
+                // 親+子セット
+                let combinedScore = parentScore + child.score
+                let suggestID = UUID(uuidString: "\(parent.id.uuidString.prefix(18))\(child.tag.id.uuidString.suffix(18))") ?? UUID()
+                results.append(Suggestion(
+                    id: suggestID, parentID: parent.id, parentName: parent.name,
+                    childID: child.tag.id, childName: child.tag.name, score: combinedScore
+                ))
+            }
+            // 親単体も候補に入れる
+            results.append(Suggestion(
+                id: parent.id, parentID: parent.id, parentName: parent.name,
+                childID: nil, childName: nil, score: parentScore
+            ))
+
+            if results.count >= limit * 2 { break }
+        }
+
+        // 重複排除してスコア順でソート、上位N件
+        var seen: Set<UUID> = []
+        return results
+            .sorted { $0.score > $1.score }
+            .filter { seen.insert($0.id).inserted }
             .prefix(limit)
-            .map { Suggestion(id: $0.key, name: tagNames[$0.key]!, score: $0.value) }
+            .map { $0 }
     }
 
     // MARK: - 単語抽出

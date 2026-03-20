@@ -817,6 +817,15 @@ struct SokuMemoKunApp: App {
             合計: 10名（ピーク時）
             """,
         ]
-        return sections.joined(separator: "\n\n")
+        // セクション結合後、1万文字超になるまで繰り返す
+        let base = sections.joined(separator: "\n\n")
+        var result = base
+        var chapter = 7
+        while result.count < 12000 {
+            result += "\n\n■ 第\(chapter)章: 追加セクション\(chapter - 6)\n\n"
+            result += base
+            chapter += 1
+        }
+        return result
     }
 }

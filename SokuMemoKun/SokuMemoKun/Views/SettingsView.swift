@@ -110,16 +110,6 @@ struct SettingsView: View {
                     NavigationLink { TextureLab7() } label: { Text("7: 色違いで確認") }
                 }
 
-                // メモ設定
-                Section("メモ設定") {
-                    HStack {
-                        Label("最大文字数", systemImage: "textformat.123")
-                        Spacer()
-                        Text("\(MemoInputViewModel.maxCharacterCount.formatted())字")
-                            .font(.system(size: 14, design: .rounded))
-                            .foregroundStyle(.secondary)
-                    }
-                }
             }
             .navigationTitle("設定")
             .navigationBarTitleDisplayMode(.inline)

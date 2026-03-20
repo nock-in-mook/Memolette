@@ -582,8 +582,13 @@ struct MemoInputView: View {
                         }
                     }
                 )
-                .shadow(color: .black.opacity(0.3), radius: 6, x: -3, y: 0)
-                .mask(Rectangle().padding(.leading, -20))
+                .background {
+                    // 外周弧の左端を模した図形に影をつける（弧に沿った自然な影、クリップ不要）
+                    DialEdgeArcShape(radius: 350, dialHeight: 211)
+                        .fill(Color.white)
+                        .shadow(color: .black.opacity(0.5), radius: 3, x: -2, y: 0)
+                        .allowsHitTesting(false)
+                }
                 .offset(x: showParentDial ? -27 : -50, y: -10) // 開き時は右寄せ、閉じ時はチラ見せ
                 .allowsHitTesting(showParentDial) // チラ見せ時はタッチ無効
                 // 引き出し時: 右端の余白に「しまう」ボタン
@@ -836,14 +841,28 @@ struct TrayWithTabShape: Shape {
     }
 }
 
-// shadowクリップ用: 左端の縦帯のみ（I字カット）
-struct ShadowClipShape: Shape {
-    var leftStripWidth: CGFloat
+// ルーレット外周弧の左端を模した図形（影専用）
+struct DialEdgeArcShape: Shape {
+    var radius: CGFloat
+    var dialHeight: CGFloat
 
     func path(in rect: CGRect) -> Path {
+        // TagDialViewと同じ座標系: cx = radius + 2, cy = dialHeight / 2
+        let cx = radius + 2
+        let cy = dialHeight / 2
+        let halfH = dialHeight / 2
+        let maxSin = min(1.0, Double(halfH / radius))
+        let maxAngle = asin(maxSin) * 180.0 / .pi
+        // 弧の幅（薄い三日月形にする）
+        let thickness: CGFloat = 20
         var p = Path()
-        p.addRect(CGRect(x: rect.minX - 200, y: rect.minY - 200,
-                         width: leftStripWidth + 200, height: rect.height + 400))
+        // 外側の弧
+        p.addArc(center: CGPoint(x: cx, y: cy), radius: radius,
+                 startAngle: .degrees(180.0 - maxAngle), endAngle: .degrees(180.0 + maxAngle), clockwise: false)
+        // 内側の弧（逆向き）
+        p.addArc(center: CGPoint(x: cx, y: cy), radius: radius - thickness,
+                 startAngle: .degrees(180.0 + maxAngle), endAngle: .degrees(180.0 - maxAngle), clockwise: true)
+        p.closeSubpath()
         return p
     }
 }

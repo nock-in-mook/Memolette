@@ -335,18 +335,10 @@ struct MainView: View {
                 }
                 Button("キャンセル", role: .cancel) {}
             }
-            .confirmationDialog(
-                "親タグ「\(pendingNewTagName)」を作成します",
-                isPresented: $showNewTagConfirm,
-                titleVisibility: .visible
-            ) {
-                Button("おまかせカラー") {
-                    createNewTagWithAutoColor()
+            .overlay {
+                if showNewTagConfirm {
+                    newTagConfirmDialog
                 }
-                Button("色を指定") {
-                    showNewTagColorSheet = true
-                }
-                Button("キャンセル", role: .cancel) {}
             }
             .sheet(isPresented: $showNewTagColorSheet) {
                 NewTagSheetView(
@@ -778,6 +770,112 @@ struct MainView: View {
         }
         // 全色使われてる場合は色相距離だけで選ぶ
         return scored.first?.index ?? 1
+    }
+
+    // MARK: - 新規タグ作成確認ダイアログ（カスタム）
+
+    @ViewBuilder
+    private var newTagConfirmDialog: some View {
+        ZStack {
+            // 背景暗幕
+            Color.black.opacity(0.3)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    withAnimation(.easeOut(duration: 0.2)) { showNewTagConfirm = false }
+                }
+
+            VStack(spacing: 0) {
+                // ヘッダー
+                VStack(spacing: 8) {
+                    Image(systemName: "tag.fill")
+                        .font(.system(size: 28))
+                        .foregroundStyle(.green)
+
+                    Text("新しいタグを作成")
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+
+                    // タグ名プレビュー（タブ風）
+                    Text(pendingNewTagName)
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(Color.green.opacity(0.15))
+                        )
+                }
+                .padding(.top, 20)
+                .padding(.bottom, 16)
+
+                Divider()
+
+                // おまかせカラー
+                Button {
+                    withAnimation(.easeOut(duration: 0.2)) { showNewTagConfirm = false }
+                    createNewTagWithAutoColor()
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "paintpalette.fill")
+                            .font(.system(size: 16))
+                            .foregroundStyle(.blue)
+                        Text("おまかせカラーで作成")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 14)
+                }
+                .buttonStyle(.plain)
+
+                Divider().padding(.leading, 50)
+
+                // 色を指定
+                Button {
+                    withAnimation(.easeOut(duration: 0.2)) { showNewTagConfirm = false }
+                    showNewTagColorSheet = true
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "eyedropper")
+                            .font(.system(size: 16))
+                            .foregroundStyle(.purple)
+                        Text("色を指定して作成")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 14)
+                }
+                .buttonStyle(.plain)
+
+                Divider()
+
+                // 戻る
+                Button {
+                    withAnimation(.easeOut(duration: 0.2)) { showNewTagConfirm = false }
+                } label: {
+                    Text("戻る")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                }
+                .buttonStyle(.plain)
+            }
+            .background(Color(uiColor: .systemBackground))
+            .cornerRadius(16)
+            .shadow(color: .black.opacity(0.15), radius: 12, y: 4)
+            .padding(.horizontal, 40)
+        }
+        .transition(.opacity)
     }
 
     // デバウンス付きサジェスト更新（1秒待つ）

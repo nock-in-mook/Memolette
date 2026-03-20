@@ -804,6 +804,13 @@ struct MemoInputView: View {
                             longPressedTagID = uuid
                             showTagDeleteAlert = true
                         }
+                    },
+                    onLongPress: { id, name, color, isChild in
+                        if let uuid = UUID(uuidString: id) {
+                            longPressedTagID = uuid
+                            longPressedIsChild = isChild
+                            showTagActionSheet = true
+                        }
                     }
                 )
                 .background {

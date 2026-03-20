@@ -45,6 +45,8 @@ struct TagDialView: View {
     // タグ操作コールバック（isChild: 子タグか）
     var onEditTag: ((_ id: String, _ isChild: Bool) -> Void)?
     var onDeleteTag: ((_ id: String) -> Void)?
+    // 長押しメニュー表示コールバック（親ビューでダイアログ表示）
+    var onLongPress: ((_ id: String, _ name: String, _ color: Color, _ isChild: Bool) -> Void)?
 
     // ジオメトリ定数
     private let wheelRadius: CGFloat = 350
@@ -169,19 +171,7 @@ struct TagDialView: View {
             if childIsInternalChange { childIsInternalChange = false }
             else { syncChildRotation() }
         }
-        // 長押しメニュー（カスタムダイアログ）
-        .overlay {
-            if showSectorMenu, let id = longPressedSectorID {
-                let options = longPressedSectorIsChild ? childOptions : parentOptions
-                let option = options.first(where: { $0.id == id })
-                sectorActionDialog(
-                    name: option?.name ?? "",
-                    color: option?.color ?? .gray,
-                    isChild: longPressedSectorIsChild,
-                    id: id
-                )
-            }
-        }
+        // 長押しメニューはMemoInputView側で表示（onLongPressコールバック経由）
     }
 
     // MARK: - 長押しカスタムダイアログ
@@ -343,9 +333,9 @@ struct TagDialView: View {
                     }
                     .if(!isNone) { view in
                         view.onLongPressGesture {
-                            longPressedSectorID = option.id
-                            longPressedSectorIsChild = isChild
-                            showSectorMenu = true
+                            let opts = isChild ? childOptions : parentOptions
+                            let info = opts.first(where: { $0.id == option.id })
+                            onLongPress?(option.id, info?.name ?? "", info?.color ?? .gray, isChild)
                         }
                     }
             }
@@ -670,9 +660,9 @@ struct TagDialView: View {
                 // 長押しで編集・削除メニュー（タグなし以外）
                 .if(!isNone) { view in
                     view.onLongPressGesture {
-                        longPressedSectorID = option.id
-                        longPressedSectorIsChild = isChild
-                        showSectorMenu = true
+                        let opts = isChild ? childOptions : parentOptions
+                        let info = opts.first(where: { $0.id == option.id })
+                        onLongPress?(option.id, info?.name ?? "", info?.color ?? .gray, isChild)
                     }
                 }
         } else {

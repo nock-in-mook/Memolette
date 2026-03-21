@@ -401,6 +401,7 @@ struct QuickSortView: View {
                                 } label: {
                                     Image(systemName: "keyboard.chevron.compact.down")
                                         .font(.system(size: 16))
+                                        .padding(.vertical, 6)
                                 }
                             }
                         }

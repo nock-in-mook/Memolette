@@ -1,42 +1,129 @@
 # 引き継ぎメモ
 
 ## 現在の状況
-- **main** ブランチで作業中
-- セッション038で爆速振り分けモード（QuickSortView）を本格実装
+- **feature/uikit-carousel** ブランチで作業中（mainにはまだマージしていない）
+- セッション039でカルーセルをUICollectionViewベースに置き換え＋カードUI改修
 
-### セッション038の主な変更点
-- **爆速振り分けモード完全実装**: フィルタ→準備→カルーセル→戦績の全フロー
-- **カルーセル方式**: ScrollView(.horizontal) + scrollTargetBehavior(.viewAligned) でヌルヌルカードスワイプ
-- **タブ付きカード**: TrapezoidTabShapeでタイトルタブ（7割幅）、右上欠けデザイン
-- **タグフッター**: カード下端に「タグ:」＋バッジ、タグ色縁取り
-- **編集モード**: グレーアウトオーバーレイ＋浮かぶカード、キャンセル時差分チェック
-- **セット管理**: 50件ずつ分割処理、セット確認画面、完了画面で「次のセットへ」
-- **サジェスト一括計算**: 起動時に全メモのサジェストを事前計算（準備中画面付き）
-- **フィルタ拡張**: 「特定のタグのメモ」フィルタ追加（タグ複数選択可）
-- **fullScreenCover統合**: フィルタ→カルーセルを1つのfullScreenCover内でフェーズ管理（画面チラ見え防止）
-- **終了確認ダイアログ**: ×ボタンにリッチな確認ダイアログ
-- **updatedAt保護**: 未編集メモのupdatedAtを更新しない
-- **戦績画面**: 全画面リッチ表示に改修
-- **テストデータV10**: 古いメモ20件追加（3〜12ヶ月前）
+### セッション039の主な変更点
 
-## 次のアクション（優先順）
-1. **爆速モードのUI磨き込み** — カードデザインの最終調整、アニメーション改善
-2. **爆速モードのゲーム風演出** — 将来的にグラフィック差し替え予定
-3. **爆速振り分けサジェスト通知** — タグなし/タイトルなしが一定数増えたら提案（ROADMAP追加済み）
-4. **実機テスト** — カルーセルの操作感、パフォーマンス確認
-5. **アプリアイコン**
-6. **編集時/閲覧時の文字サイズ変更**
+#### カードUI改修
+- **CardWithTabShape**: タブとカード本体を1つの連続パスで描画（縁取りの途切れ解消）
+- **CardTitleTabShape**: 左直角・右のみ斜め角丸（台形→フォルダタブ風に変更）
+- **縁取り線**: 1.5pt → 2.5ptに太く
+- **編集画面**: 「タイトル」ラベル削除、タイトルと本文の仕切り線をはっきりに
+- **編集ボタン位置**: タイトルバーの上下中心に合わせ
+- **枚数表示**: 一番上に移動、「1/23 枚」形式
+
+#### カルーセル置き換え（UICollectionView化）
+- **SwiftUI ScrollView → UICollectionView** に完全置き換え
+- **CarouselView.swift** 新規作成（UIViewControllerRepresentable）
+- **SnapCenterFlowLayout**: velocity考慮の中央スナップ（軽いフリックでもページング）
+- **UIHostingConfiguration**: 既存SwiftUIカードビューをそのまま利用
+- **DiffableDataSource**: アイテム追加・削除がアニメーション付き
+- **初回表示ラグ・スナップ精度・スクロール滑らかさ**が大幅改善
+
+#### レイアウト変更
+- **上下入れ替え**: サジェスト+ルーレット（上）→ カード（下）の順に
+- **削除方向**: 上スワイプ → **下スワイプ**に変更
+- **矢印ガイド**: 横並び（←前 ↓削除 次→）→ 削除のみ残して左右は三角マークに
+- **カード両脇に青い三角マーク**: 隣のカードは画面外（spacing: 200）
+- **下部パネル上端固定(370pt)**: サジェスト行数変化でもレイアウト安定
+
+### 残っている課題: 爆速スクロール（次セッションの最重要課題）
+
+#### 問題
+カード切り替え時に「ちょこちょこ固まる」現象が残っている。原因は：
+1. `scrolledMemoID` が変わる → `onChange` 発火
+2. `syncEditingState(for:)` が走る
+3. `selectedParentTagID` / `selectedChildTagID` が変わる
+4. **TagDialView（ルーレット）が再描画** ← これが重い
+5. `updateSuggestions()` でサジェストパネルも再描画
+6. 合計で1フレーム以上かかり、スクロールがカクつく
+
+#### 試して効果がなかったアプローチ
+- **遅延同期**: syncEditingStateを50ms/100ms遅延 → むしろ悪化（タイミングがズレてガタガタ）
+- **分散更新**: ルーレットとサジェストを別フレームに分ける → 効果薄い
+- **スクロール中のsync停止**: 停止後にフル同期 → 止まった瞬間にカクつく
+- **登場アニメーション**: 初回表示のラグをごまかす → 根本解決にならない
+
+#### 次セッションでの解決策: セル内包方式
+
+**設計思想**: カード + ルーレット + サジェストを1つのUICollectionViewセルに含める。
+セル単位で独立した状態を持ち、親ビューのState変更をゼロにする。
+
+```
+現在の構造（問題あり）:
+┌─ QuickSortView ─────────────────────────┐
+│  @State selectedParentTagID  ← 共有State │
+│  @State selectedChildTagID   ← 共有State │
+│  @State currentSuggestions   ← 共有State │
+│                                          │
+│  ┌─ CarouselView (UICollectionView) ──┐  │
+│  │  [Card1] [Card2] [Card3] ...       │  │
+│  └────────────────────────────────────┘  │
+│                                          │
+│  ┌─ suggestPanel ─┐  ┌─ dialArea ─┐     │
+│  │ タグ提案        │  │ ルーレット  │     │ ← カード切替ごとに再描画
+│  └────────────────┘  └────────────┘     │
+└──────────────────────────────────────────┘
+
+新しい構造（セル内包方式）:
+┌─ QuickSortView ─────────────────────────┐
+│  （共有Stateなし or 最小限）              │
+│                                          │
+│  ┌─ CarouselView (UICollectionView) ──┐  │
+│  │  ┌─ Cell 1 ────────────────────┐   │  │
+│  │  │  カード                      │   │  │
+│  │  │  サジェスト  │  ルーレット   │   │  │
+│  │  └─────────────────────────────┘   │  │
+│  │  ┌─ Cell 2 ────────────────────┐   │  │
+│  │  │  カード                      │   │  │
+│  │  │  サジェスト  │  ルーレット   │   │  │
+│  │  └─────────────────────────────┘   │  │
+│  └────────────────────────────────────┘  │
+└──────────────────────────────────────────┘
+```
+
+**メリット**:
+- カード切替時に親ビューのStateが一切変わらない → **再描画ゼロ**
+- UICollectionViewのセル再利用で、画面外のセルは自動解放
+- 実質同時に3枚（前・現在・次）しかメモリに乗らない
+- 連続フリックで途中のセルはスキップ（描画されない）→ 今より軽い
+
+**実装のポイント**:
+1. **セルごとに独立したタグ選択状態**: `memo.tags`から直接読み込み
+2. **タグ変更の反映**: セル内のルーレットで選択 → `memo.tags`に直接書き込み
+3. **サジェストはキャッシュ済み**: `suggestCache[index]`をセルに渡すだけ
+4. **編集モード**: セル内のカードをタップ → cardEditOverlayは親で管理（既存のまま）
+5. **cardContent クロージャの拡張**: カード+サジェスト+ルーレットの縦並びビューを返す
+
+**注意点**:
+- `TagDialView` が `@Binding` で `selectedParentTagID` を受け取る設計 → セル内のローカル `@State` に変更
+- `applyTagFromDial()` → セル内で `memo.tags` を直接更新
+- `newTagSheet` → 親に通知するコールバックが必要
+- セルの高さをカード+サジェスト+ルーレット分に拡大（CarouselViewのcardHeightを変更）
 
 ## 主要ファイル（爆速モード関連）
 - **QuickSortView.swift**: メイン画面（フェーズ管理・カルーセル・編集オーバーレイ・セット管理）
-- **QuickSortFilterView.swift**: フィルタ選択（タグなし/タイトルなし/古いメモ/特定タグ/すべて）
-- **QuickSortResultView.swift**: 戦績表示（全画面リッチ・次のセットへ対応）
-- **CardWithTabShape.swift**: タブ付きカード一体成型Shape（ファイル末尾に定義）
+- **CarouselView.swift**: UICollectionViewベースのカルーセル（UIViewControllerRepresentable + SnapCenterFlowLayout）
+- **QuickSortFilterView.swift**: フィルタ選択
+- **QuickSortResultView.swift**: 戦績表示
+- **TrapezoidTabShape.swift**: TrapezoidTabShape, CardTitleTabShape, CardWithTabShape, Triangle の定義
+- **TagDialView.swift**: ルーレット（セル内包化の主要対象）
 - **MainView.swift**: ⚡ボタン→fullScreenCover起動
 
+## 次のアクション（優先順）
+1. **爆速スクロール: セル内包方式の実装**（最重要）
+2. feature/uikit-carousel → main にマージ
+3. 実機テストでパフォーマンス確認
+4. レイアウト微調整（セル内のサジェスト+ルーレット配置）
+5. アプリアイコン
+6. 編集時/閲覧時の文字サイズ変更
+
 ## 環境
-- **Mac②（新）**: MacBook Air — Xcode 26.3, シミュレータ iPhone 17 Pro Max (iOS 26.3.1)
-- 実機: 15promax (26.3.1) (00008130-0006252E2E40001C)
+- **Mac②（新）**: MacBook Air — Xcode 26.3, シミュレータ iPhone 17 Pro (iOS 26.3.1)
+- 実機: 15promax (26.3.1) — デバイスID: 30A153A2-9507-5499-8B3D-341320DA2AB3
+- **ブランチ**: feature/uikit-carousel（mainにマージ前）
 
 ## 注意点
 - DerivedData キャッシュ → `rm -rf ~/Library/Developer/Xcode/DerivedData/SokuMemoKun-*`
@@ -44,4 +131,5 @@
 - SourceKitの偽陽性エラー多発→ビルドは成功する
 - **バンドルID**: com.sokumemokun.app
 - **テストデータバージョン**: sampleDataV10
-- **MainViewのhueFromColorIndex内RGBテーブル**: tabColorsと同じ値を維持すること（別々に管理しているため同期注意）
+- **MainViewのhueFromColorIndex内RGBテーブル**: tabColorsと同じ値を維持すること
+- **CarouselView.swiftのプロジェクト追加**: pbxprojに手動でfileRef/buildRef/group追加済み（ID: CAROUSEL00000000000001/2）

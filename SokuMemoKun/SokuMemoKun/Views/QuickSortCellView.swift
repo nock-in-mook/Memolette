@@ -106,7 +106,7 @@ struct QuickSortCellView: View {
             if active {
                 triggerFlash()
                 // ページ切り替え時にルーレット回転演出
-                initFromMemo(animated: true)
+                spinRouletteToCurrentTag()
             } else {
                 flashTag = false; flashTitle = false
             }
@@ -187,42 +187,49 @@ struct QuickSortCellView: View {
 
     // MARK: - 初期化
 
-    private func initFromMemo(animated: Bool = false) {
+    private func initFromMemo() {
         let parentTag = memo.tags.first(where: { $0.parentTagID == nil })
         let childTag = memo.tags.first(where: { $0.parentTagID != nil })
         let newParentID = parentTag?.id
         let newChildID = childTag?.id
         let needsUpdate = (newParentID != selectedParentTagID) || (newChildID != selectedChildTagID)
         guard needsUpdate else { return }
+        isInternalTagChange = true
+        selectedParentTagID = newParentID
+        selectedChildTagID = newChildID
+        if parentTag != nil {
+            let hasChildren = tags.contains(where: { $0.parentTagID == parentTag?.id })
+            if hasChildren { showChildDial = true }
+        }
+        DispatchQueue.main.async { isInternalTagChange = false }
+    }
 
-        if animated && newParentID != nil {
-            // ルーレット回転演出: まず「タグなし」にリセットしてから実際のタグへ回す
-            isInternalTagChange = true
-            selectedParentTagID = nil
-            selectedChildTagID = nil
-            DispatchQueue.main.async { isInternalTagChange = false }
+    // ルーレット回転演出: 一度「タグなし」に戻してから実際のタグへ回す
+    private func spinRouletteToCurrentTag() {
+        let parentTag = memo.tags.first(where: { $0.parentTagID == nil })
+        let childTag = memo.tags.first(where: { $0.parentTagID != nil })
+        guard parentTag != nil else { return }  // タグなしなら演出不要
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                selectedParentTagID = newParentID
-                if parentTag != nil {
-                    let hasChildren = tags.contains(where: { $0.parentTagID == parentTag?.id })
-                    if hasChildren { showChildDial = true }
-                }
-                // 子タグは親が回り終わってからセット
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    selectedChildTagID = newChildID
-                }
-            }
-        } else {
-            // 即座にセット（初回表示・タグ変更通知時）
-            isInternalTagChange = true
-            selectedParentTagID = newParentID
-            selectedChildTagID = newChildID
-            if parentTag != nil {
-                let hasChildren = tags.contains(where: { $0.parentTagID == parentTag?.id })
+        let targetParentID = parentTag?.id
+        let targetChildID = childTag?.id
+
+        // まず「タグなし」位置へ強制リセット
+        isInternalTagChange = true
+        selectedParentTagID = nil
+        selectedChildTagID = nil
+        isInternalTagChange = false
+
+        // 少し待ってから実際のタグへ回転（TagDialViewのonChangeが回転アニメーション実行）
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            selectedParentTagID = targetParentID
+            if let pid = targetParentID {
+                let hasChildren = tags.contains(where: { $0.parentTagID == pid })
                 if hasChildren { showChildDial = true }
             }
-            DispatchQueue.main.async { isInternalTagChange = false }
+            // 子タグは親が回り終わってからセット
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                selectedChildTagID = targetChildID
+            }
         }
     }
 

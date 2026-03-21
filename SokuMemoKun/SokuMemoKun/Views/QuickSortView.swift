@@ -476,7 +476,7 @@ struct QuickSortView: View {
         .ignoresSafeArea(.keyboard)
         .transition(.opacity)
         .alert("変更は保存されません。よろしいですか？", isPresented: $showDiscardAlert) {
-            Button("破棄する", role: .destructive) { exitEditMode(discard: true) }
+            Button("はい", role: .destructive) { exitEditMode(discard: true) }
             Button("編集に戻る", role: .cancel) {}
         }
     }

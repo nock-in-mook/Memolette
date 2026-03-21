@@ -7,6 +7,7 @@ struct CarouselView: UIViewControllerRepresentable {
     let cardWidth: CGFloat
     let cardHeight: CGFloat
     @Binding var currentMemoID: UUID?
+    @Binding var isScrolling: Bool  // スクロール中かどうかを外部に通知
     let isScrollDisabled: Bool
     // カード描画用のクロージャ（AnyViewで型消去）
     let cardContent: (Memo) -> AnyView
@@ -137,21 +138,25 @@ struct CarouselView: UIViewControllerRepresentable {
 
         func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
             isUserScrolling = true
+            DispatchQueue.main.async { self.parent.isScrolling = true }
         }
 
         func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
             isUserScrolling = false
+            DispatchQueue.main.async { self.parent.isScrolling = false }
             reportCenterItem()
         }
 
         func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
             if !decelerate {
                 isUserScrolling = false
+                DispatchQueue.main.async { self.parent.isScrolling = false }
                 reportCenterItem()
             }
         }
 
         func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) {
+            DispatchQueue.main.async { self.parent.isScrolling = false }
             reportCenterItem()
         }
 

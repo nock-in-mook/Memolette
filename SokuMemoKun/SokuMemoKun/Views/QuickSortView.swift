@@ -27,6 +27,7 @@ struct QuickSortView: View {
 
     // カルーセル: scrollPosition で現在のカードを追跡
     @State private var scrolledMemoID: UUID?
+    @State private var isCarouselScrolling = false  // スクロール中フラグ
     // 上フリック削除用
     @State private var deletingMemoID: UUID? = nil
     @State private var deleteOffset: CGFloat = 0
@@ -234,18 +235,37 @@ struct QuickSortView: View {
         }
         .onAppear { }
         .onChange(of: scrolledMemoID) { oldID, newID in
-            // 新しいメモのタイトル・内容を即座に同期（チラつき防止）
+            // スクロール中は軽量な同期のみ（タイトル・内容だけ更新、ルーレットは触らない）
+            if isCarouselScrolling {
+                if let newID = newID, let memo = activeMemos.first(where: { $0.id == newID }) {
+                    editingTitle = memo.title
+                    editingContent = memo.content
+                }
+                // 前のメモの保存は遅延
+                if let oldID = oldID {
+                    let capturedNewID = newID
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                        guard scrolledMemoID == capturedNewID else { return }
+                        if let oldMemo = activeMemos.first(where: { $0.id == oldID }) {
+                            saveToMemo(oldMemo)
+                        }
+                    }
+                }
+                return
+            }
+            // スクロール停止時はフル同期
             if let newID = newID, let memo = activeMemos.first(where: { $0.id == newID }) {
                 syncEditingState(for: memo)
             }
-            // 前のメモの保存は遅延（スクロールをブロックしない＋連続スワイプ対応）
-            if let oldID = oldID {
-                let capturedNewID = newID
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    guard scrolledMemoID == capturedNewID else { return }
-                    if let oldMemo = activeMemos.first(where: { $0.id == oldID }) {
-                        saveToMemo(oldMemo)
-                    }
+            if let oldID = oldID, let oldMemo = activeMemos.first(where: { $0.id == oldID }) {
+                saveToMemo(oldMemo)
+            }
+        }
+        .onChange(of: isCarouselScrolling) { _, isScrolling in
+            // スクロール停止時にフル同期
+            if !isScrolling {
+                if let newID = scrolledMemoID, let memo = activeMemos.first(where: { $0.id == newID }) {
+                    syncEditingState(for: memo)
                 }
             }
         }
@@ -288,6 +308,7 @@ struct QuickSortView: View {
                 cardWidth: cardWidth,
                 cardHeight: geo.size.height * 0.32,
                 currentMemoID: $scrolledMemoID,
+                isScrolling: $isCarouselScrolling,
                 isScrollDisabled: isCardEditing,
                 cardContent: { memo in
                     AnyView(cardItem(memo: memo, width: cardWidth, height: geo.size.height * 0.32))
@@ -299,14 +320,17 @@ struct QuickSortView: View {
                     .allowsHitTesting(false)
             }
 
-            // 下部: サジェスト(左) + ルーレット(右)
+            // 下部: サジェスト(左) + ルーレット(右) — スクロール中は更新を止める
             HStack(alignment: .top, spacing: 0) {
                 suggestPanel
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .frame(maxWidth: .infinity, maxHeight: 250, alignment: .topLeading)
                 dialArea
+                    .frame(maxHeight: 250, alignment: .top)
             }
-            .frame(height: 215)
-            .padding(.top, 4)
+            .frame(height: 370, alignment: .top)
+            .clipped()
+            .opacity(isCarouselScrolling ? 0.3 : 1.0)
+            .animation(.easeOut(duration: 0.15), value: isCarouselScrolling)
         }
     }
 

@@ -39,3 +39,48 @@ struct TrapezoidTabShape: Shape {
         return path
     }
 }
+
+// カード用タイトルタブ形状
+// 左端は直角（カードの左辺と一直線）、右端だけ斜め＋角丸カーブ
+struct CardTitleTabShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        let inset: CGFloat = 10  // 右側の斜め量
+        let r: CGFloat = 7      // 右上の角丸半径
+        let br: CGFloat = 9     // 右下の付け根の逆カーブ半径
+        let tlr: CGFloat = 5    // 左上の角丸半径
+
+        // 四隅の座標
+        let topLeft = CGPoint(x: 0, y: 0)
+        let topRight = CGPoint(x: rect.maxX - inset, y: 0)
+        let bottomRight = CGPoint(x: rect.maxX, y: rect.maxY)
+        let bottomLeft = CGPoint(x: 0, y: rect.maxY)
+
+        // 右側の付け根カーブ用延長点
+        let extRight = CGPoint(x: rect.maxX + br, y: rect.maxY)
+
+        var path = Path()
+
+        // 左下から開始（直角）
+        path.move(to: bottomLeft)
+
+        // 左辺を上に（直線）
+        path.addLine(to: CGPoint(x: 0, y: tlr))
+
+        // 左上（小さい角丸）
+        path.addArc(tangent1End: topLeft, tangent2End: topRight, radius: tlr)
+
+        // 上辺を右へ → 右上（角丸）
+        path.addArc(tangent1End: topRight, tangent2End: bottomRight, radius: r)
+
+        // 右の斜め線 → 付け根の逆カーブで外側へ
+        path.addArc(tangent1End: bottomRight, tangent2End: extRight, radius: br)
+
+        path.addLine(to: extRight)
+
+        // 底辺を左へ戻る
+        path.addLine(to: bottomLeft)
+        path.closeSubpath()
+
+        return path
+    }
+}

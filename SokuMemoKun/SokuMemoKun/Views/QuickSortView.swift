@@ -375,13 +375,13 @@ struct QuickSortView: View {
                     .frame(height: tabH)
                     .frame(width: tabW, alignment: .leading)
                     .background(
-                        TrapezoidTabShape()
+                        CardTitleTabShape()
                             .fill(parentTag != nil
                                 ? Color(uiColor: .secondarySystemBackground).opacity(0.8)
                                 : Color(uiColor: .secondarySystemBackground).opacity(0.6))
                     )
                     .overlay(
-                        TrapezoidTabShape()
+                        CardTitleTabShape()
                             .stroke(parentTag != nil ? borderColor.opacity(0.4) : Color.secondary.opacity(0.1), lineWidth: 1.5)
                     )
 

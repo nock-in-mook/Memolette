@@ -31,6 +31,7 @@ struct QuickSortView: View {
     // 編集
     @State private var editingTitle = ""
     @State private var editingContent = ""
+    @State private var isKeyboardVisible = false
 
     // カード編集モード
     @State private var isCardEditing = false
@@ -142,6 +143,33 @@ struct QuickSortView: View {
             }
         }
         .ignoresSafeArea(.keyboard)
+        .overlay(alignment: .bottomTrailing) {
+            if isKeyboardVisible {
+                Button {
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                } label: {
+                    Image(systemName: "keyboard.chevron.compact.down")
+                        .font(.system(size: 16))
+                        .foregroundStyle(.secondary)
+                        .padding(10)
+                        .background(
+                            Circle()
+                                .fill(Color(uiColor: .secondarySystemBackground))
+                                .shadow(color: .black.opacity(0.15), radius: 2, y: 1)
+                        )
+                }
+                .padding(.trailing, 12)
+                .padding(.bottom, 8)
+                .transition(.scale.combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: isKeyboardVisible)
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            isKeyboardVisible = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            isKeyboardVisible = false
+        }
         .sheet(isPresented: $showDeleteReview) { deleteReviewSheet }
         .sheet(isPresented: $showNewTagSheet) {
             NewTagSheetView(
@@ -394,21 +422,6 @@ struct QuickSortView: View {
                         .padding(.top, 4)
                         .frame(maxHeight: .infinity)
 
-                    // キーボード収納ボタン（カード内下端）
-                    HStack {
-                        Spacer()
-                        Button {
-                            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                        } label: {
-                            Image(systemName: "keyboard.chevron.compact.down")
-                                .font(.system(size: 14))
-                                .foregroundStyle(.secondary)
-                                .padding(6)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    .padding(.trailing, 8)
-                    .padding(.bottom, 4)
                 }
                 .background(Color(uiColor: .systemBackground))
                 .cornerRadius(16)

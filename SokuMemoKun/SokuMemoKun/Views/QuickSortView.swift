@@ -4,7 +4,7 @@ import os
 
 private let logger = Logger(subsystem: "com.sokumemokun.app", category: "QuickSort")
 
-// 爆速振り分けモード: セル内包方式（カード+サジェスト+ルーレットを1セルに統合）
+// 爆速振り分けモード: セル内包方式（カード+ルーレットを1セルに統合）
 struct QuickSortView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Tag.name) private var tags: [Tag]
@@ -36,6 +36,7 @@ struct QuickSortView: View {
     @State private var editingContentSnapshot = ""
     @State private var showDiscardAlert = false
     @FocusState private var titleFieldFocused: Bool
+    @FocusState private var contentFieldFocused: Bool
 
     // タグ追加シート
     @State private var showNewTagSheet = false
@@ -199,11 +200,8 @@ struct QuickSortView: View {
 
     @ViewBuilder
     private func mainContent(geo: GeometryProxy) -> some View {
-        let dialAreaHeight = QuickSortCellView.dialAreaHeight
-        let cardWidth = geo.size.width * 0.78
         let headerHeight: CGFloat = 76
         let cellHeight = geo.size.height - headerHeight
-        let cardHeight = max(cellHeight - dialAreaHeight, 200)
 
         VStack(spacing: 0) {
             // カウンター（一番上）
@@ -232,35 +230,44 @@ struct QuickSortView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 2)
 
-            // カルーセル（セル内包: カード+ルーレットが1セル）
+            // カルーセル（フリック無効・タップのみでページ移動）
             CarouselView(
                 items: activeMemos,
                 cardWidth: geo.size.width,
                 cardHeight: cellHeight,
                 currentMemoID: $scrolledMemoID,
                 isScrolling: $isCarouselScrolling,
-                isScrollDisabled: isCardEditing,
-                dialHeight: dialAreaHeight,
+                isScrollDisabled: true,
+                dialHeight: QuickSortCellView.dialAreaHeight,
                 cardContent: { memo in
                     let activeIdx = activeMemos.firstIndex(where: { $0.id == memo.id }) ?? 0
                     return AnyView(
                         QuickSortCellView(
                             memo: memo,
-                            cardWidth: cardWidth,
-                            cardHeight: cardHeight,
                             showLeftArrow: activeIdx > 0,
                             showRightArrow: activeIdx < activeMemos.count - 1,
                             isActive: memo.id == scrolledMemoID,
                             onTagChanged: { id in taggedMemoIDs.insert(id) },
-                            onEditTapped: {
+                            onTitleChanged: { id in titledMemoIDs.insert(id) },
+                            onEditBody: {
                                 scrolledMemoID = memo.id
-                                enterEditMode(for: memo)
+                                enterEditMode(for: memo, focusContent: true)
                             },
                             onDelete: { deleteMemo($0) },
                             onNewTagSheet: { isChild, parentID in
                                 newTagIsChild = isChild
                                 newTagParentID = parentID
                                 showNewTagSheet = true
+                            },
+                            onGoPrev: {
+                                if activeIdx > 0 {
+                                    scrolledMemoID = activeMemos[activeIdx - 1].id
+                                }
+                            },
+                            onGoNext: {
+                                if activeIdx < activeMemos.count - 1 {
+                                    scrolledMemoID = activeMemos[activeIdx + 1].id
+                                }
                             }
                         )
                     )
@@ -320,6 +327,7 @@ struct QuickSortView: View {
 
                     TextEditor(text: $editingContent)
                         .font(.system(size: 15))
+                        .focused($contentFieldFocused)
                         .scrollContentBackground(.hidden)
                         .padding(.horizontal, 10)
                         .padding(.top, 4)
@@ -442,14 +450,18 @@ struct QuickSortView: View {
         phase = .carousel
     }
 
-    private func enterEditMode(for memo: Memo) {
+    private func enterEditMode(for memo: Memo, focusContent: Bool = false) {
         editingTitle = memo.title
         editingContent = memo.content
         editingTitleSnapshot = memo.title
         editingContentSnapshot = memo.content
         withAnimation(.spring(response: 0.3)) { isCardEditing = true }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            titleFieldFocused = true
+            if focusContent {
+                contentFieldFocused = true
+            } else {
+                titleFieldFocused = true
+            }
         }
     }
 

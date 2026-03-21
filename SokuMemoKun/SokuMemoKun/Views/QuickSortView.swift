@@ -160,19 +160,19 @@ struct QuickSortView: View {
             // カウンター（ドーンと大きく）
             if !activeMemos.isEmpty {
                 Text("\(currentIndexInActive + 1) / \(activeMemos.count)")
-                    .font(.system(size: 28, weight: .black, design: .rounded))
+                    .font(.system(size: 32, weight: .black, design: .rounded))
                     .foregroundStyle(.primary)
-                    .padding(.top, 4)
+                    .padding(.top, 2)
             }
 
-            // 3方向矢印ガイド（三角配置）
+            // 3方向矢印ガイド（三角配置・でかく）
             arrowGuide
-                .padding(.top, 2)
+                .padding(.top, 6)
+                .padding(.bottom, 8)
 
-            // タイトル（枠付き）
+            // タイトル（枠付き）+ メモカード（接近配置）
             titleArea
                 .padding(.horizontal, 16)
-                .padding(.top, 4)
 
             // カルーセル（本文カード + タグバッジ重ね）
             ScrollView(.horizontal, showsIndicators: false) {
@@ -187,7 +187,7 @@ struct QuickSortView: View {
             }
             .scrollTargetBehavior(.viewAligned)
             .scrollPosition(id: $scrolledMemoID)
-            .padding(.top, 4)
+            .padding(.top, 2)
 
             // 下部: サジェスト(左) + ルーレット(右)
             HStack(alignment: .top, spacing: 0) {
@@ -224,19 +224,23 @@ struct QuickSortView: View {
             tagBadge(for: memo)
                 .offset(x: -8, y: 6)
 
-            // 「本文を確認」ボタン（左下）
+            // 「本文を確認」ボタン（左下・完全不透明）
             Button {
                 if scrolledMemoID != memo.id { scrolledMemoID = memo.id }
                 showContentEditor = true
             } label: {
                 HStack(spacing: 4) {
-                    Image(systemName: "doc.text.magnifyingglass").font(.system(size: 10))
-                    Text("本文を確認").font(.system(size: 10, weight: .medium))
+                    Image(systemName: "doc.text.magnifyingglass").font(.system(size: 11))
+                    Text("本文を確認").font(.system(size: 11, weight: .medium))
                 }
-                .foregroundStyle(.secondary.opacity(0.6))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(Capsule().fill(Color(uiColor: .secondarySystemBackground).opacity(0.8)))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(
+                    Capsule()
+                        .fill(Color(uiColor: .secondarySystemBackground))
+                        .shadow(color: .black.opacity(0.08), radius: 2, y: 1)
+                )
             }
             .buttonStyle(.plain)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
@@ -271,52 +275,74 @@ struct QuickSortView: View {
         )
     }
 
-    // MARK: - タグバッジ（親+子タグ重ね表示、カード右下に被る）
+    // MARK: - タグバッジ（MemoInputViewのtagDisplayと同じデザイン・大きめ）
 
     @ViewBuilder
     private func tagBadge(for memo: Memo) -> some View {
         let parentTag = memo.tags.first(where: { $0.parentTagID == nil })
         let childTag = memo.tags.first(where: { $0.parentTagID != nil })
 
-        if parentTag != nil || childTag != nil {
-            ZStack(alignment: .topTrailing) {
-                // 親タグ（下層）
-                if let pt = parentTag {
+        if let pt = parentTag {
+            if let ct = childTag {
+                // 親タグ＋右下に子タグめり込み
+                HStack(alignment: .bottom, spacing: -6) {
                     Text(pt.name)
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .padding(.leading, 10)
+                        .padding(.trailing, 14)
+                        .padding(.vertical, 6)
                         .background(
-                            Capsule().fill(tagColor(for: pt.colorIndex))
-                                .shadow(color: .black.opacity(0.15), radius: 2, y: 1)
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(tagColor(for: pt.colorIndex))
+                                .shadow(color: .black.opacity(0.12), radius: 3, y: 2)
                         )
-                }
-
-                // 子タグ（上層・右上にずらして重ねる）
-                if let ct = childTag {
                     Text(ct.name)
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 8)
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .padding(.horizontal, 7)
                         .padding(.vertical, 3)
                         .background(
-                            Capsule().fill(tagColor(for: ct.colorIndex))
-                                .shadow(color: .black.opacity(0.15), radius: 2, y: 1)
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(tagColor(for: ct.colorIndex))
+                                .shadow(color: .black.opacity(0.12), radius: 2, y: 1)
                         )
-                        .offset(x: 8, y: -12)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6)
+                                .stroke(Color.white, lineWidth: 2)
+                        )
                 }
+            } else {
+                // 親タグのみ
+                Text(pt.name)
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .lineLimit(1)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(tagColor(for: pt.colorIndex))
+                            .shadow(color: .black.opacity(0.12), radius: 3, y: 2)
+                    )
             }
         } else {
             // タグなし
-            Text("タグなし")
-                .font(.system(size: 11, weight: .medium, design: .rounded))
-                .foregroundStyle(.secondary.opacity(0.5))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(
-                    Capsule().fill(Color.gray.opacity(0.12))
-                )
+            HStack(spacing: 4) {
+                Image(systemName: "tag")
+                    .font(.system(size: 13))
+                Text("タグなし")
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+            }
+            .foregroundStyle(.secondary.opacity(0.6))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(tagColor(for: 0))
+                    .shadow(color: .black.opacity(0.08), radius: 3, y: 2)
+            )
         }
     }
 
@@ -344,70 +370,83 @@ struct QuickSortView: View {
         }
     }
 
-    // MARK: - 3方向矢印ガイド（三角配置）
+    // MARK: - 3方向矢印ガイド（三角配置・でかく極太）
 
     private var arrowGuide: some View {
         let isDeleteActive = deletingMemoID != nil && deleteOffset < -30
 
-        return VStack(spacing: 2) {
+        return VStack(spacing: 0) {
             // 上: 削除（赤）
-            VStack(spacing: 0) {
+            VStack(spacing: -2) {
                 Image(systemName: "arrow.up")
-                    .font(.system(size: isDeleteActive ? 24 : 18, weight: .black))
+                    .font(.system(size: isDeleteActive ? 50 : 40, weight: .black))
                 Text("削除")
-                    .font(.system(size: isDeleteActive ? 14 : 11, weight: .bold, design: .rounded))
+                    .font(.system(size: isDeleteActive ? 22 : 18, weight: .black, design: .rounded))
             }
-            .foregroundStyle(isDeleteActive ? .red : .red.opacity(0.35))
+            .foregroundStyle(isDeleteActive ? .red : .red.opacity(0.3))
             .animation(.easeOut(duration: 0.15), value: isDeleteActive)
 
             // 下: 左右（青）
-            HStack(spacing: 40) {
+            HStack(spacing: 50) {
                 // 左: 前
                 HStack(spacing: 2) {
                     Image(systemName: "arrow.left")
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.system(size: 30, weight: .black))
                     Text("前")
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .font(.system(size: 18, weight: .black, design: .rounded))
                 }
-                .foregroundStyle(.blue.opacity(0.3))
+                .foregroundStyle(.blue.opacity(0.25))
 
                 // 右: 次
                 HStack(spacing: 2) {
                     Text("次")
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .font(.system(size: 18, weight: .black, design: .rounded))
                     Image(systemName: "arrow.right")
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.system(size: 30, weight: .black))
                 }
-                .foregroundStyle(.blue.opacity(0.3))
+                .foregroundStyle(.blue.opacity(0.25))
             }
+            .padding(.top, -4)
         }
     }
 
-    // MARK: - タイトル（枠付き）
+    // MARK: - タイトル（枠付き・左上に「タイトル」ラベル・右端に鉛筆ボタン）
 
     private var titleArea: some View {
-        HStack {
-            if isEditingTitle {
-                TextField("タイトルを入力", text: $editingTitle)
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .onSubmit { isEditingTitle = false; applyTitleEdit() }
-            } else {
-                Text(editingTitle.isEmpty ? "タイトルなし" : editingTitle)
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundColor(editingTitle.isEmpty ? Color.secondary.opacity(0.4) : Color.primary)
-                    .lineLimit(1)
-                Spacer()
-                Image(systemName: "pencil")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary.opacity(0.4))
+        VStack(alignment: .leading, spacing: 2) {
+            // 「タイトル」ラベル
+            Text("タイトル")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(.secondary.opacity(0.6))
+                .padding(.leading, 4)
+
+            HStack {
+                if isEditingTitle {
+                    TextField("タイトルを入力", text: $editingTitle)
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .onSubmit { isEditingTitle = false; applyTitleEdit() }
+                } else {
+                    Text(editingTitle.isEmpty ? "タイトルなし" : editingTitle)
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(editingTitle.isEmpty ? Color.secondary.opacity(0.4) : Color.primary)
+                        .lineLimit(1)
+                    Spacer()
+                    // 鉛筆ボタン（タップでタイトル編集）
+                    Button {
+                        isEditingTitle = true
+                    } label: {
+                        Image(systemName: "pencil.circle.fill")
+                            .font(.system(size: 20))
+                            .foregroundStyle(.secondary.opacity(0.4))
+                    }
+                    .buttonStyle(.plain)
+                }
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(RoundedRectangle(cornerRadius: 10).fill(Color(uiColor: .systemBackground)))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.secondary.opacity(0.15), lineWidth: 1))
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(RoundedRectangle(cornerRadius: 10).fill(Color(uiColor: .systemBackground)))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.secondary.opacity(0.15), lineWidth: 1))
-        .contentShape(Rectangle())
-        .onTapGesture { if !isEditingTitle { isEditingTitle = true } }
     }
 
     // MARK: - 本文閲覧/編集（全画面モーダル）

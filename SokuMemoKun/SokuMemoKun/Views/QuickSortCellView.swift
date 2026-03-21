@@ -175,106 +175,136 @@ struct QuickSortCellView: View {
         }
     }
 
-    // MARK: - メモカード（旧デザイン復活: タイトル欄+本文+タグフッター）
+    // MARK: - メモカード（タブ形状タイトル + 鉛筆ボタン + 本文 + タグフッター）
 
     private var memoCard: some View {
         let parentTag = memo.tags.first(where: { $0.parentTagID == nil })
         let borderColor: Color = parentTag != nil ? tagColor(for: parentTag!.colorIndex) : Color.clear
+        let tabH: CGFloat = 34
+        let tabRatio: CGFloat = 0.68
 
-        return VStack(alignment: .leading, spacing: 0) {
-            // タイトル欄（薄グレー背景 + タグ色ライン）
-            TextField("タイトルなし", text: $editingTitle)
-                .font(.system(size: 18, weight: .bold, design: .rounded))
-                .focused($isTitleFocused)
-                .onSubmit { isTitleFocused = false }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(
-                    flashTitle
-                        ? Color.orange.opacity(0.15)
-                        : Color(uiColor: .secondarySystemBackground).opacity(0.6)
-                )
-                .overlay(alignment: .bottom) {
-                    Rectangle()
-                        .frame(height: parentTag != nil ? 2 : 0)
-                        .foregroundStyle(borderColor)
-                }
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14)
-                        .stroke(flashTitle ? Color.orange : Color.clear, lineWidth: 2)
-                        .clipShape(
-                            // 上部のみ角丸のストロークをクリップ
-                            UnevenRoundedRectangle(
-                                topLeadingRadius: 14, bottomLeadingRadius: 0,
-                                bottomTrailingRadius: 0, topTrailingRadius: 14
-                            )
-                        )
-                )
+        return GeometryReader { geo in
+            let tabW = geo.size.width * tabRatio
 
-            // 本文（タップで編集画面へ）
-            Text(memo.content.isEmpty ? "（本文なし）" : String(memo.content.prefix(200)))
-                .font(.system(size: 15))
-                .foregroundColor(memo.content.isEmpty ? Color.secondary.opacity(0.4) : Color.primary)
-                .lineLimit(nil)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .padding(12)
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    commitTitle()
-                    isTitleFocused = false
-                    onEditBody()
-                }
+            ZStack(alignment: .topLeading) {
+                // カード本体（タブ分だけ上にスペース）
+                VStack(alignment: .leading, spacing: 0) {
+                    // タブ分のスペーサー
+                    Color.clear.frame(height: tabH - 2)
 
-            // タグフッター
-            HStack(spacing: 6) {
-                Text("タグ:")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.secondary)
+                    // 本文（タップで編集画面へ）
+                    Text(memo.content.isEmpty ? "（本文なし）" : String(memo.content.prefix(200)))
+                        .font(.system(size: 15))
+                        .foregroundColor(memo.content.isEmpty ? Color.secondary.opacity(0.4) : Color.primary)
+                        .lineLimit(nil)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                        .padding(12)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            commitTitle()
+                            isTitleFocused = false
+                            onEditBody()
+                        }
 
-                if let pt = parentTag {
-                    tagBadge(parentTag: pt)
-                } else {
-                    Spacer()
-                    Text("なし")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(.secondary.opacity(0.5))
-                }
-
-                Spacer()
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(
-                flashTag
-                    ? Color.orange.opacity(0.15)
-                    : Color(uiColor: .secondarySystemBackground).opacity(0.4)
-            )
-            .overlay(alignment: .top) {
-                Rectangle()
-                    .frame(height: parentTag != nil ? 2 : 0)
-                    .foregroundStyle(borderColor)
-            }
-            .overlay(
-                RoundedRectangle(cornerRadius: 14)
-                    .stroke(flashTag ? Color.orange : Color.clear, lineWidth: 2)
-                    .clipShape(
-                        UnevenRoundedRectangle(
-                            topLeadingRadius: 0, bottomLeadingRadius: 14,
-                            bottomTrailingRadius: 14, topTrailingRadius: 0
-                        )
+                    // タグフッター
+                    HStack(spacing: 6) {
+                        Text("タグ:")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        if let pt = parentTag {
+                            tagBadge(parentTag: pt)
+                        } else {
+                            Text("なし")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(.secondary.opacity(0.5))
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(
+                        flashTag
+                            ? Color.orange.opacity(0.15)
+                            : Color(uiColor: .secondarySystemBackground).opacity(0.4)
                     )
-            )
-        }
-        .background(Color(uiColor: .systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(
-                    parentTag != nil ? borderColor.opacity(0.5) : Color.secondary.opacity(0.1),
-                    lineWidth: parentTag != nil ? 1.5 : 1
+                    .overlay(alignment: .top) {
+                        Rectangle()
+                            .frame(height: parentTag != nil ? 2 : 0)
+                            .foregroundStyle(borderColor)
+                    }
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .stroke(flashTag ? Color.orange : Color.clear, lineWidth: 2)
+                            .clipShape(
+                                UnevenRoundedRectangle(
+                                    topLeadingRadius: 0, bottomLeadingRadius: 14,
+                                    bottomTrailingRadius: 14, topTrailingRadius: 0
+                                )
+                            )
+                    )
+                }
+                .background(Color(uiColor: .systemBackground))
+                .clipShape(
+                    UnevenRoundedRectangle(
+                        topLeadingRadius: 0, bottomLeadingRadius: 14,
+                        bottomTrailingRadius: 14, topTrailingRadius: 14
+                    )
                 )
-        )
-        .shadow(color: .black.opacity(0.1), radius: 8, y: 4)
+                .overlay(
+                    UnevenRoundedRectangle(
+                        topLeadingRadius: 0, bottomLeadingRadius: 14,
+                        bottomTrailingRadius: 14, topTrailingRadius: 14
+                    )
+                    .stroke(
+                        parentTag != nil ? borderColor.opacity(0.4) : Color.secondary.opacity(0.1),
+                        lineWidth: 1.5
+                    )
+                )
+                .shadow(color: .black.opacity(0.1), radius: 8, y: 4)
+
+                // タイトルタブ（左上、7割幅、カード上に飛び出す）+ 鉛筆ボタン
+                HStack(spacing: 0) {
+                    TextField("タイトルなし", text: $editingTitle)
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .focused($isTitleFocused)
+                        .onSubmit { isTitleFocused = false }
+                        .lineLimit(1)
+                        .padding(.horizontal, 12)
+                        .frame(height: tabH)
+                        .frame(width: tabW, alignment: .leading)
+                        .background(
+                            TrapezoidTabShape()
+                                .fill(flashTitle
+                                    ? Color.orange.opacity(0.2)
+                                    : Color(uiColor: .secondarySystemBackground).opacity(
+                                        parentTag != nil ? 0.8 : 0.6
+                                    ))
+                        )
+                        .overlay(
+                            TrapezoidTabShape()
+                                .stroke(
+                                    flashTitle
+                                        ? Color.orange
+                                        : (parentTag != nil ? borderColor.opacity(0.4) : Color.secondary.opacity(0.1)),
+                                    lineWidth: flashTitle ? 2 : 1.5
+                                )
+                        )
+
+                    // 鉛筆ボタン（タブの右横）
+                    Button {
+                        commitTitle()
+                        isTitleFocused = false
+                        onEditBody()
+                    } label: {
+                        Image(systemName: "square.and.pencil")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(.orange)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.leading, 6)
+                }
+            }
+        }
     }
 
     // MARK: - タグバッジ

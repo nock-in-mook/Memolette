@@ -11,7 +11,7 @@ struct QuickSortFilterView: View {
     @Query(sort: \Memo.createdAt, order: .reverse) private var allMemos: [Memo]
 
     // フィルタ条件（複数選択可）
-    @State private var filterNoTag = true
+    @State private var filterNoTag = false
     @State private var filterNoTitle = false
     @State private var filterOld = false
     @State private var filterAll = false

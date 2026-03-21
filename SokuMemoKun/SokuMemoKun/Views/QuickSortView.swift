@@ -55,6 +55,9 @@ struct QuickSortView: View {
     @State private var isLoading = true
     @State private var loadingProgress = 0
 
+    // 終了確認
+    @State private var showExitConfirm = false
+
     // 戦績
     @State private var showResult = false
     @State private var showDeleteReview = false
@@ -106,6 +109,11 @@ struct QuickSortView: View {
                             .font(.system(size: 17, weight: .medium))
                             .foregroundStyle(.secondary)
                     }
+                }
+
+                // 終了確認ダイアログ
+                if showExitConfirm {
+                    exitConfirmDialog
                 }
 
                 if showResult {
@@ -369,7 +377,9 @@ struct QuickSortView: View {
 
     private var navBar: some View {
         HStack {
-            Button { saveCurrent(); onDismiss() } label: {
+            Button {
+                withAnimation(.easeOut(duration: 0.2)) { showExitConfirm = true }
+            } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(.secondary)
@@ -387,6 +397,78 @@ struct QuickSortView: View {
                     .background(Capsule().fill(Color.orange))
             }
         }
+    }
+
+    // MARK: - 終了確認ダイアログ（リッチ）
+
+    private var exitConfirmDialog: some View {
+        ZStack {
+            Color.black.opacity(0.4)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    withAnimation(.easeOut(duration: 0.2)) { showExitConfirm = false }
+                }
+
+            VStack(spacing: 0) {
+                // ヘッダー
+                VStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 32))
+                        .foregroundStyle(.orange)
+
+                    Text("爆速振り分けモードを終了")
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+
+                    Text("変更は保存されません。\nよろしいですか？")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+
+                    Text("保存するには、完了ボタンを押すか\n完走してください。")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                        .padding(.top, 2)
+                }
+                .padding(.top, 24)
+                .padding(.bottom, 16)
+                .padding(.horizontal, 20)
+
+                Divider()
+
+                // 終了する
+                Button {
+                    withAnimation(.easeOut(duration: 0.2)) { showExitConfirm = false }
+                    onDismiss()
+                } label: {
+                    Text("終了する")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(.red)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                }
+                .buttonStyle(.plain)
+
+                Divider()
+
+                // 戻る
+                Button {
+                    withAnimation(.easeOut(duration: 0.2)) { showExitConfirm = false }
+                } label: {
+                    Text("戻る")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(.blue)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                }
+                .buttonStyle(.plain)
+            }
+            .background(Color(uiColor: .systemBackground))
+            .cornerRadius(16)
+            .shadow(color: .black.opacity(0.2), radius: 16, y: 6)
+            .padding(.horizontal, 40)
+        }
+        .transition(.opacity)
     }
 
     // MARK: - 3方向矢印ガイド（三角配置・でかく極太）

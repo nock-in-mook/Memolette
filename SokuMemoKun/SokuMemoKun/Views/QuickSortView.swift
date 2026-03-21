@@ -398,8 +398,8 @@ struct QuickSortView: View {
                 .shadow(color: .black.opacity(0.3), radius: 20, y: 10)
                 .padding(.horizontal, 12)
             }
-            .frame(maxHeight: geo.size.height * 0.65)
-            .padding(.top, geo.size.height * 0.08)
+            .frame(maxHeight: min(geo.size.height * 0.45, 380))
+            .padding(.top, geo.size.height * 0.06)
 
             // キーボード収納ボタン（右下）
             VStack {
@@ -423,6 +423,7 @@ struct QuickSortView: View {
                 }
             }
         }
+        .ignoresSafeArea(.keyboard)
         .transition(.opacity)
         .alert("変更は保存されません。よろしいですか？", isPresented: $showDiscardAlert) {
             Button("破棄する", role: .destructive) { exitEditMode(discard: true) }

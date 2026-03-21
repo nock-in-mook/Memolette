@@ -47,6 +47,10 @@ struct QuickSortView: View {
     @State private var deleteQueue: [Memo] = []
     @State private var skippedIndices: Set<Int> = []
 
+    // 準備中フラグ
+    @State private var isLoading = true
+    @State private var loadingProgress = 0
+
     // 戦績
     @State private var showResult = false
     @State private var showDeleteReview = false
@@ -72,7 +76,22 @@ struct QuickSortView: View {
             ZStack {
                 Color(uiColor: .systemGroupedBackground).ignoresSafeArea()
 
-                if !activeMemos.isEmpty {
+                if isLoading {
+                    // 準備中画面
+                    VStack(spacing: 16) {
+                        Image(systemName: "bolt.fill")
+                            .font(.system(size: 40))
+                            .foregroundStyle(.orange)
+                        Text("準備中...")
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                        Text("\(loadingProgress) / \(targetMemos.count)")
+                            .font(.system(size: 14, design: .rounded))
+                            .foregroundStyle(.secondary)
+                        ProgressView(value: Double(loadingProgress), total: Double(max(1, targetMemos.count)))
+                            .tint(.orange)
+                            .frame(width: 200)
+                    }
+                } else if !activeMemos.isEmpty {
                     mainContent(geo: geo)
                 } else {
                     VStack(spacing: 12) {
@@ -106,11 +125,7 @@ struct QuickSortView: View {
         .fullScreenCover(isPresented: $showContentEditor) { contentEditorView }
         .onAppear {
             logger.warning("onAppear: targetMemos.count = \(self.targetMemos.count)")
-            if let first = activeMemos.first {
-                scrolledMemoID = first.id
-                syncEditingState(for: first)
-            }
-            prefetchSuggestions()
+            prepareAll()
         }
         .onChange(of: scrolledMemoID) { oldID, newID in
             // 前のメモを保存（oldIDで特定）
@@ -614,26 +629,53 @@ struct QuickSortView: View {
 
     // MARK: - サジェスト
 
+    // 起動時に全メモのサジェストを一括計算
+    private func prepareAll() {
+        isLoading = true
+        loadingProgress = 0
+
+        // バックグラウンドで計算してメインスレッドにUI更新
+        Task {
+            var cache: [Int: [TagSuggestEngine.Suggestion]] = [:]
+            let allTags = tags
+            let ctx = modelContext
+
+            for (i, memo) in targetMemos.enumerated() {
+                let result = suggestEngine.suggest(
+                    title: memo.title, body: memo.content,
+                    tags: allTags, context: ctx, limit: 3
+                )
+                cache[i] = result
+
+                // UI更新（数件ごとにまとめて更新）
+                if i % 5 == 0 || i == targetMemos.count - 1 {
+                    await MainActor.run {
+                        loadingProgress = i + 1
+                    }
+                }
+            }
+
+            await MainActor.run {
+                suggestCache = cache
+                loadingProgress = targetMemos.count
+
+                // 初期表示
+                if let first = activeMemos.first {
+                    scrolledMemoID = first.id
+                    syncEditingState(for: first)
+                }
+                isLoading = false
+            }
+        }
+    }
+
     private func updateSuggestions() {
         guard let memo = currentMemo else { currentSuggestions = []; return }
         let idx = targetMemos.firstIndex(where: { $0.id == memo.id }) ?? 0
         if let cached = suggestCache[idx] { currentSuggestions = cached; return }
+        // キャッシュにない場合（通常ありえないが安全のため）
         let result = suggestEngine.suggest(title: memo.title, body: memo.content, tags: tags, context: modelContext, limit: 3)
         currentSuggestions = result
         suggestCache[idx] = result
-    }
-
-    private func prefetchSuggestions() {
-        guard let memo = currentMemo else { return }
-        let idx = targetMemos.firstIndex(where: { $0.id == memo.id }) ?? 0
-        let lo = max(0, idx - 2)
-        let hi = min(targetMemos.count - 1, idx + 3)
-        guard lo <= hi else { return }
-        for i in lo...hi where suggestCache[i] == nil {
-            let m = targetMemos[i]
-            if !deleteQueue.contains(where: { $0.id == m.id }) {
-                suggestCache[i] = suggestEngine.suggest(title: m.title, body: m.content, tags: tags, context: modelContext, limit: 3)
-            }
-        }
     }
 }

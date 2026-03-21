@@ -110,16 +110,20 @@ struct QuickSortFilterView: View {
 
                 // 開始ボタン
                 Button {
-                    let memos = filteredMemos
-                    logger.warning("filteredMemos.count = \(memos.count), allMemos.count = \(self.allMemos.count)")
-                    logger.warning("filterAll=\(self.filterAll) noTag=\(self.filterNoTag) noTitle=\(self.filterNoTitle) old=\(self.filterOld)")
+                    let memos = Array(filteredMemos.prefix(50))
                     onStart(memos)
                     dismiss()
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "bolt.fill")
-                        Text("開始（\(filteredCount)件）")
-                            .font(.system(size: 17, weight: .bold, design: .rounded))
+                        let count = filteredCount
+                        if count > 50 {
+                            Text("開始（先頭50 / \(count)件）")
+                                .font(.system(size: 17, weight: .bold, design: .rounded))
+                        } else {
+                            Text("開始（\(count)件）")
+                                .font(.system(size: 17, weight: .bold, design: .rounded))
+                        }
                     }
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)

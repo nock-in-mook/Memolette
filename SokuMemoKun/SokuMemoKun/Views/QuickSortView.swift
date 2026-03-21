@@ -175,22 +175,21 @@ struct QuickSortView: View {
                     .padding(.top, 2)
             }
 
-            // タグ表示
+            // タグ表示（高さ固定）
             if let memo = currentMemo {
                 currentTagsBar(memo: memo)
                     .padding(.horizontal, 16)
                     .padding(.top, 4)
+                    .frame(height: 28)
             }
 
-            // 下部: サジェスト(左) + ルーレット(右)
+            // 下部: サジェスト(左) + ルーレット(右) — 高さ固定でガタつき防止
             HStack(alignment: .top, spacing: 0) {
                 suggestPanel
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 dialArea
             }
-            .padding(.top, 2)
-
-            Spacer(minLength: 0)
+            .frame(height: 215)
         }
     }
 
@@ -534,7 +533,6 @@ struct QuickSortView: View {
         isInternalTagChange = false
 
         updateSuggestions()
-        prefetchSuggestions()
     }
 
     // 指定したメモに現在の編集内容を保存

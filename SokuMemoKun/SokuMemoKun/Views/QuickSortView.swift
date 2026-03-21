@@ -304,67 +304,89 @@ struct QuickSortView: View {
         }
     }
 
-    // MARK: - カルーセルのカード1枚（タブ付き：左上にタイトルタブ、右上に鉛筆ボタン）
+    // MARK: - カルーセルのカード1枚（タイトル欄+本文+タグフッター）
 
     @ViewBuilder
     private func cardItem(memo: Memo, width: CGFloat, height: CGFloat) -> some View {
         let isDeleting = deletingMemoID == memo.id
         let isCurrent = scrolledMemoID == memo.id
         let title = isCurrent ? editingTitle : memo.title
+        let parentTag = memo.tags.first(where: { $0.parentTagID == nil })
+        let borderColor = parentTag != nil ? tagColor(for: parentTag!.colorIndex) : Color.clear
 
-        ZStack(alignment: .topLeading) {
-            let tabH: CGFloat = 26
-            let tabW: CGFloat = min(width * 0.6, 180)
-            let bodyR: CGFloat = 14
+        VStack(alignment: .leading, spacing: 0) {
+            // タイトル欄（薄グレー背景 + タグ色縁取り）
+            HStack(spacing: 0) {
+                Text(title.isEmpty ? "タイトルなし" : title)
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundColor(title.isEmpty ? Color.secondary.opacity(0.4) : Color.primary)
+                    .lineLimit(1)
 
-            // 一体成型の背景Shape
-            CardWithTabShape(tabWidth: tabW, tabHeight: tabH, bodyRadius: bodyR)
-                .fill(Color(uiColor: .systemBackground))
-                .shadow(color: .black.opacity(0.1), radius: 8, y: 4)
+                Spacer()
 
-            // コンテンツ
-            VStack(alignment: .leading, spacing: 0) {
-                // タブ行
-                HStack(spacing: 0) {
-                    // タイトルテキスト
-                    Text(title.isEmpty ? "タイトルなし" : title)
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundColor(title.isEmpty ? Color.secondary.opacity(0.4) : Color.primary)
-                        .lineLimit(1)
-                        .padding(.horizontal, 12)
-                        .frame(height: tabH)
-                        .frame(maxWidth: tabW, alignment: .leading)
+                // 鉛筆ボタン
+                Button {
+                    if scrolledMemoID != memo.id { scrolledMemoID = memo.id }
+                    enterEditMode()
+                } label: {
+                    Image(systemName: "pencil.circle.fill")
+                        .font(.system(size: 24))
+                        .foregroundStyle(.orange)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color(uiColor: .secondarySystemBackground).opacity(0.6))
+            .overlay(
+                Rectangle()
+                    .frame(height: parentTag != nil ? 2 : 0)
+                    .foregroundStyle(borderColor),
+                alignment: .bottom
+            )
 
+            // 本文
+            Text(memo.content.isEmpty ? "（本文なし）" : memo.content)
+                .font(.system(size: 13))
+                .foregroundColor(memo.content.isEmpty ? Color.secondary.opacity(0.4) : Color.primary)
+                .lineLimit(nil)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .padding(12)
+
+            // タグフッター（タグ色縁取り）
+            HStack(spacing: 6) {
+                Text("タグ:")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
+
+                if parentTag != nil {
+                    tagBadge(for: memo)
+                } else {
                     Spacer()
-
-                    // 鉛筆ボタン
-                    Button {
-                        if scrolledMemoID != memo.id { scrolledMemoID = memo.id }
-                        enterEditMode()
-                    } label: {
-                        Image(systemName: "pencil.circle.fill")
-                            .font(.system(size: 26))
-                            .foregroundStyle(.orange)
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.trailing, 4)
-                    .padding(.top, 4)
+                    Text("なし")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.secondary.opacity(0.5))
                 }
 
-                // 本文（タブ高さから開始）
-                Text(memo.content.isEmpty ? "（本文なし）" : memo.content)
-                    .font(.system(size: 13))
-                    .foregroundColor(memo.content.isEmpty ? Color.secondary.opacity(0.4) : Color.primary)
-                    .lineLimit(nil)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .padding(12)
+                Spacer()
             }
-
-            // タグバッジ（右下）
-            tagBadge(for: memo)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
-                .offset(x: -8, y: 6)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color(uiColor: .secondarySystemBackground).opacity(0.4))
+            .overlay(
+                Rectangle()
+                    .frame(height: parentTag != nil ? 2 : 0)
+                    .foregroundStyle(borderColor),
+                alignment: .top
+            )
         }
+        .background(Color(uiColor: .systemBackground))
+        .cornerRadius(14)
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(parentTag != nil ? borderColor.opacity(0.5) : Color.clear, lineWidth: parentTag != nil ? 1.5 : 0)
+        )
+        .shadow(color: .black.opacity(0.1), radius: 8, y: 4)
         .frame(width: width, height: height)
         .offset(y: isDeleting ? deleteOffset : 0)
         .opacity(isDeleting ? max(0.0, 1.0 + Double(deleteOffset) / 300.0) : 1.0)

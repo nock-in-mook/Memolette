@@ -238,55 +238,60 @@ struct QuickSortView: View {
         let isCurrent = scrolledMemoID == memo.id
         let title = isCurrent ? editingTitle : memo.title
 
-        VStack(alignment: .leading, spacing: 0) {
-            // タブ行（タイトルタブ + 鉛筆ボタン）
-            HStack(spacing: 0) {
-                // タイトルタブ（左上に生える）
-                Text(title.isEmpty ? "タイトルなし" : title)
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundColor(title.isEmpty ? Color.secondary.opacity(0.4) : Color.primary)
-                    .lineLimit(1)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(
-                        UnevenRoundedRectangle(topLeadingRadius: 8, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: 8)
-                            .fill(Color(uiColor: .systemBackground))
-                    )
-                    .frame(maxWidth: width * 0.65, alignment: .leading)
+        ZStack(alignment: .topLeading) {
+            // カード本体（タブの高さ分だけ上にパディング）
+            let tabH: CGFloat = 26
+            VStack(spacing: 0) {
+                // タブ分のスペーサー
+                Color.clear.frame(height: tabH - 2) // 2pt重ねて隙間を埋める
 
-                Spacer()
+                ZStack(alignment: .bottomTrailing) {
+                    // 本文
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(memo.content.isEmpty ? "（本文なし）" : memo.content)
+                            .font(.system(size: 13))
+                            .foregroundColor(memo.content.isEmpty ? Color.secondary.opacity(0.4) : Color.primary)
+                            .lineLimit(nil)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                            .padding(12)
+                    }
+                    .background(Color(uiColor: .systemBackground))
+                    .clipShape(UnevenRoundedRectangle(topLeadingRadius: 0, bottomLeadingRadius: 14, bottomTrailingRadius: 14, topTrailingRadius: 14))
+                    .shadow(color: .black.opacity(0.1), radius: 8, y: 4)
 
-                // 鉛筆ボタン（右上）
-                Button {
-                    if scrolledMemoID != memo.id { scrolledMemoID = memo.id }
-                    enterEditMode()
-                } label: {
-                    Image(systemName: "pencil.circle.fill")
-                        .font(.system(size: 26))
-                        .foregroundStyle(.orange)
+                    // タグバッジ（右下）
+                    tagBadge(for: memo)
+                        .offset(x: -8, y: 6)
                 }
-                .buttonStyle(.plain)
-                .padding(.trailing, 4)
             }
 
-            // カード本体
-            ZStack(alignment: .bottomTrailing) {
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(memo.content.isEmpty ? "（本文なし）" : memo.content)
-                        .font(.system(size: 13))
-                        .foregroundColor(memo.content.isEmpty ? Color.secondary.opacity(0.4) : Color.primary)
-                        .lineLimit(nil)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                        .padding(12)
-                }
-                .background(Color(uiColor: .systemBackground))
-                .cornerRadius(14)
-                .shadow(color: .black.opacity(0.1), radius: 8, y: 4)
+            // タイトルタブ（左上、TrapezoidTabShapeで本体と一体化）
+            Text(title.isEmpty ? "タイトルなし" : title)
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundColor(title.isEmpty ? Color.secondary.opacity(0.4) : Color.primary)
+                .lineLimit(1)
+                .padding(.horizontal, 12)
+                .frame(height: tabH)
+                .frame(maxWidth: width * 0.6, alignment: .leading)
+                .background(
+                    TrapezoidTabShape()
+                        .fill(Color(uiColor: .systemBackground))
+                        .shadow(color: .black.opacity(0.08), radius: 4, y: -2)
+                )
 
-                // タグバッジ（右下）
-                tagBadge(for: memo)
-                    .offset(x: -8, y: 6)
+            // 鉛筆ボタン（右上）
+            Button {
+                if scrolledMemoID != memo.id { scrolledMemoID = memo.id }
+                enterEditMode()
+            } label: {
+                Image(systemName: "pencil.circle.fill")
+                    .font(.system(size: 26))
+                    .foregroundStyle(.orange)
             }
+            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity, alignment: .trailing)
+            .padding(.trailing, 4)
+            .padding(.top, 2)
         }
         .frame(width: width, height: height)
         .offset(y: isDeleting ? deleteOffset : 0)

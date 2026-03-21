@@ -315,35 +315,36 @@ struct QuickSortView: View {
         let borderColor = parentTag != nil ? tagColor(for: parentTag!.colorIndex) : Color.clear
 
         VStack(alignment: .leading, spacing: 0) {
-            // タイトル欄（薄グレー背景 + タグ色縁取り）
-            HStack(spacing: 0) {
+            // タイトルタブ行（7割幅のタブ + 鉛筆ボタン）
+            HStack(spacing: 6) {
+                // タイトルタブ（7割幅、左端はカード角丸に合わせる）
                 Text(title.isEmpty ? "タイトルなし" : title)
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundColor(title.isEmpty ? Color.secondary.opacity(0.4) : Color.primary)
                     .lineLimit(1)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .frame(maxWidth: width * 0.7, alignment: .leading)
+                    .background(Color(uiColor: .secondarySystemBackground).opacity(0.6))
+                    .clipShape(UnevenRoundedRectangle(topLeadingRadius: 14, bottomLeadingRadius: 0, bottomTrailingRadius: 10, topTrailingRadius: 0))
+                    .overlay(
+                        UnevenRoundedRectangle(topLeadingRadius: 14, bottomLeadingRadius: 0, bottomTrailingRadius: 10, topTrailingRadius: 0)
+                            .stroke(borderColor, lineWidth: parentTag != nil ? 1.5 : 0)
+                    )
 
-                Spacer()
-
-                // 鉛筆ボタン
+                // 鉛筆ボタン（タブの右隣）
                 Button {
                     if scrolledMemoID != memo.id { scrolledMemoID = memo.id }
                     enterEditMode()
                 } label: {
-                    Image(systemName: "pencil.circle.fill")
-                        .font(.system(size: 24))
+                    Image(systemName: "square.and.pencil")
+                        .font(.system(size: 22, weight: .semibold))
                         .foregroundStyle(.orange)
                 }
                 .buttonStyle(.plain)
+
+                Spacer()
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(Color(uiColor: .secondarySystemBackground).opacity(0.6))
-            .overlay(
-                Rectangle()
-                    .frame(height: parentTag != nil ? 2 : 0)
-                    .foregroundStyle(borderColor),
-                alignment: .bottom
-            )
 
             // 本文
             Text(memo.content.isEmpty ? "（本文なし）" : memo.content)
@@ -353,22 +354,21 @@ struct QuickSortView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .padding(12)
 
-            // タグフッター（タグ色縁取り）
+            // タグフッター（右寄せ、タグ色縁取り）
             HStack(spacing: 6) {
                 Text("タグ:")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.secondary)
 
+                Spacer()
+
                 if parentTag != nil {
                     tagBadge(for: memo)
                 } else {
-                    Spacer()
                     Text("なし")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(.secondary.opacity(0.5))
                 }
-
-                Spacer()
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)

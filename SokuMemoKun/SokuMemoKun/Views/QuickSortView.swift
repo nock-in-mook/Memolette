@@ -393,18 +393,22 @@ struct QuickSortView: View {
                         .padding(.horizontal, 10)
                         .padding(.top, 4)
                         .frame(maxHeight: .infinity)
-                        .toolbar {
-                            ToolbarItemGroup(placement: .keyboard) {
-                                Spacer()
-                                Button {
-                                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                                } label: {
-                                    Image(systemName: "keyboard.chevron.compact.down")
-                                        .font(.system(size: 16))
-                                        .padding(.vertical, 6)
-                                }
-                            }
+
+                    // キーボード収納ボタン（カード内下端）
+                    HStack {
+                        Spacer()
+                        Button {
+                            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                        } label: {
+                            Image(systemName: "keyboard.chevron.compact.down")
+                                .font(.system(size: 14))
+                                .foregroundStyle(.secondary)
+                                .padding(6)
                         }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.trailing, 8)
+                    .padding(.bottom, 4)
                 }
                 .background(Color(uiColor: .systemBackground))
                 .cornerRadius(16)

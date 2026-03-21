@@ -158,6 +158,7 @@ struct QuickSortView: View {
                                 .shadow(color: .black.opacity(0.15), radius: 2, y: 1)
                         )
                 }
+                .buttonStyle(.plain)
                 .padding(.trailing, 12)
                 .padding(.bottom, 8)
                 .transition(.scale.combined(with: .opacity))

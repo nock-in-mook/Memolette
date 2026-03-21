@@ -583,76 +583,54 @@ struct QuickSortView: View {
             ZStack(alignment: .trailing) {
                 Text("親タグ")
                     .font(.system(size: 10, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.6))
-                    .padding(.trailing, 200)
+                    .foregroundStyle(.secondary.opacity(0.5))
+                    .padding(.trailing, 165)
                 Text("子タグ")
                     .font(.system(size: 10, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.6))
-                    .padding(.trailing, 83)
+                    .foregroundStyle(.secondary.opacity(0.5))
+                    .padding(.trailing, 50)
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
-            .frame(height: 18)
+            .frame(height: 14)
 
             // ルーレット本体
-            HStack(spacing: 0) {
-                TagDialView(
-                    parentOptions: parentOptions,
-                    parentSelectedID: $selectedParentTagID,
-                    childOptions: childOptions,
-                    childSelectedID: $selectedChildTagID,
-                    showChild: $showChildDial,
-                    isOpen: true,
-                    childExternalDragY: $childExternalDragY,
-                    onLongPress: nil
-                )
-                .background {
-                    DialEdgeArcShape(radius: 350, dialHeight: 211)
-                        .fill(Color.white)
-                        .shadow(color: .black.opacity(0.5), radius: 3, x: -2, y: 0)
-                        .allowsHitTesting(false)
-                }
-                .offset(x: -27, y: -10)
-            }
+            TagDialView(
+                parentOptions: parentOptions,
+                parentSelectedID: $selectedParentTagID,
+                childOptions: childOptions,
+                childSelectedID: $selectedChildTagID,
+                showChild: $showChildDial,
+                isOpen: true,
+                childExternalDragY: $childExternalDragY,
+                onLongPress: nil
+            )
             .frame(height: 211)
 
             // 追加ボタン
-            ZStack(alignment: .trailing) {
+            HStack(spacing: 12) {
+                Spacer()
                 Button {
                     showNewTagSheet = true
                     newTagIsChild = false
                 } label: {
                     Label("親タグ追加", systemImage: "plus.circle.fill")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.8))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.secondary.opacity(0.6))
                 }
-                .padding(.trailing, 160)
-
                 Button {
-                    if selectedParentTagID == nil {
-                        // 親タグ未選択時は何もしない
-                    } else {
+                    if selectedParentTagID != nil {
                         showNewTagSheet = true
                         newTagIsChild = true
                     }
                 } label: {
                     Label("子タグ追加", systemImage: "plus.circle")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.white.opacity(selectedParentTagID == nil ? 0.3 : 0.7))
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary.opacity(selectedParentTagID == nil ? 0.25 : 0.5))
                 }
-                .padding(.trailing, 50)
             }
-            .frame(maxWidth: .infinity, alignment: .trailing)
-            .padding(.vertical, 4)
-            .offset(y: -13)
+            .padding(.trailing, 8)
+            .offset(y: -8)
         }
-        .padding(.top, 6)
-        .padding(.trailing, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color.gray)
-                .shadow(color: .black.opacity(0.2), radius: 3, x: -2, y: 0)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
     // MARK: - 削除確認シート

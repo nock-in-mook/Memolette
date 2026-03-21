@@ -1,6 +1,6 @@
 import SwiftUI
 
-// 爆速振り分けモード: 戦績表示
+// 爆速振り分けモード: 戦績表示（全画面リッチ）
 struct QuickSortResultView: View {
     let taggedCount: Int
     let titledCount: Int
@@ -10,38 +10,59 @@ struct QuickSortResultView: View {
     var onReviewDeleted: () -> Void
     var onClose: () -> Void
 
+    private var totalActions: Int {
+        taggedCount + titledCount + editedCount + deletedCount
+    }
+
     var body: some View {
         ZStack {
-            Color.black.opacity(0.4)
+            // 背景（全画面）
+            Color(uiColor: .systemGroupedBackground)
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
+                Spacer()
+
                 // ヘッダー
-                VStack(spacing: 8) {
-                    Text("📊")
-                        .font(.system(size: 40))
-                    Text("振り分け結果")
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                VStack(spacing: 12) {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 56))
+                        .foregroundStyle(.orange)
+
+                    Text("振り分け完了！")
+                        .font(.system(size: 26, weight: .black, design: .rounded))
+
+                    if totalActions > 0 {
+                        Text("\(totalActions)件の操作を実行しました")
+                            .font(.system(size: 15))
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("操作はありませんでした")
+                            .font(.system(size: 15))
+                            .foregroundStyle(.secondary)
+                    }
                 }
-                .padding(.top, 24)
-                .padding(.bottom, 16)
+                .padding(.bottom, 32)
 
-                Divider()
-
-                // 戦績リスト
+                // 戦績カード
                 VStack(spacing: 0) {
-                    resultRow(icon: "🏷", label: "タグ付け", count: taggedCount)
-                    resultRow(icon: "📝", label: "タイトル付け", count: titledCount)
-                    resultRow(icon: "✏️", label: "本文を編集", count: editedCount)
-                    resultRow(icon: "🗑", label: "削除", count: deletedCount)
+                    resultRow(icon: "🏷", label: "にタグ付け", count: taggedCount)
+                    Divider().padding(.leading, 44)
+                    resultRow(icon: "📝", label: "にタイトル付け", count: titledCount)
+                    Divider().padding(.leading, 44)
+                    resultRow(icon: "✏️", label: "の本文を編集", count: editedCount)
+                    Divider().padding(.leading, 44)
+                    resultRow(icon: "🗑", label: "を削除", count: deletedCount, isDestructive: true)
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 12)
+                .background(Color(uiColor: .systemBackground))
+                .cornerRadius(14)
+                .shadow(color: .black.opacity(0.06), radius: 8, y: 4)
+                .padding(.horizontal, 24)
 
-                Divider()
+                Spacer()
 
                 // ボタン
-                VStack(spacing: 0) {
+                VStack(spacing: 12) {
                     if deletedCount > 0 {
                         Button {
                             onReviewDeleted()
@@ -54,43 +75,57 @@ struct QuickSortResultView: View {
                             }
                             .foregroundStyle(.red)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
+                            .frame(height: 48)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.red.opacity(0.08))
+                            )
                         }
                         .buttonStyle(.plain)
-
-                        Divider()
                     }
 
                     Button {
                         onClose()
                     } label: {
-                        Text("閉じる")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(.blue)
+                        Text("完了")
+                            .font(.system(size: 17, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
+                            .frame(height: 52)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .fill(Color.orange)
+                            )
                     }
                     .buttonStyle(.plain)
                 }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 40)
             }
-            .background(Color(uiColor: .systemBackground))
-            .cornerRadius(16)
-            .shadow(color: .black.opacity(0.2), radius: 16, y: 6)
-            .padding(.horizontal, 36)
         }
         .transition(.opacity)
     }
 
     @ViewBuilder
-    private func resultRow(icon: String, label: String, count: Int) -> some View {
-        HStack {
+    private func resultRow(icon: String, label: String, count: Int, isDestructive: Bool = false) -> some View {
+        HStack(spacing: 12) {
             Text(icon)
-                .font(.system(size: 18))
-            Text("\(count)件に\(label)")
-                .font(.system(size: 15, weight: count > 0 ? .semibold : .regular))
-                .foregroundStyle(count > 0 ? .primary : .secondary)
+                .font(.system(size: 24))
+                .frame(width: 32)
+
+            Text("\(count)件\(label)")
+                .font(.system(size: 17, weight: count > 0 ? .bold : .regular, design: .rounded))
+                .foregroundStyle(count > 0 ? (isDestructive ? .red : .primary) : .secondary)
+
             Spacer()
+
+            if count > 0 {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 18))
+                    .foregroundStyle(isDestructive ? .red : .green)
+            }
         }
-        .padding(.vertical, 6)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
     }
 }

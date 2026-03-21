@@ -114,6 +114,11 @@ struct QuickSortView: View {
                     }
                 }
 
+                // カード編集モード（背景グレーアウト + カードが浮き上がる）
+                if isCardEditing {
+                    cardEditOverlay(geo: geo)
+                }
+
                 // 終了確認ダイアログ
                 if showExitConfirm {
                     exitConfirmDialog
@@ -194,39 +199,35 @@ struct QuickSortView: View {
                     .padding(.top, 2)
             }
 
-            if isCardEditing {
-                // 編集モード: カードが拡大して編集可能
-                cardEditMode(geo: geo)
-            } else {
-                // 通常モード: 矢印ガイド + カルーセル + サジェスト + ルーレット
-                arrowGuide
-                    .padding(.top, 6)
-                    .padding(.bottom, 8)
+            // 通常モード（常に表示、編集中はグレーアウト）
+            arrowGuide
+                .padding(.top, 6)
+                .padding(.bottom, 8)
 
-                // カルーセル（タブ付きカード）
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(spacing: 12) {
-                        ForEach(activeMemos, id: \.id) { memo in
-                            cardItem(memo: memo, width: cardWidth, height: geo.size.height * 0.32)
-                                .id(memo.id)
-                        }
+            // カルーセル（タブ付きカード）
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: 12) {
+                    ForEach(activeMemos, id: \.id) { memo in
+                        cardItem(memo: memo, width: cardWidth, height: geo.size.height * 0.32)
+                            .id(memo.id)
                     }
-                    .scrollTargetLayout()
-                    .padding(.horizontal, (geo.size.width - cardWidth) / 2)
                 }
-                .scrollTargetBehavior(.viewAligned)
-                .scrollPosition(id: $scrolledMemoID)
-                .padding(.top, 2)
-
-                // 下部: サジェスト(左) + ルーレット(右)
-                HStack(alignment: .top, spacing: 0) {
-                    suggestPanel
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    dialArea
-                }
-                .frame(height: 215)
-                .padding(.top, 4)
+                .scrollTargetLayout()
+                .padding(.horizontal, (geo.size.width - cardWidth) / 2)
             }
+            .scrollTargetBehavior(.viewAligned)
+            .scrollPosition(id: $scrolledMemoID)
+            .scrollDisabled(isCardEditing)
+            .padding(.top, 2)
+
+            // 下部: サジェスト(左) + ルーレット(右)
+            HStack(alignment: .top, spacing: 0) {
+                suggestPanel
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                dialArea
+            }
+            .frame(height: 215)
+            .padding(.top, 4)
         }
     }
 
@@ -322,73 +323,109 @@ struct QuickSortView: View {
         )
     }
 
-    // MARK: - カード編集モード（拡大して編集）
+    // MARK: - カード編集オーバーレイ（背景グレーアウト + カードが浮き上がる）
 
     @ViewBuilder
-    private func cardEditMode(geo: GeometryProxy) -> some View {
-        VStack(spacing: 0) {
-            // 編集ヘッダー（キャンセル / 確定）
-            HStack {
-                Button {
-                    // 差分チェック
-                    if editingTitle != editingTitleSnapshot || editingContent != editingContentSnapshot {
-                        showDiscardAlert = true
-                    } else {
-                        exitEditMode(discard: true)
+    private func cardEditOverlay(geo: GeometryProxy) -> some View {
+        ZStack {
+            // 背景グレーアウト
+            Color.black.opacity(0.4)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    // 背景タップでキーボード閉じる
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                }
+
+            // 浮かぶ編集カード
+            VStack(spacing: 0) {
+                // 編集ヘッダー（キャンセル / 確定）
+                HStack {
+                    Button {
+                        if editingTitle != editingTitleSnapshot || editingContent != editingContentSnapshot {
+                            showDiscardAlert = true
+                        } else {
+                            exitEditMode(discard: true)
+                        }
+                    } label: {
+                        Text("キャンセル")
+                            .font(.system(size: 15))
+                            .foregroundStyle(.white.opacity(0.9))
                     }
-                } label: {
-                    Text("キャンセル")
+                    Spacer()
+                    Text("編集中")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.6))
+                    Spacer()
+                    Button {
+                        exitEditMode(discard: false)
+                    } label: {
+                        Text("確定")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(.orange)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+
+                // 編集カード本体
+                VStack(alignment: .leading, spacing: 0) {
+                    // タイトル入力
+                    HStack {
+                        Text("タイトル")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.secondary.opacity(0.5))
+                        Spacer()
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.top, 10)
+
+                    TextField("タイトルを入力", text: $editingTitle)
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .focused($titleFieldFocused)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
+
+                    Divider().padding(.horizontal, 14)
+
+                    // 本文入力
+                    TextEditor(text: $editingContent)
                         .font(.system(size: 15))
-                        .foregroundStyle(.blue)
+                        .scrollContentBackground(.hidden)
+                        .padding(.horizontal, 10)
+                        .padding(.top, 4)
+                        .frame(maxHeight: .infinity)
                 }
+                .background(Color(uiColor: .systemBackground))
+                .cornerRadius(16)
+                .shadow(color: .black.opacity(0.3), radius: 20, y: 10)
+                .padding(.horizontal, 12)
+            }
+            .frame(maxHeight: geo.size.height * 0.65)
+            .padding(.top, geo.size.height * 0.08)
+
+            // キーボード収納ボタン（右下）
+            VStack {
                 Spacer()
-                Button {
-                    exitEditMode(discard: false)
-                } label: {
-                    Text("確定")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(.orange)
+                HStack {
+                    Spacer()
+                    Button {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    } label: {
+                        Image(systemName: "keyboard.chevron.compact.down")
+                            .font(.system(size: 16))
+                            .foregroundStyle(.white.opacity(0.7))
+                            .padding(10)
+                            .background(
+                                Circle()
+                                    .fill(Color.black.opacity(0.5))
+                            )
+                    }
+                    .padding(.trailing, 16)
+                    .padding(.bottom, 16)
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-
-            // タイトル入力
-            VStack(alignment: .leading, spacing: 2) {
-                Text("タイトル")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.secondary.opacity(0.6))
-                    .padding(.leading, 4)
-
-                TextField("タイトルを入力", text: $editingTitle)
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .focused($titleFieldFocused)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
-                    .background(RoundedRectangle(cornerRadius: 10).fill(Color(uiColor: .systemBackground)))
-                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.orange.opacity(0.4), lineWidth: 1.5))
-            }
-            .padding(.horizontal, 16)
-
-            // 本文入力
-            TextEditor(text: $editingContent)
-                .font(.system(size: 15))
-                .scrollContentBackground(.hidden)
-                .padding(8)
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color(uiColor: .systemBackground))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.secondary.opacity(0.15), lineWidth: 1)
-                )
-                .padding(.horizontal, 16)
-                .padding(.top, 4)
-
-            Spacer(minLength: 0)
         }
-        .transition(.scale(scale: 0.95).combined(with: .opacity))
+        .transition(.opacity)
         .alert("変更は保存されません。よろしいですか？", isPresented: $showDiscardAlert) {
             Button("破棄する", role: .destructive) { exitEditMode(discard: true) }
             Button("編集に戻る", role: .cancel) {}

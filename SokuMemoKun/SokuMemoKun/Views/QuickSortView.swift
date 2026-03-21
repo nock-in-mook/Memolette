@@ -291,7 +291,7 @@ struct QuickSortView: View {
                 HStack {
                     Button {
                         if editingTitle != editingTitleSnapshot || editingContent != editingContentSnapshot {
-                            showDiscardAlert = true
+                            withAnimation(.easeOut(duration: 0.2)) { showDiscardAlert = true }
                         } else {
                             exitEditMode(discard: true)
                         }
@@ -344,10 +344,73 @@ struct QuickSortView: View {
         }
         .ignoresSafeArea(.keyboard)
         .transition(.opacity)
-        .alert("変更は保存されません。よろしいですか？", isPresented: $showDiscardAlert) {
-            Button("はい", role: .destructive) { exitEditMode(discard: true) }
-            Button("編集に戻る", role: .cancel) {}
+        .overlay {
+            if showDiscardAlert {
+                discardConfirmDialog
+            }
         }
+    }
+
+    // MARK: - 編集破棄確認ダイアログ（リッチ）
+
+    private var discardConfirmDialog: some View {
+        ZStack {
+            Color.black.opacity(0.4)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    withAnimation(.easeOut(duration: 0.2)) { showDiscardAlert = false }
+                }
+
+            VStack(spacing: 0) {
+                VStack(spacing: 8) {
+                    Image(systemName: "pencil.slash")
+                        .font(.system(size: 32))
+                        .foregroundStyle(.orange)
+
+                    Text("編集を破棄しますか？")
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+
+                    Text("変更は保存されません。")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.top, 24)
+                .padding(.bottom, 16)
+                .padding(.horizontal, 20)
+
+                Divider()
+
+                Button {
+                    withAnimation(.easeOut(duration: 0.2)) { showDiscardAlert = false }
+                    exitEditMode(discard: true)
+                } label: {
+                    Text("破棄する")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(.red)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                }
+                .buttonStyle(.plain)
+
+                Divider()
+
+                Button {
+                    withAnimation(.easeOut(duration: 0.2)) { showDiscardAlert = false }
+                } label: {
+                    Text("編集に戻る")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(.blue)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                }
+                .buttonStyle(.plain)
+            }
+            .background(Color(uiColor: .systemBackground))
+            .cornerRadius(16)
+            .shadow(color: .black.opacity(0.2), radius: 16, y: 6)
+            .padding(.horizontal, 40)
+        }
+        .transition(.opacity)
     }
 
     // MARK: - セット確認画面

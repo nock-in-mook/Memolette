@@ -95,10 +95,78 @@ struct QuickSortCellView: View {
             if active { triggerFlash() }
             else { flashTag = false; flashTitle = false }
         }
-        .alert("このメモを削除予定に追加しますか？", isPresented: $showDeleteConfirm) {
-            Button("削除する", role: .destructive) { onDelete(memo) }
-            Button("キャンセル", role: .cancel) {}
+        .overlay {
+            if showDeleteConfirm {
+                deleteConfirmDialog
+            }
         }
+    }
+
+    // MARK: - 削除確認ダイアログ（リッチ）
+
+    private var deleteConfirmDialog: some View {
+        ZStack {
+            Color.black.opacity(0.4)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    withAnimation(.easeOut(duration: 0.2)) { showDeleteConfirm = false }
+                }
+
+            VStack(spacing: 0) {
+                VStack(spacing: 8) {
+                    Image(systemName: "trash.fill")
+                        .font(.system(size: 32))
+                        .foregroundStyle(.red.opacity(0.8))
+
+                    Text("メモを削除します")
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+
+                    Text("よろしいですか？")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.secondary)
+
+                    Text("「完了」画面で復元できます。")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary.opacity(0.7))
+                        .padding(.top, 2)
+                }
+                .padding(.top, 24)
+                .padding(.bottom, 16)
+                .padding(.horizontal, 20)
+
+                Divider()
+
+                Button {
+                    withAnimation(.easeOut(duration: 0.2)) { showDeleteConfirm = false }
+                    onDelete(memo)
+                } label: {
+                    Text("削除する")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(.red)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                }
+                .buttonStyle(.plain)
+
+                Divider()
+
+                Button {
+                    withAnimation(.easeOut(duration: 0.2)) { showDeleteConfirm = false }
+                } label: {
+                    Text("キャンセル")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(.blue)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                }
+                .buttonStyle(.plain)
+            }
+            .background(Color(uiColor: .systemBackground))
+            .cornerRadius(16)
+            .shadow(color: .black.opacity(0.2), radius: 16, y: 6)
+            .padding(.horizontal, 40)
+        }
+        .transition(.opacity)
     }
 
     // MARK: - 初期化
@@ -348,7 +416,7 @@ struct QuickSortCellView: View {
 
             // ゴミ箱（でかめ・タップで確認後に削除）
             Button {
-                showDeleteConfirm = true
+                withAnimation(.easeOut(duration: 0.2)) { showDeleteConfirm = true }
             } label: {
                 VStack(spacing: 2) {
                     Image(systemName: "trash")

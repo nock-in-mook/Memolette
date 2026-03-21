@@ -1,15 +1,15 @@
 import SwiftUI
 import SwiftData
 
-// セル内包方式: ルーレット→タグ→タイトル→本文を縦に配置
-// 各セルが独立したタグ状態を持ち、親ビューのState変更をゼロにする
+// セル内包方式: メモカード（上）→ ルーレット（中）→ コントロールパネル（下）
+// スワイプ操作は一切なし、全てタップで完結
 struct QuickSortCellView: View {
     let memo: Memo
     let showLeftArrow: Bool
     let showRightArrow: Bool
     var isActive: Bool = false
 
-    // ルーレット領域の高さ（CarouselViewのジェスチャーブロックにも使用）
+    // ルーレット領域の高さ
     static let dialAreaHeight: CGFloat = 250
 
     // コールバック（親ビューへの通知）
@@ -35,40 +35,37 @@ struct QuickSortCellView: View {
     @State private var editingTitle: String = ""
     @FocusState private var isTitleFocused: Bool
 
-    // ローカル削除状態
-    @State private var deleteOffset: CGFloat = 0
-    @State private var isDeletingCard = false
-
     // ピカピカアニメーション
     @State private var flashTag = false
     @State private var flashTitle = false
 
+    // 削除確認
+    @State private var showDeleteConfirm = false
+
     var body: some View {
         VStack(spacing: 0) {
-            // 1. ルーレット（常時全開）
+            // ── メモカード（タイトル+本文+タグフッター）──
+            memoCard
+                .padding(.horizontal, 16)
+                .padding(.top, 4)
+
+            // ── ルーレット ──
             dialArea
                 .frame(height: QuickSortCellView.dialAreaHeight, alignment: .top)
                 .clipped()
+                .padding(.top, 4)
 
-            // 2. タグ欄（ルーレット連動）
-            tagRow
+            // ── 仕切り線 ──
+            Rectangle()
+                .fill(Color.secondary.opacity(0.2))
+                .frame(height: 1)
+                .padding(.horizontal, 24)
+                .padding(.top, 2)
+
+            // ── コントロールパネル ──
+            controlPanel
                 .padding(.horizontal, 20)
                 .padding(.top, 6)
-
-            // 3. タイトル欄（タップで直接編集）
-            titleRow
-                .padding(.horizontal, 20)
-                .padding(.top, 6)
-
-            // 4. 本文欄（カード状・タップで編集画面へ）
-            bodyCard
-                .padding(.horizontal, 20)
-                .padding(.top, 6)
-
-            // 5. ナビゲーション（タップで前後移動 + 削除ガイド）
-            navRow
-                .padding(.horizontal, 20)
-                .padding(.top, 8)
                 .padding(.bottom, 8)
         }
         .onAppear {
@@ -98,9 +95,13 @@ struct QuickSortCellView: View {
             if active { triggerFlash() }
             else { flashTag = false; flashTitle = false }
         }
+        .alert("このメモを削除予定に追加しますか？", isPresented: $showDeleteConfirm) {
+            Button("削除する", role: .destructive) { onDelete(memo) }
+            Button("キャンセル", role: .cancel) {}
+        }
     }
 
-    // MARK: - 初期化（memo.tagsからローカルStateを設定）
+    // MARK: - 初期化
 
     private func initFromMemo() {
         let parentTag = memo.tags.first(where: { $0.parentTagID == nil })
@@ -119,7 +120,7 @@ struct QuickSortCellView: View {
         DispatchQueue.main.async { isInternalTagChange = false }
     }
 
-    // MARK: - タグ操作（セル内で直接memo.tagsに書き込み）
+    // MARK: - タグ操作
 
     private func applyTagFromDial() {
         let originalTags = Set(memo.tags.map { $0.id })
@@ -174,135 +175,158 @@ struct QuickSortCellView: View {
         }
     }
 
-    // MARK: - タグ欄
+    // MARK: - メモカード（旧デザイン復活: タイトル欄+本文+タグフッター）
 
-    private var tagRow: some View {
-        HStack(spacing: 6) {
-            let parentTag = memo.tags.first(where: { $0.parentTagID == nil })
-            let childTag = memo.tags.first(where: { $0.parentTagID != nil })
+    private var memoCard: some View {
+        let parentTag = memo.tags.first(where: { $0.parentTagID == nil })
+        let borderColor: Color = parentTag != nil ? tagColor(for: parentTag!.colorIndex) : Color.clear
 
-            if let pt = parentTag {
-                // 親タグバッジ
+        return VStack(alignment: .leading, spacing: 0) {
+            // タイトル欄（薄グレー背景 + タグ色ライン）
+            TextField("タイトルなし", text: $editingTitle)
+                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .focused($isTitleFocused)
+                .onSubmit { isTitleFocused = false }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(
+                    flashTitle
+                        ? Color.orange.opacity(0.15)
+                        : Color(uiColor: .secondarySystemBackground).opacity(0.6)
+                )
+                .overlay(alignment: .bottom) {
+                    Rectangle()
+                        .frame(height: parentTag != nil ? 2 : 0)
+                        .foregroundStyle(borderColor)
+                }
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(flashTitle ? Color.orange : Color.clear, lineWidth: 2)
+                        .clipShape(
+                            // 上部のみ角丸のストロークをクリップ
+                            UnevenRoundedRectangle(
+                                topLeadingRadius: 14, bottomLeadingRadius: 0,
+                                bottomTrailingRadius: 0, topTrailingRadius: 14
+                            )
+                        )
+                )
+
+            // 本文（タップで編集画面へ）
+            Text(memo.content.isEmpty ? "（本文なし）" : String(memo.content.prefix(200)))
+                .font(.system(size: 15))
+                .foregroundColor(memo.content.isEmpty ? Color.secondary.opacity(0.4) : Color.primary)
+                .lineLimit(nil)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .padding(12)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    commitTitle()
+                    isTitleFocused = false
+                    onEditBody()
+                }
+
+            // タグフッター
+            HStack(spacing: 6) {
+                Text("タグ:")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
+
+                if let pt = parentTag {
+                    tagBadge(parentTag: pt)
+                } else {
+                    Spacer()
+                    Text("なし")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.secondary.opacity(0.5))
+                }
+
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                flashTag
+                    ? Color.orange.opacity(0.15)
+                    : Color(uiColor: .secondarySystemBackground).opacity(0.4)
+            )
+            .overlay(alignment: .top) {
+                Rectangle()
+                    .frame(height: parentTag != nil ? 2 : 0)
+                    .foregroundStyle(borderColor)
+            }
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(flashTag ? Color.orange : Color.clear, lineWidth: 2)
+                    .clipShape(
+                        UnevenRoundedRectangle(
+                            topLeadingRadius: 0, bottomLeadingRadius: 14,
+                            bottomTrailingRadius: 14, topTrailingRadius: 0
+                        )
+                    )
+            )
+        }
+        .background(Color(uiColor: .systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(
+                    parentTag != nil ? borderColor.opacity(0.5) : Color.secondary.opacity(0.1),
+                    lineWidth: parentTag != nil ? 1.5 : 1
+                )
+        )
+        .shadow(color: .black.opacity(0.1), radius: 8, y: 4)
+    }
+
+    // MARK: - タグバッジ
+
+    @ViewBuilder
+    private func tagBadge(parentTag pt: Tag) -> some View {
+        let childTag = memo.tags.first(where: { $0.parentTagID != nil })
+
+        if let ct = childTag {
+            HStack(alignment: .bottom, spacing: -6) {
                 Text(pt.name)
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
                     .lineLimit(1)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .padding(.leading, 8)
+                    .padding(.trailing, 12)
+                    .padding(.vertical, 4)
                     .background(
-                        RoundedRectangle(cornerRadius: 8)
+                        RoundedRectangle(cornerRadius: 7)
                             .fill(tagColor(for: pt.colorIndex))
                     )
-
-                if let ct = childTag {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(.secondary)
-                    // 子タグバッジ
-                    Text(ct.name)
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .lineLimit(1)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(tagColor(for: ct.colorIndex))
-                        )
-                }
-            } else {
-                Text("タグなし")
-                    .font(.system(size: 15, weight: .medium, design: .rounded))
-                    .foregroundStyle(.secondary.opacity(0.5))
+                Text(ct.name)
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(
+                        RoundedRectangle(cornerRadius: 5)
+                            .fill(tagColor(for: ct.colorIndex))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 5)
+                            .stroke(Color.white, lineWidth: 1.5)
+                    )
             }
-
-            Spacer()
+        } else {
+            Text(pt.name)
+                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .lineLimit(1)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(
+                    RoundedRectangle(cornerRadius: 7)
+                        .fill(tagColor(for: pt.colorIndex))
+                )
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(flashTag ? Color.orange.opacity(0.15) : Color(uiColor: .secondarySystemBackground))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(flashTag ? Color.orange : Color.clear, lineWidth: 2)
-        )
     }
 
-    // MARK: - タイトル欄（タップで直接編集）
+    // MARK: - コントロールパネル（◁前へ / ゴミ箱 / ▷次へ）
 
-    private var titleRow: some View {
-        TextField("タイトルなし", text: $editingTitle)
-            .font(.system(size: 20, weight: .bold, design: .rounded))
-            .focused($isTitleFocused)
-            .onSubmit { isTitleFocused = false }
-            .padding(.vertical, 10)
-            .padding(.horizontal, 12)
-            .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(flashTitle ? Color.orange.opacity(0.15) : Color(uiColor: .secondarySystemBackground))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(flashTitle ? Color.orange : Color.clear, lineWidth: 2)
-            )
-    }
-
-    // MARK: - 本文欄（カード状・タップで編集画面へ）
-
-    private var bodyCard: some View {
-        let displayText = memo.content.isEmpty
-            ? "（本文なし）"
-            : String(memo.content.prefix(200))
-
-        return Text(displayText)
-            .font(.system(size: 16))
-            .foregroundColor(memo.content.isEmpty ? Color.secondary.opacity(0.4) : Color.primary)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .padding(12)
-            .background(Color(uiColor: .systemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.secondary.opacity(0.15), lineWidth: 1)
-            )
-            .shadow(color: .black.opacity(0.08), radius: 4, y: 2)
-            .contentShape(Rectangle())
-            .onTapGesture {
-                commitTitle()
-                isTitleFocused = false
-                onEditBody()
-            }
-            .offset(y: isDeletingCard ? deleteOffset : 0)
-            .opacity(isDeletingCard ? max(0.0, 1.0 - Double(deleteOffset) / 300.0) : 1.0)
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 20)
-                    .onChanged { value in
-                        let t = value.translation
-                        if t.height > 15 && abs(t.height) > abs(t.width) * 1.5 {
-                            isDeletingCard = true
-                            deleteOffset = t.height
-                        }
-                    }
-                    .onEnded { value in
-                        guard isDeletingCard else { return }
-                        if value.translation.height > 100 {
-                            withAnimation(.easeOut(duration: 0.2)) { deleteOffset = 500 }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                                onDelete(memo)
-                                isDeletingCard = false
-                                deleteOffset = 0
-                            }
-                        } else {
-                            withAnimation(.spring(response: 0.3)) { deleteOffset = 0 }
-                            isDeletingCard = false
-                        }
-                    }
-            )
-    }
-
-    // MARK: - ナビゲーション（タップで前後 + 削除ガイド）
-
-    private var navRow: some View {
+    private var controlPanel: some View {
         HStack(spacing: 0) {
             // ◁ タップで前へ
             Button {
@@ -310,14 +334,14 @@ struct QuickSortCellView: View {
                 isTitleFocused = false
                 onGoPrev()
             } label: {
-                HStack(spacing: 4) {
+                HStack(spacing: 6) {
                     Triangle()
-                        .fill(showLeftArrow ? Color.blue.opacity(0.6) : Color.clear)
-                        .frame(width: 12, height: 18)
+                        .fill(showLeftArrow ? Color.blue.opacity(0.7) : Color.secondary.opacity(0.15))
+                        .frame(width: 14, height: 20)
                         .rotationEffect(.degrees(-90))
-                    Text("タップで前へ")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(showLeftArrow ? .blue.opacity(0.7) : .clear)
+                    Text("前へ")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(showLeftArrow ? .blue : .secondary.opacity(0.3))
                 }
             }
             .disabled(!showLeftArrow)
@@ -325,14 +349,19 @@ struct QuickSortCellView: View {
 
             Spacer()
 
-            // ↓ 下にスワイプで削除
-            VStack(spacing: 1) {
-                Image(systemName: "arrow.down")
-                    .font(.system(size: 14, weight: .bold))
-                Text("下スワイプで削除")
-                    .font(.system(size: 10, weight: .medium))
+            // ゴミ箱（でかめ・タップで確認後に削除）
+            Button {
+                showDeleteConfirm = true
+            } label: {
+                VStack(spacing: 2) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 26, weight: .medium))
+                    Text("削除")
+                        .font(.system(size: 11, weight: .medium))
+                }
+                .foregroundStyle(.red.opacity(0.6))
             }
-            .foregroundStyle(.red.opacity(0.35))
+            .buttonStyle(.plain)
 
             Spacer()
 
@@ -342,13 +371,13 @@ struct QuickSortCellView: View {
                 isTitleFocused = false
                 onGoNext()
             } label: {
-                HStack(spacing: 4) {
-                    Text("タップで次へ")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(showRightArrow ? .blue.opacity(0.7) : .clear)
+                HStack(spacing: 6) {
+                    Text("次へ")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(showRightArrow ? .blue : .secondary.opacity(0.3))
                     Triangle()
-                        .fill(showRightArrow ? Color.blue.opacity(0.6) : Color.clear)
-                        .frame(width: 12, height: 18)
+                        .fill(showRightArrow ? Color.blue.opacity(0.7) : Color.secondary.opacity(0.15))
+                        .frame(width: 14, height: 20)
                         .rotationEffect(.degrees(90))
                 }
             }

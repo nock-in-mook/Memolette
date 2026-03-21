@@ -141,6 +141,7 @@ struct QuickSortView: View {
                 }
             }
         }
+        .ignoresSafeArea(.keyboard)
         .sheet(isPresented: $showDeleteReview) { deleteReviewSheet }
         .sheet(isPresented: $showNewTagSheet) {
             NewTagSheetView(
@@ -398,8 +399,9 @@ struct QuickSortView: View {
                 .shadow(color: .black.opacity(0.3), radius: 20, y: 10)
                 .padding(.horizontal, 12)
             }
-            .frame(maxHeight: min(geo.size.height * 0.45, 380))
-            .padding(.top, geo.size.height * 0.06)
+            .frame(maxHeight: min(geo.size.height * 0.40, 340))
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .padding(.top, 44)
 
             // キーボード収納ボタン（右下）
             VStack {

@@ -4,7 +4,7 @@ import os
 
 private let logger = Logger(subsystem: "com.sokumemokun.app", category: "QuickSort")
 
-// 爆速振り分けモード: メインカード画面
+// 爆速振り分けモード: メインカード画面（カルーセル方式）
 struct QuickSortView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Tag.name) private var tags: [Tag]
@@ -13,11 +13,13 @@ struct QuickSortView: View {
     var onDismiss: () -> Void
 
     @State private var suggestEngine = TagSuggestEngine()
-    @State private var currentIndex = 0
 
-    // ドラッグ
-    @State private var dragOffset: CGSize = .zero
-    @State private var isDragging = false
+    // カルーセル: scrollPosition で現在のカードを追跡
+    @State private var scrolledMemoID: UUID?
+
+    // 上フリック削除用
+    @State private var deletingMemoID: UUID? = nil
+    @State private var deleteOffset: CGFloat = 0
 
     // ルーレット（子タグ表示デフォ）
     @State private var selectedParentTagID: UUID? = nil
@@ -49,34 +51,30 @@ struct QuickSortView: View {
     @State private var showResult = false
     @State private var showDeleteReview = false
 
+    // アクティブなメモ（削除キューを除外した配列）
+    private var activeMemos: [Memo] {
+        let skippedIDs = Set(deleteQueue.map { $0.id })
+        return targetMemos.filter { !skippedIDs.contains($0.id) }
+    }
+
     private var currentMemo: Memo? {
-        guard currentIndex >= 0 && currentIndex < targetMemos.count else { return nil }
-        return skippedIndices.contains(currentIndex) ? nil : targetMemos[currentIndex]
+        guard let id = scrolledMemoID else { return activeMemos.first }
+        return activeMemos.first(where: { $0.id == id })
     }
 
-    private var activeCount: Int { targetMemos.count - skippedIndices.count }
-
-    private var displayNumber: Int {
-        guard !targetMemos.isEmpty else { return 0 }
-        var count = 0
-        for i in 0...min(currentIndex, targetMemos.count - 1) {
-            if !skippedIndices.contains(i) { count += 1 }
-        }
-        return count
+    private var currentIndexInActive: Int {
+        guard let memo = currentMemo else { return 0 }
+        return activeMemos.firstIndex(where: { $0.id == memo.id }) ?? 0
     }
-
-    private var isDraggingUp: Bool { isDragging && dragOffset.height < -30 }
-    private var isDraggingLeft: Bool { isDragging && dragOffset.width < -30 && abs(dragOffset.height) < 50 }
-    private var isDraggingRight: Bool { isDragging && dragOffset.width > 30 && abs(dragOffset.height) < 50 }
 
     var body: some View {
         GeometryReader { geo in
             ZStack {
                 Color(uiColor: .systemGroupedBackground).ignoresSafeArea()
 
-                if let memo = currentMemo {
-                    mainContent(memo: memo, geo: geo)
-                } else if targetMemos.isEmpty || activeCount == 0 {
+                if !activeMemos.isEmpty {
+                    mainContent(geo: geo)
+                } else {
                     VStack(spacing: 12) {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 48))
@@ -85,8 +83,6 @@ struct QuickSortView: View {
                             .font(.system(size: 17, weight: .medium))
                             .foregroundStyle(.secondary)
                     }
-                } else {
-                    Color.clear.onAppear { moveToNextActive() }
                 }
 
                 if showResult {
@@ -110,8 +106,18 @@ struct QuickSortView: View {
         .fullScreenCover(isPresented: $showContentEditor) { contentEditorView }
         .onAppear {
             logger.warning("onAppear: targetMemos.count = \(self.targetMemos.count)")
-            loadCurrentMemo()
+            if let first = activeMemos.first {
+                scrolledMemoID = first.id
+                syncEditingState(for: first)
+            }
             prefetchSuggestions()
+        }
+        .onChange(of: scrolledMemoID) { _, newID in
+            if let id = newID, let memo = activeMemos.first(where: { $0.id == id }) {
+                // 前のメモを保存
+                saveCurrent()
+                syncEditingState(for: memo)
+            }
         }
         .onChange(of: selectedParentTagID) { _, _ in
             if !isInternalTagChange { applyTagFromDial() }
@@ -124,7 +130,9 @@ struct QuickSortView: View {
     // MARK: - メインコンテンツ
 
     @ViewBuilder
-    private func mainContent(memo: Memo, geo: GeometryProxy) -> some View {
+    private func mainContent(geo: GeometryProxy) -> some View {
+        let cardWidth = geo.size.width * 0.78
+
         VStack(spacing: 0) {
             // ナビバー
             navBar
@@ -134,26 +142,42 @@ struct QuickSortView: View {
 
             // 削除ゾーン
             deleteZone
-                .frame(height: 40)
+                .frame(height: 36)
 
             // タイトル（枠付き）
             titleArea
                 .padding(.horizontal, 16)
-                .padding(.top, 6)
-
-            // 本文カード（スワイプ対象・フリックするだけの「絵」）
-            bodyCard(memo: memo)
-                .frame(height: geo.size.height * 0.25)
-                .padding(.horizontal, 16)
                 .padding(.top, 4)
 
-            // 左右インジケーター
-            swipeIndicators
+            // カルーセル（横スクロール・スナップ付き）
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: 12) {
+                    ForEach(activeMemos, id: \.id) { memo in
+                        cardItem(memo: memo, width: cardWidth, height: geo.size.height * 0.25)
+                            .id(memo.id)
+                    }
+                }
+                .scrollTargetLayout()
+                .padding(.horizontal, (geo.size.width - cardWidth) / 2)
+            }
+            .scrollTargetBehavior(.viewAligned)
+            .scrollPosition(id: $scrolledMemoID)
+            .padding(.top, 4)
+
+            // カウンター
+            if !activeMemos.isEmpty {
+                Text("\(currentIndexInActive + 1) / \(activeMemos.count)")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(.secondary.opacity(0.5))
+                    .padding(.top, 2)
+            }
 
             // タグ表示
-            currentTagsBar(memo: memo)
-                .padding(.horizontal, 16)
-                .padding(.top, 4)
+            if let memo = currentMemo {
+                currentTagsBar(memo: memo)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 4)
+            }
 
             // 下部: サジェスト(左) + ルーレット(右)
             HStack(alignment: .top, spacing: 0) {
@@ -167,6 +191,75 @@ struct QuickSortView: View {
         }
     }
 
+    // MARK: - カルーセルのカード1枚
+
+    @ViewBuilder
+    private func cardItem(memo: Memo, width: CGFloat, height: CGFloat) -> some View {
+        let isDeleting = deletingMemoID == memo.id
+
+        ZStack(alignment: .bottomLeading) {
+            // カード本体
+            VStack(alignment: .leading, spacing: 0) {
+                Text(memo.content.isEmpty ? "（本文なし）" : memo.content)
+                    .font(.system(size: 13))
+                    .foregroundColor(memo.content.isEmpty ? Color.secondary.opacity(0.4) : Color.primary)
+                    .lineLimit(nil)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .padding(12)
+            }
+            .background(Color(uiColor: .systemBackground))
+            .cornerRadius(14)
+            .shadow(color: .black.opacity(0.1), radius: 8, y: 4)
+
+            // 「本文を確認」ボタン
+            Button {
+                // まず現在のメモに同期
+                if scrolledMemoID != memo.id {
+                    scrolledMemoID = memo.id
+                }
+                showContentEditor = true
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "doc.text.magnifyingglass").font(.system(size: 10))
+                    Text("本文を確認").font(.system(size: 10, weight: .medium))
+                }
+                .foregroundStyle(.secondary.opacity(0.6))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Capsule().fill(Color(uiColor: .secondarySystemBackground).opacity(0.8)))
+            }
+            .buttonStyle(.plain)
+            .padding(8)
+        }
+        .frame(width: width, height: height)
+        .offset(y: isDeleting ? deleteOffset : 0)
+        .opacity(isDeleting ? max(0.0, 1.0 + Double(deleteOffset) / 300.0) : 1.0)
+        .gesture(
+            DragGesture(minimumDistance: 10)
+                .onChanged { value in
+                    // 上方向のみ（カルーセルの横スクロールと干渉しないように）
+                    if value.translation.height < -10 && abs(value.translation.width) < abs(value.translation.height) {
+                        deletingMemoID = memo.id
+                        deleteOffset = value.translation.height
+                    }
+                }
+                .onEnded { value in
+                    if value.translation.height < -100 {
+                        // 上フリック確定 → 削除
+                        withAnimation(.easeOut(duration: 0.2)) { deleteOffset = -500 }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                            deleteMemo(memo)
+                            deletingMemoID = nil
+                            deleteOffset = 0
+                        }
+                    } else {
+                        withAnimation(.spring(response: 0.3)) { deleteOffset = 0 }
+                        deletingMemoID = nil
+                    }
+                }
+        )
+    }
+
     // MARK: - ナビバー
 
     private var navBar: some View {
@@ -174,12 +267,6 @@ struct QuickSortView: View {
             Button { saveCurrent(); onDismiss() } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            if activeCount > 0 {
-                Text("\(displayNumber) / \(activeCount)")
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
                     .foregroundStyle(.secondary)
             }
             Spacer()
@@ -200,18 +287,19 @@ struct QuickSortView: View {
     // MARK: - 削除ゾーン
 
     private var deleteZone: some View {
-        ZStack {
+        let isActive = deletingMemoID != nil && deleteOffset < -30
+        return ZStack {
             RoundedRectangle(cornerRadius: 12)
-                .fill(isDraggingUp ? Color.red.opacity(0.2) : Color.red.opacity(0.04))
-                .animation(.easeOut(duration: 0.15), value: isDraggingUp)
+                .fill(isActive ? Color.red.opacity(0.2) : Color.red.opacity(0.04))
+                .animation(.easeOut(duration: 0.15), value: isActive)
             HStack(spacing: 6) {
                 Image(systemName: "arrow.up")
-                    .font(.system(size: isDraggingUp ? 22 : 14, weight: .bold))
+                    .font(.system(size: isActive ? 22 : 14, weight: .bold))
                 Text("削除")
-                    .font(.system(size: isDraggingUp ? 18 : 13, weight: .bold, design: .rounded))
+                    .font(.system(size: isActive ? 18 : 13, weight: .bold, design: .rounded))
             }
-            .foregroundStyle(isDraggingUp ? .red : .red.opacity(0.25))
-            .animation(.easeOut(duration: 0.15), value: isDraggingUp)
+            .foregroundStyle(isActive ? .red : .red.opacity(0.25))
+            .animation(.easeOut(duration: 0.15), value: isActive)
         }
         .padding(.horizontal, 16)
     }
@@ -223,10 +311,7 @@ struct QuickSortView: View {
             if isEditingTitle {
                 TextField("タイトルを入力", text: $editingTitle)
                     .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .onSubmit {
-                        isEditingTitle = false
-                        applyTitleEdit()
-                    }
+                    .onSubmit { isEditingTitle = false; applyTitleEdit() }
             } else {
                 Text(editingTitle.isEmpty ? "タイトルなし" : editingTitle)
                     .font(.system(size: 16, weight: .bold, design: .rounded))
@@ -240,97 +325,10 @@ struct QuickSortView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color(uiColor: .systemBackground))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(Color.secondary.opacity(0.15), lineWidth: 1)
-        )
+        .background(RoundedRectangle(cornerRadius: 10).fill(Color(uiColor: .systemBackground)))
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.secondary.opacity(0.15), lineWidth: 1))
         .contentShape(Rectangle())
-        .onTapGesture {
-            if !isEditingTitle { isEditingTitle = true }
-        }
-    }
-
-    // MARK: - 本文カード（フリックするだけの「絵」・編集不可）
-
-    @ViewBuilder
-    private func bodyCard(memo: Memo) -> some View {
-        ZStack(alignment: .bottomLeading) {
-            // カード本体（テキスト表示のみ）
-            VStack(alignment: .leading, spacing: 0) {
-                Text(editingContent.isEmpty ? "（本文なし）" : editingContent)
-                    .font(.system(size: 13))
-                    .foregroundColor(editingContent.isEmpty ? Color.secondary.opacity(0.4) : Color.primary)
-                    .lineLimit(nil)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .padding(12)
-            }
-            .background(Color(uiColor: .systemBackground))
-            .cornerRadius(14)
-            .shadow(color: .black.opacity(0.1), radius: 8, y: 4)
-
-            // 「本文を確認」ボタン（左下）
-            Button {
-                showContentEditor = true
-            } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "doc.text.magnifyingglass")
-                        .font(.system(size: 10))
-                    Text("本文を確認")
-                        .font(.system(size: 10, weight: .medium))
-                }
-                .foregroundStyle(.secondary.opacity(0.6))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(
-                    Capsule().fill(Color(uiColor: .secondarySystemBackground).opacity(0.8))
-                )
-            }
-            .buttonStyle(.plain)
-            .padding(8)
-        }
-        .offset(dragOffset)
-        .opacity(isDraggingUp ? max(0.3, 1.0 + Double(dragOffset.height) / 300.0) : 1.0)
-        .rotationEffect(.degrees(Double(dragOffset.width) / 30.0))
-        .gesture(
-            DragGesture()
-                .onChanged { value in
-                    isDragging = true
-                    let t = value.translation
-                    if t.height < -20 && abs(t.width) < abs(t.height) {
-                        dragOffset = CGSize(width: t.width * 0.3, height: t.height)
-                    } else if abs(t.width) > 20 {
-                        dragOffset = CGSize(width: t.width, height: t.height * 0.2)
-                    } else {
-                        dragOffset = t
-                    }
-                }
-                .onEnded { value in
-                    isDragging = false
-                    let t = value.translation
-                    if t.height < -120 {
-                        withAnimation(.easeOut(duration: 0.2)) {
-                            dragOffset = CGSize(width: 0, height: -600)
-                        }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { deleteCurrentMemo() }
-                    } else if t.width < -100 {
-                        withAnimation(.easeOut(duration: 0.15)) {
-                            dragOffset = CGSize(width: -400, height: 0)
-                        }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { saveCurrent(); moveToNextActive() }
-                    } else if t.width > 100 {
-                        withAnimation(.easeOut(duration: 0.15)) {
-                            dragOffset = CGSize(width: 400, height: 0)
-                        }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { saveCurrent(); moveToPreviousActive() }
-                    } else {
-                        withAnimation(.spring(response: 0.3)) { dragOffset = .zero }
-                    }
-                }
-        )
+        .onTapGesture { if !isEditingTitle { isEditingTitle = true } }
     }
 
     // MARK: - 本文閲覧/編集（全画面モーダル）
@@ -344,47 +342,14 @@ struct QuickSortView: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
-                        Button("戻る") {
-                            showContentEditor = false
-                        }
+                        Button("戻る") { showContentEditor = false }
                     }
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button("確定") {
-                            applyContentEdit()
-                            showContentEditor = false
-                        }
-                        .font(.system(size: 15, weight: .bold))
+                        Button("確定") { applyContentEdit(); showContentEditor = false }
+                            .font(.system(size: 15, weight: .bold))
                     }
                 }
         }
-    }
-
-    // MARK: - スワイプインジケーター
-
-    private var swipeIndicators: some View {
-        HStack {
-            HStack(spacing: 4) {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 11, weight: .bold))
-                Text("前へ")
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-            }
-            .foregroundStyle(isDraggingRight ? .blue : .secondary.opacity(0.2))
-            .animation(.easeOut(duration: 0.15), value: isDraggingRight)
-
-            Spacer()
-
-            HStack(spacing: 4) {
-                Text("次へ")
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 11, weight: .bold))
-            }
-            .foregroundStyle(isDraggingLeft ? .blue : .secondary.opacity(0.2))
-            .animation(.easeOut(duration: 0.15), value: isDraggingLeft)
-        }
-        .padding(.horizontal, 24)
-        .frame(height: 18)
     }
 
     // MARK: - タグ表示
@@ -395,9 +360,7 @@ struct QuickSortView: View {
             ForEach(memo.tags, id: \.id) { tag in
                 HStack(spacing: 4) {
                     Circle().fill(tagColor(for: tag.colorIndex)).frame(width: 8, height: 8)
-                    Text(tag.name)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.secondary)
+                    Text(tag.name).font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
@@ -415,7 +378,7 @@ struct QuickSortView: View {
         }
     }
 
-    // MARK: - サジェストパネル（枠付き・縦並び）
+    // MARK: - サジェストパネル（枠付き）
 
     private var suggestPanel: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -434,15 +397,9 @@ struct QuickSortView: View {
                     .padding(.horizontal, 8)
                     .padding(.top, 6)
 
-                    if !dictSugs.isEmpty {
-                        suggestSection(title: "おすすめ", icon: "tag.fill", items: dictSugs)
-                    }
-                    if !newSugs.isEmpty {
-                        suggestSection(title: "新規タグ", icon: "plus.circle.fill", items: newSugs)
-                    }
-                    if !histSugs.isEmpty {
-                        suggestSection(title: "履歴", icon: "clock.fill", items: histSugs)
-                    }
+                    if !dictSugs.isEmpty { suggestSection(title: "おすすめ", icon: "tag.fill", items: dictSugs) }
+                    if !newSugs.isEmpty { suggestSection(title: "新規タグ", icon: "plus.circle.fill", items: newSugs) }
+                    if !histSugs.isEmpty { suggestSection(title: "履歴", icon: "clock.fill", items: histSugs) }
                 }
                 .padding(.bottom, 6)
                 .background(Color(uiColor: .secondarySystemBackground).opacity(0.9))
@@ -480,9 +437,7 @@ struct QuickSortView: View {
                     }
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(
-                        (suggestion.kind == .newTag ? Color.green.opacity(0.08) : Color(uiColor: .systemBackground).opacity(0.95))
-                    )
+                    .background(suggestion.kind == .newTag ? Color.green.opacity(0.08) : Color(uiColor: .systemBackground).opacity(0.95))
                     .cornerRadius(8)
                 }
                 .buttonStyle(.plain)
@@ -491,21 +446,17 @@ struct QuickSortView: View {
         }
     }
 
-    // MARK: - ルーレット（右下・子タグ常時表示）
+    // MARK: - ルーレット（右下）
 
     private var dialArea: some View {
         let parentTags = tags.filter { $0.parentTagID == nil }.sorted { $0.sortOrder < $1.sortOrder }
-        // 選択中の親タグの子タグを取得
         let childTags: [Tag] = {
             guard let pid = selectedParentTagID else { return [] }
             return tags.filter { $0.parentTagID == pid }.sorted { $0.name < $1.name }
         }()
-
         let parentOptions: [(id: String, name: String, color: Color)] =
             [("none", "タグなし", Color(white: 0.82))] +
             parentTags.map { ($0.id.uuidString, $0.name, tagColor(for: $0.colorIndex)) }
-
-        // 子タグオプション: 子タグがあれば常に表示
         let childOptions: [(id: String, name: String, color: Color)] =
             childTags.isEmpty ? [] :
             [("none", "子タグなし", Color(white: 0.82))] +
@@ -522,7 +473,6 @@ struct QuickSortView: View {
             onLongPress: nil
         )
         .frame(height: 211)
-        // 子タグがある場合は常にshowChild=trueに
         .onChange(of: childOptions.count) { _, newCount in
             if newCount > 0 { showChildDial = true }
         }
@@ -538,17 +488,12 @@ struct QuickSortView: View {
                         Text(memo.title.isEmpty ? "（タイトルなし）" : memo.title)
                             .font(.system(size: 15, weight: .semibold))
                         Text(String(memo.content.prefix(100)))
-                            .font(.system(size: 13))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
+                            .font(.system(size: 13)).foregroundStyle(.secondary).lineLimit(2)
                     }
                     .swipeActions(edge: .trailing) {
                         Button("復元") {
                             if let idx = deleteQueue.firstIndex(where: { $0.id == memo.id }) {
-                                let restored = deleteQueue.remove(at: idx)
-                                if let origIdx = targetMemos.firstIndex(where: { $0.id == restored.id }) {
-                                    skippedIndices.remove(origIdx)
-                                }
+                                deleteQueue.remove(at: idx)
                             }
                         }
                         .tint(.green)
@@ -567,6 +512,27 @@ struct QuickSortView: View {
 
     // MARK: - アクション
 
+    // 現在のメモ情報をローカル編集状態に同期
+    private func syncEditingState(for memo: Memo) {
+        editingTitle = memo.title
+        editingContent = memo.content
+        isEditingTitle = false
+
+        isInternalTagChange = true
+        let parentTag = memo.tags.first(where: { $0.parentTagID == nil })
+        let childTag = memo.tags.first(where: { $0.parentTagID != nil })
+        selectedParentTagID = parentTag?.id
+        selectedChildTagID = childTag?.id
+        if parentTag != nil {
+            let hasChildren = tags.contains(where: { $0.parentTagID == parentTag?.id })
+            if hasChildren { showChildDial = true }
+        }
+        isInternalTagChange = false
+
+        updateSuggestions()
+        prefetchSuggestions()
+    }
+
     private func saveCurrent() {
         guard let memo = currentMemo else { return }
         let origTitle = memo.title
@@ -579,14 +545,22 @@ struct QuickSortView: View {
         isEditingTitle = false
     }
 
-    private func deleteCurrentMemo() {
-        guard let memo = currentMemo else { return }
+    private func deleteMemo(_ memo: Memo) {
+        // 前のメモを保存してから
+        saveCurrent()
         deleteQueue.append(memo)
-        skippedIndices.insert(currentIndex)
-        dragOffset = .zero
-        isDragging = false
-        if activeCount > 0 { moveToNextActive() }
-        else { withAnimation(.easeOut(duration: 0.25)) { showResult = true } }
+        // カルーセルが自動で隣のカードを表示する
+        // scrolledMemoIDが削除されたカードを指していたら次のに移る
+        if scrolledMemoID == memo.id {
+            let remaining = activeMemos
+            if let first = remaining.first {
+                scrolledMemoID = first.id
+                syncEditingState(for: first)
+            }
+        }
+        if activeMemos.isEmpty {
+            withAnimation(.easeOut(duration: 0.25)) { showResult = true }
+        }
     }
 
     private func applyTagFromDial() {
@@ -610,8 +584,6 @@ struct QuickSortView: View {
         selectedChildTagID = suggestion.childID
         isInternalTagChange = false
         applyTagFromDial()
-        saveCurrent()
-        moveToNextActive()
     }
 
     private func applyTitleEdit() {
@@ -633,72 +605,28 @@ struct QuickSortView: View {
         }
     }
 
-    // MARK: - ナビゲーション
-
-    private func loadCurrentMemo() {
-        guard let memo = currentMemo else { return }
-        editingTitle = memo.title
-        editingContent = memo.content
-        isEditingTitle = false
-
-        isInternalTagChange = true
-        let parentTag = memo.tags.first(where: { $0.parentTagID == nil })
-        let childTag = memo.tags.first(where: { $0.parentTagID != nil })
-        selectedParentTagID = parentTag?.id
-        selectedChildTagID = childTag?.id
-        // 子タグがあるタグが選ばれたら子ダイアル表示
-        if parentTag != nil {
-            let hasChildren = tags.contains(where: { $0.parentTagID == parentTag?.id })
-            if hasChildren { showChildDial = true }
-        }
-        isInternalTagChange = false
-
-        dragOffset = .zero
-        isDragging = false
-        updateSuggestions()
-    }
-
-    private func moveToNextActive() {
-        var next = currentIndex + 1
-        while next < targetMemos.count && skippedIndices.contains(next) { next += 1 }
-        if next < targetMemos.count {
-            currentIndex = next
-            loadCurrentMemo()
-            prefetchSuggestions()
-        } else {
-            var first = 0
-            while first < currentIndex && skippedIndices.contains(first) { first += 1 }
-            if first < currentIndex && !skippedIndices.contains(first) {
-                currentIndex = first
-                loadCurrentMemo()
-                prefetchSuggestions()
-            }
-        }
-    }
-
-    private func moveToPreviousActive() {
-        var prev = currentIndex - 1
-        while prev >= 0 && skippedIndices.contains(prev) { prev -= 1 }
-        if prev >= 0 { currentIndex = prev; loadCurrentMemo() }
-    }
-
     // MARK: - サジェスト
 
     private func updateSuggestions() {
-        if let cached = suggestCache[currentIndex] { currentSuggestions = cached; return }
         guard let memo = currentMemo else { currentSuggestions = []; return }
+        let idx = targetMemos.firstIndex(where: { $0.id == memo.id }) ?? 0
+        if let cached = suggestCache[idx] { currentSuggestions = cached; return }
         let result = suggestEngine.suggest(title: memo.title, body: memo.content, tags: tags, context: modelContext, limit: 3)
         currentSuggestions = result
-        suggestCache[currentIndex] = result
+        suggestCache[idx] = result
     }
 
     private func prefetchSuggestions() {
-        guard !targetMemos.isEmpty else { return }
-        let lo = max(0, currentIndex - 1)
-        let hi = min(targetMemos.count - 1, currentIndex + 2)
-        for i in lo...hi where suggestCache[i] == nil && !skippedIndices.contains(i) {
+        guard let memo = currentMemo else { return }
+        let idx = targetMemos.firstIndex(where: { $0.id == memo.id }) ?? 0
+        let lo = max(0, idx - 2)
+        let hi = min(targetMemos.count - 1, idx + 3)
+        guard lo <= hi else { return }
+        for i in lo...hi where suggestCache[i] == nil {
             let m = targetMemos[i]
-            suggestCache[i] = suggestEngine.suggest(title: m.title, body: m.content, tags: tags, context: modelContext, limit: 3)
+            if !deleteQueue.contains(where: { $0.id == m.id }) {
+                suggestCache[i] = suggestEngine.suggest(title: m.title, body: m.content, tags: tags, context: modelContext, limit: 3)
+            }
         }
     }
 }

@@ -140,13 +140,6 @@ struct QuickSortView: View {
                 case .carousel:
                     if !activeMemos.isEmpty {
                         mainContent(geo: geo)
-                            .scaleEffect(carouselAppeared ? 1.0 : 0.85)
-                            .opacity(carouselAppeared ? 1.0 : 0)
-                            .onAppear {
-                                withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
-                                    carouselAppeared = true
-                                }
-                            }
                     } else {
                         VStack(spacing: 12) {
                             Image(systemName: "checkmark.circle.fill")

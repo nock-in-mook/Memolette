@@ -112,10 +112,13 @@ struct QuickSortView: View {
             }
             prefetchSuggestions()
         }
-        .onChange(of: scrolledMemoID) { _, newID in
-            if let id = newID, let memo = activeMemos.first(where: { $0.id == id }) {
-                // 前のメモを保存
-                saveCurrent()
+        .onChange(of: scrolledMemoID) { oldID, newID in
+            // 前のメモを保存（oldIDで特定）
+            if let oldID = oldID, let oldMemo = activeMemos.first(where: { $0.id == oldID }) {
+                saveToMemo(oldMemo)
+            }
+            // 新しいメモに同期
+            if let newID = newID, let memo = activeMemos.first(where: { $0.id == newID }) {
                 syncEditingState(for: memo)
             }
         }
@@ -534,8 +537,8 @@ struct QuickSortView: View {
         prefetchSuggestions()
     }
 
-    private func saveCurrent() {
-        guard let memo = currentMemo else { return }
+    // 指定したメモに現在の編集内容を保存
+    private func saveToMemo(_ memo: Memo) {
         let origTitle = memo.title
         let origContent = memo.content
         memo.title = editingTitle.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -544,6 +547,11 @@ struct QuickSortView: View {
         if memo.content != origContent { editedMemoIDs.insert(memo.id) }
         memo.updatedAt = Date()
         isEditingTitle = false
+    }
+
+    private func saveCurrent() {
+        guard let memo = currentMemo else { return }
+        saveToMemo(memo)
     }
 
     private func deleteMemo(_ memo: Memo) {

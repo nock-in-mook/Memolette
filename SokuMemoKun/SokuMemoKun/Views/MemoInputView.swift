@@ -262,8 +262,14 @@ struct MemoInputView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // ヘッダー: タイトル + タグ
+            // ヘッダー: タイトル + タグ（タップでキーボード解除）
             headerRow
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if isTextEditorFocused {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
+                }
             Divider()
             // 本文（右端はタグタブ分空ける）
             ZStack(alignment: .topTrailing) {
@@ -293,6 +299,9 @@ struct MemoInputView: View {
                                     textColor: viewModel.inputText.isEmpty
                                         ? .clear
                                         : .label,
+                                    // 編集モード（GutteredTextView）と同じインセットで位置を揃える
+                                    insets: UIEdgeInsets(top: 16, left: 6, bottom: 0, right: 4),
+                                    lineFragmentPadding: 5,
                                     onTapAtOffset: { offset in
                                         contentTapOffset = viewModel.inputText.isEmpty ? nil : offset
                                         isEditing = true
@@ -302,10 +311,11 @@ struct MemoInputView: View {
                                     }
                                 )
                                 .frame(maxWidth: .infinity, alignment: .topLeading)
-                                .padding(.leading, showLineNumbers ? 6 : 15)
-                                .padding(.trailing, 9)
+                                // 編集モードと同じSwiftUIパディング
+                                .padding(.leading, showLineNumbers ? 0 : 10)
+                                .padding(.trailing, 4)
                             }
-                            .padding(.top, 24)
+                            // top: insets内の16ptがあるのでSwiftUI側は0
                             .padding(.bottom, 40)
                         }
                         .contentShape(Rectangle())
@@ -496,6 +506,12 @@ struct MemoInputView: View {
         }
         .onChange(of: focusInput) { _, newValue in
             if newValue { isEditing = true; isTextEditorFocused = true; focusInput = false }
+        }
+        .onChange(of: isTextEditorFocused) { _, focused in
+            // フォーカス喪失時に閲覧モードに戻る（既存メモ表示時のみ）
+            if !focused && !viewModel.inputText.isEmpty {
+                isEditing = false
+            }
         }
         .onChange(of: showParentDial) { _, isShowing in
             // ルーレット展開時はテキストのフォーカスを外す

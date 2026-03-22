@@ -7,11 +7,15 @@ struct TappableReadOnlyText: UIViewRepresentable {
     let text: String
     var font: UIFont = .systemFont(ofSize: 17)
     var textColor: UIColor = .label
+    /// UITextViewの内部インセット（編集モードのGutteredTextViewと揃えるために使用）
+    var insets: UIEdgeInsets = .zero
+    /// lineFragmentPaddingを編集モードと揃える（UITextViewデフォルト=5）
+    var lineFragmentPadding: CGFloat = 0
     var onTapAtOffset: (Int) -> Void
 
     func makeUIView(context: Context) -> TapTextInternalView {
         let view = TapTextInternalView()
-        view.configure(font: font, textColor: textColor)
+        view.configure(font: font, textColor: textColor, insets: insets, lineFragmentPadding: lineFragmentPadding)
         view.onTapAtOffset = onTapAtOffset
         view.updateText(text)
         return view
@@ -42,8 +46,6 @@ class TapTextInternalView: UIView {
         textView.isSelectable = false
         textView.isScrollEnabled = false
         textView.backgroundColor = .clear
-        textView.textContainerInset = .zero
-        textView.textContainer.lineFragmentPadding = 0
         addSubview(textView)
 
         let tap = UITapGestureRecognizer(target: self, action: #selector(handleTap))
@@ -53,9 +55,11 @@ class TapTextInternalView: UIView {
 
     required init?(coder: NSCoder) { fatalError() }
 
-    func configure(font: UIFont, textColor: UIColor) {
+    func configure(font: UIFont, textColor: UIColor, insets: UIEdgeInsets, lineFragmentPadding: CGFloat) {
         textView.font = font
         textView.textColor = textColor
+        textView.textContainerInset = insets
+        textView.textContainer.lineFragmentPadding = lineFragmentPadding
     }
 
     func updateText(_ text: String) {

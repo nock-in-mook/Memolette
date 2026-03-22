@@ -87,8 +87,14 @@ struct MemoDetailView: View {
                 }
 
                 Divider()
-                // フッター: 日付（左下・右下のみ）
+                // フッター: 日付（左下・右下のみ）— タップでキーボード解除
                 footerRow
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        if isBodyFocused {
+                            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                        }
+                    }
             }
             .navigationTitle(isEditing ? "編集中" : "メモ")
             .navigationBarTitleDisplayMode(.inline)
@@ -157,6 +163,13 @@ struct MemoDetailView: View {
                     }
                 }
             )
+        }
+        .onChange(of: isBodyFocused) { _, focused in
+            // フォーカス喪失時に閲覧モードに戻る
+            if !focused && isEditing {
+                saveEdits()
+                isEditing = false
+            }
         }
         .onChange(of: selectedTagID) { _, _ in
             selectedChildTagID = nil
@@ -288,15 +301,20 @@ struct MemoDetailView: View {
                             text: memo.content,
                             font: .systemFont(ofSize: 17),
                             textColor: .label,
+                            // 編集モード（GutteredTextView）と同じインセットで位置を揃える
+                            insets: UIEdgeInsets(top: 16, left: 6, bottom: 0, right: 4),
+                            lineFragmentPadding: 5,
                             onTapAtOffset: { offset in
                                 startEditing(atOffset: offset)
                             }
                         )
                         .frame(maxWidth: .infinity, alignment: .topLeading)
-                        .padding(.leading, showLineNumbers ? 6 : 12)
-                        .padding(.trailing, 12)
+                        // 編集モードと同じSwiftUIパディング
+                        .padding(.leading, showLineNumbers ? 0 : 8)
+                        .padding(.trailing, 8)
                     }
-                    .padding(.vertical, 8)
+                    // top: insets内の16pt + SwiftUI 4pt = 編集モードと同じ20pt
+                    .padding(.top, 4)
                 }
             }
             .frame(maxHeight: .infinity)

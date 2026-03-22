@@ -440,6 +440,9 @@ struct QuickSortCellView: View {
                                     textColor: memo.content.isEmpty
                                         ? UIColor.secondaryLabel.withAlphaComponent(0.4)
                                         : UIColor.label,
+                                    // 編集モード（GutteredTextView）と同じインセットで位置を揃える
+                                    insets: UIEdgeInsets(top: 16, left: 6, bottom: 0, right: 4),
+                                    lineFragmentPadding: 5,
                                     onTapAtOffset: { offset in
                                         commitTitle()
                                         isTitleFocused = false
@@ -453,7 +456,9 @@ struct QuickSortCellView: View {
                                     }
                                 )
                                 .frame(maxWidth: .infinity, alignment: .topLeading)
-                                .padding(12)
+                                // 編集モードと同じSwiftUIパディング
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
                             }
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .simultaneousGesture(

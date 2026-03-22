@@ -304,6 +304,7 @@ struct QuickSortView: View {
 
             // コントローラーエリア（弧 + 3編集ボタン）固定
             controllerButtons
+                .offset(y: -20)
 
             // 操作パネル（前へ / ゴミ箱 / 次へ）固定
             bottomControlPanel

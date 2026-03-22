@@ -51,8 +51,6 @@ struct QuickSortCellView: View {
     // ルーレット表示（タグ編集ボタンで切替）
     @State private var showDialArea = false
 
-    // タイトルタブ拡大アニメーション
-    @State private var titleTabPopped = false
 
     var body: some View {
         GeometryReader { geo in
@@ -103,7 +101,6 @@ struct QuickSortCellView: View {
             editingTitle = memo.title
             editingContent = memo.content
             isContentEditing = false
-            titleTabPopped = false
             flashTag = false
             flashTitle = false
         }
@@ -265,7 +262,6 @@ struct QuickSortCellView: View {
 
     // 枠外タップで全フォーカス解除
     private func dismissEditing() {
-        titleTabPopped = false
         isTitleFocused = false
         isContentFocused = false
         commitTitle()
@@ -283,7 +279,6 @@ struct QuickSortCellView: View {
     private func applyEditMode(_ mode: CellEditMode) {
         switch mode {
         case .none:
-            titleTabPopped = false
             isTitleFocused = false
             if isContentEditing { commitContent(); isContentEditing = false; isContentFocused = false }
             if showDialArea { withAnimation(.easeInOut(duration: 0.25)) { showDialArea = false } }
@@ -292,12 +287,10 @@ struct QuickSortCellView: View {
             if isContentEditing { commitContent(); isContentEditing = false; isContentFocused = false }
             if showDialArea { withAnimation(.easeInOut(duration: 0.25)) { showDialArea = false } }
             isTitleFocused = true
-            titleTabPopped = true
             flashTitle = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { flashTitle = false }
         case .content:
             commitTitle()
-            titleTabPopped = false
             isTitleFocused = false
             if showDialArea { withAnimation(.easeInOut(duration: 0.25)) { showDialArea = false } }
             editingContent = memo.content
@@ -305,7 +298,6 @@ struct QuickSortCellView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { isContentFocused = true }
         case .tag:
             commitTitle()
-            titleTabPopped = false
             isTitleFocused = false
             if isContentEditing { commitContent(); isContentEditing = false; isContentFocused = false }
             withAnimation(.easeInOut(duration: 0.25)) { showDialArea = true }
@@ -370,11 +362,6 @@ struct QuickSortCellView: View {
                                 ? Color.orange.opacity(0.45)
                                 : Color.orange.opacity(0.18)
                         )
-                        .scaleEffect(
-                            titleTabPopped ? CGSize(width: 1.3, height: 1.2) : CGSize(width: 1.0, height: 1.0),
-                            anchor: .leading
-                        )
-                        .animation(.easeInOut(duration: 0.2), value: titleTabPopped)
 
                     // 本文（インライン編集）
                     if isContentEditing {

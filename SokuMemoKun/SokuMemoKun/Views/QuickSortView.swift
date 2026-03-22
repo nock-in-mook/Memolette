@@ -550,7 +550,7 @@ struct QuickSortView: View {
             Button {
                 resetToFilter()
             } label: {
-                Text("フィルターに戻る")
+                Text("終了する")
                     .font(.system(size: 15))
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity)
@@ -707,7 +707,7 @@ struct QuickSortView: View {
                     withAnimation(.easeOut(duration: 0.2)) { showExitConfirm = false }
                     returnToFilterWithoutSave()
                 } label: {
-                    Text("フィルターに戻る")
+                    Text("終了する")
                         .font(.system(size: 16, weight: .bold))
                         .foregroundStyle(.red)
                         .frame(maxWidth: .infinity)

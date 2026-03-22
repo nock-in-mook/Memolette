@@ -75,6 +75,9 @@ struct QuickSortFilterView: View {
                         Text("対象のメモを選んでください")
                             .font(.system(size: 14))
                             .foregroundStyle(.secondary)
+                        Text("複数選択可")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(.blue)
                     }
                     .padding(.top, 24)
                     .padding(.bottom, 20)
@@ -105,13 +108,13 @@ struct QuickSortFilterView: View {
                         )
                         Divider().padding(.leading, 54)
 
-                        // 特定のタグ
+                        // 特定のタグ（タグ未選択時は件数非表示）
                         filterRow(
                             icon: "tag.fill", iconColor: .green,
                             title: "特定のタグのメモ",
                             count: filterByTag && !selectedTagIDs.isEmpty
                                 ? allMemos.filter { memo in !Set(memo.tags.map { $0.id }).isDisjoint(with: selectedTagIDs) }.count
-                                : 0,
+                                : nil,
                             isOn: $filterByTag
                         )
 
@@ -227,7 +230,7 @@ struct QuickSortFilterView: View {
     }
 
     @ViewBuilder
-    private func filterRow(icon: String, iconColor: Color, title: String, count: Int, isOn: Binding<Bool>) -> some View {
+    private func filterRow(icon: String, iconColor: Color, title: String, count: Int?, isOn: Binding<Bool>) -> some View {
         Button {
             isOn.wrappedValue.toggle()
         } label: {
@@ -243,9 +246,11 @@ struct QuickSortFilterView: View {
 
                 Spacer()
 
-                Text("\(count)件")
-                    .font(.system(size: 13))
-                    .foregroundStyle(.secondary)
+                if let count {
+                    Text("\(count)件")
+                        .font(.system(size: 13))
+                        .foregroundStyle(.secondary)
+                }
 
                 Image(systemName: isOn.wrappedValue ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 22))

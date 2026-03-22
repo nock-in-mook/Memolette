@@ -42,6 +42,9 @@ struct QuickSortCellView: View {
     // 削除確認
     @State private var showDeleteConfirm = false
 
+    // ルーレット表示（タグ編集ボタンで切替）
+    @State private var showDialArea = false
+
     var body: some View {
         GeometryReader { geo in
             let cardW = geo.size.width * 0.80
@@ -57,12 +60,18 @@ struct QuickSortCellView: View {
 
                 Spacer(minLength: 10)
 
-                // ── ルーレット ──
-                dialArea
-                    .frame(height: QuickSortCellView.dialAreaHeight, alignment: .top)
-                    .clipped()
+                // ── ルーレット（タグ編集時のみ表示）──
+                if showDialArea {
+                    dialArea
+                        .frame(height: QuickSortCellView.dialAreaHeight, alignment: .top)
+                        .clipped()
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                }
 
                 Spacer(minLength: 10)
+
+                // ── エディットバー（タイトル / 本文 / タグ）──
+                editBar
 
                 // ── 仕切り線 ──
                 Rectangle()
@@ -400,6 +409,69 @@ struct QuickSortCellView: View {
         }
     }
 
+    // MARK: - エディットバー（タイトル / 本文 / タグ）
+
+    private var editBar: some View {
+        HStack(spacing: 0) {
+            // タイトル
+            Button {
+                isTitleFocused = true
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 13, weight: .semibold))
+                    Text("タイトル")
+                        .font(.system(size: 13, weight: .semibold))
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 36)
+                .background(Color.green.opacity(0.7))
+            }
+            .buttonStyle(.plain)
+
+            // 本文
+            Button {
+                commitTitle()
+                isTitleFocused = false
+                onEditBody()
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 13, weight: .semibold))
+                    Text("本文")
+                        .font(.system(size: 13, weight: .semibold))
+                }
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity)
+                .frame(height: 36)
+                .background(Color(uiColor: .systemBackground))
+            }
+            .buttonStyle(.plain)
+
+            // タグ
+            Button {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    showDialArea.toggle()
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 13, weight: .semibold))
+                    Text("タグ")
+                        .font(.system(size: 13, weight: .semibold))
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 36)
+                .background(showDialArea ? Color.blue.opacity(0.85) : Color.blue.opacity(0.6))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+    }
+
     // MARK: - コントロールパネル（◁前へ / ゴミ箱 / ▷次へ）
 
     private var controlPanel: some View {
@@ -412,12 +484,12 @@ struct QuickSortCellView: View {
             } label: {
                 HStack(spacing: 6) {
                     Triangle()
-                        .fill(showLeftArrow ? Color.blue.opacity(0.7) : Color.secondary.opacity(0.15))
+                        .fill(Color.blue.opacity(0.7))
                         .frame(width: 14, height: 20)
                         .rotationEffect(.degrees(-90))
                     Text("前へ")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(showLeftArrow ? .blue : .secondary.opacity(0.3))
+                        .foregroundStyle(.blue)
                 }
             }
             .disabled(!showLeftArrow)

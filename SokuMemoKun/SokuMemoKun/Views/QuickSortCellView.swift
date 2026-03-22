@@ -55,13 +55,22 @@ struct QuickSortCellView: View {
     // ロックアイコンフラッシュ
     @State private var lockIconFlash = false
 
+    // 閲覧時カード拡大
+    @State private var isExpanded = false
+    @State private var showExpandButton = false
+
 
     var body: some View {
         GeometryReader { geo in
             let cardW = geo.size.width * 0.80
             // ルーレット表示中は本文拡大しない（共存禁止）
             // キーボード表示中はカードがキーボードに被らないよう制限
-            let baseCardH = (isContentEditing && !showDialArea) ? geo.size.height * 0.55 : geo.size.height * 0.35
+            let normalH = geo.size.height * 0.35
+            let editH = geo.size.height * 0.55
+            let expandedH = geo.size.height * 0.65
+            let baseCardH = (isContentEditing && !showDialArea) ? editH
+                           : isExpanded ? expandedH
+                           : normalH
             let maxCardH = keyboardHeight > 0 ? geo.size.height - keyboardHeight - 20 : geo.size.height * 0.55
             let cardH = min(baseCardH, maxCardH)
 
@@ -73,6 +82,7 @@ struct QuickSortCellView: View {
                         .frame(width: cardW, height: cardH)
                         .frame(maxWidth: .infinity)
                         .animation(.easeInOut(duration: 0.25), value: isContentEditing)
+                        .animation(.easeInOut(duration: 0.25), value: isExpanded)
                         .animation(.easeInOut(duration: 0.25), value: showDialArea)
                         .animation(.easeInOut(duration: 0.25), value: keyboardHeight)
 
@@ -109,6 +119,8 @@ struct QuickSortCellView: View {
             editingTitle = memo.title
             editingContent = memo.content
             isContentEditing = false
+            isExpanded = false
+            showExpandButton = false
             flashTag = false
             flashTitle = false
         }
@@ -288,6 +300,10 @@ struct QuickSortCellView: View {
 
     // 外部からの編集モード切替
     private func applyEditMode(_ mode: CellEditMode) {
+        // 閲覧拡大を常にリセット
+        isExpanded = false
+        showExpandButton = false
+
         switch mode {
         case .none:
             isTitleFocused = false
@@ -395,22 +411,67 @@ struct QuickSortCellView: View {
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
                     } else {
-                        Text(memo.content.isEmpty ? "（本文なし）" : String(memo.content.prefix(200)))
-                            .font(.system(size: 15))
-                            .foregroundColor(memo.content.isEmpty ? Color.secondary.opacity(0.4) : Color.primary)
-                            .lineLimit(nil)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                            .padding(12)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                commitTitle()
-                                isTitleFocused = false
-                                editingContent = memo.content
-                                isContentEditing = true
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                    isContentFocused = true
-                                }
+                        ZStack(alignment: .bottomTrailing) {
+                            ScrollView {
+                                Text(memo.content.isEmpty ? "（本文なし）" : memo.content)
+                                    .font(.system(size: 15))
+                                    .foregroundColor(memo.content.isEmpty ? Color.secondary.opacity(0.4) : Color.primary)
+                                    .lineLimit(nil)
+                                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                                    .padding(12)
                             }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .simultaneousGesture(
+                                DragGesture(minimumDistance: 5)
+                                    .onChanged { _ in
+                                        if !showExpandButton && !memo.content.isEmpty {
+                                            withAnimation(.easeOut(duration: 0.2)) { showExpandButton = true }
+                                        }
+                                    }
+                            )
+
+                            // 拡大ボタン
+                            if showExpandButton && !isExpanded {
+                                Button {
+                                    withAnimation(.easeInOut(duration: 0.25)) { isExpanded = true }
+                                    showExpandButton = false
+                                } label: {
+                                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                                        .font(.system(size: 13, weight: .medium))
+                                        .foregroundStyle(.white)
+                                        .frame(width: 30, height: 30)
+                                        .background(Circle().fill(Color.black.opacity(0.5)))
+                                }
+                                .buttonStyle(.plain)
+                                .padding(8)
+                                .transition(.scale.combined(with: .opacity))
+                            }
+
+                            if isExpanded {
+                                Button {
+                                    withAnimation(.easeInOut(duration: 0.25)) { isExpanded = false }
+                                } label: {
+                                    Image(systemName: "arrow.down.right.and.arrow.up.left")
+                                        .font(.system(size: 13, weight: .medium))
+                                        .foregroundStyle(.white)
+                                        .frame(width: 30, height: 30)
+                                        .background(Circle().fill(Color.black.opacity(0.5)))
+                                }
+                                .buttonStyle(.plain)
+                                .padding(8)
+                                .transition(.scale.combined(with: .opacity))
+                            }
+                        }
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            commitTitle()
+                            isTitleFocused = false
+                            editingContent = memo.content
+                            isContentEditing = true
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                isContentFocused = true
+                            }
+                        }
                     }
 
                     // タグフッター

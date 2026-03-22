@@ -320,12 +320,13 @@ struct QuickSortView: View {
 
             // コントローラーエリア（弧 + 3編集ボタン）固定
             controllerButtons
-                .offset(y: -20)
+                .offset(y: -40)
 
-            // 操作パネル（前へ / ゴミ箱 / 次へ）固定
+            // 操作パネル（前へ / ゴミ箱 / ロック / 次へ）固定
             bottomControlPanel
                 .padding(.horizontal, 24)
                 .padding(.bottom, 4)
+                .offset(y: -20)
         }
     }
 
@@ -337,6 +338,7 @@ struct QuickSortView: View {
             ArcDivider()
                 .stroke(Color.secondary.opacity(0.5), lineWidth: 2.5)
                 .frame(height: 70)
+                .offset(y: 10)
 
             // 3ボタン（弧に沿って配置）
             ZStack {
@@ -407,32 +409,32 @@ struct QuickSortView: View {
         let canGoNext = currentIndexInActive < activeMemos.count - 1
         let isLastPage = currentIndexInActive == activeMemos.count - 1
 
-        return HStack(spacing: 0) {
-            // ◁ 前へ
-            Button {
-                if canGoPrev {
-                    scrolledMemoID = activeMemos[currentIndexInActive - 1].id
+        return ZStack {
+            // 左端: 前へ
+            HStack {
+                Button {
+                    if canGoPrev {
+                        scrolledMemoID = activeMemos[currentIndexInActive - 1].id
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Triangle()
+                            .fill(Color.blue.opacity(0.7))
+                            .frame(width: 14, height: 20)
+                            .rotationEffect(.degrees(-90))
+                        Text("前へ")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(.blue)
+                    }
                 }
-            } label: {
-                HStack(spacing: 6) {
-                    Triangle()
-                        .fill(Color.blue.opacity(0.7))
-                        .frame(width: 14, height: 20)
-                        .rotationEffect(.degrees(-90))
-                    Text("前へ")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.blue)
-                }
+                .disabled(!canGoPrev)
+                .buttonStyle(.plain)
+                Spacer()
             }
-            .disabled(!canGoPrev)
-            .buttonStyle(.plain)
 
-            Spacer()
-
-            // ゴミ箱
+            // 中央: 削除（少し下）
             Button {
                 if currentMemo?.isLocked == true {
-                    // ロック中はロック確認ダイアログの方を出す
                     withAnimation(.easeOut(duration: 0.2)) { showLockConfirm = true }
                     return
                 }
@@ -448,61 +450,71 @@ struct QuickSortView: View {
                 .foregroundStyle(currentMemo?.isLocked == true ? Color.secondary.opacity(0.3) : Color.red.opacity(0.6))
             }
             .buttonStyle(.plain)
+            .offset(y: 20)
 
-            Spacer()
+            // 右端: 次へ / 完了
+            HStack {
+                Spacer()
+                if isLastPage {
+                    Button {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                        withAnimation(.easeOut(duration: 0.25)) { showFinishConfirm = true }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text("完了")
+                                .font(.system(size: 15, weight: .bold, design: .rounded))
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .bold))
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Capsule().fill(Color.orange))
+                    }
+                } else {
+                    Button {
+                        if canGoNext {
+                            scrolledMemoID = activeMemos[currentIndexInActive + 1].id
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Text("次へ")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(.blue)
+                            Triangle()
+                                .fill(Color.blue.opacity(0.7))
+                                .frame(width: 14, height: 20)
+                                .rotationEffect(.degrees(90))
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
 
-            // ロックボタン（削除とタグ編集の中間）
+            // ロック（削除とタグ編集ボタンの中間地点）
             Button {
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 withAnimation(.easeOut(duration: 0.2)) { showLockConfirm = true }
             } label: {
                 VStack(spacing: 2) {
                     Image(systemName: currentMemo?.isLocked == true ? "lock.fill" : "lock.open")
-                        .font(.system(size: 22, weight: .medium))
-                    Text(currentMemo?.isLocked == true ? "ロック解除" : "ロック")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.system(size: 12, weight: .medium))
+                        .frame(width: 28, height: 28)
+                        .background(
+                            Circle()
+                                .fill(currentMemo?.isLocked == true ? Color.orange.opacity(0.12) : Color.secondary.opacity(0.08))
+                        )
+                        .overlay(
+                            Circle()
+                                .stroke(currentMemo?.isLocked == true ? Color.orange.opacity(0.3) : Color.secondary.opacity(0.15), lineWidth: 1)
+                        )
+                    Text(currentMemo?.isLocked == true ? "解除" : "ロック")
+                        .font(.system(size: 9, weight: .medium))
                 }
-                .foregroundStyle(currentMemo?.isLocked == true ? Color.orange : Color.secondary.opacity(0.5))
+                .foregroundStyle(currentMemo?.isLocked == true ? Color.orange : Color.secondary.opacity(0.4))
             }
             .buttonStyle(.plain)
-
-            Spacer()
-
-            // ▷ 次へ / 完了
-            if isLastPage {
-                Button {
-                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                    withAnimation(.easeOut(duration: 0.25)) { showFinishConfirm = true }
-                } label: {
-                    HStack(spacing: 4) {
-                        Text("完了")
-                            .font(.system(size: 15, weight: .bold, design: .rounded))
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 12, weight: .bold))
-                    }
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(Capsule().fill(Color.orange))
-                }
-            } else {
-                Button {
-                    if canGoNext {
-                        scrolledMemoID = activeMemos[currentIndexInActive + 1].id
-                    }
-                } label: {
-                    HStack(spacing: 6) {
-                        Text("次へ")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(.blue)
-                        Triangle()
-                            .fill(Color.blue.opacity(0.7))
-                            .frame(width: 14, height: 20)
-                            .rotationEffect(.degrees(90))
-                    }
-                }
-                .buttonStyle(.plain)
-            }
+            .offset(x: 74, y: -10)
         }
     }
 

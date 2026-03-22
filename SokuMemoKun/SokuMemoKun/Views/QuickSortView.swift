@@ -189,10 +189,18 @@ struct QuickSortView: View {
             }
         }
         .animation(.easeInOut(duration: 0.2), value: isKeyboardVisible)
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
-            isKeyboardVisible = true
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { notification in
             if let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
-                keyboardHeight = frame.height
+                // スクリーン座標からキーボードが覆う高さを算出（カスタムキーボード対応）
+                let screenHeight = UIScreen.main.bounds.height
+                let kbH = screenHeight - frame.origin.y
+                if kbH > 0 {
+                    isKeyboardVisible = true
+                    keyboardHeight = kbH
+                } else {
+                    isKeyboardVisible = false
+                    keyboardHeight = 0
+                }
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
@@ -304,7 +312,6 @@ struct QuickSortView: View {
                             memo: memo,
                             isActive: memo.id == scrolledMemoID,
                             editMode: $cellEditMode,
-                            keyboardHeight: keyboardHeight,
                             onTagChanged: { id in taggedMemoIDs.insert(id) },
                             onTitleChanged: { id in titledMemoIDs.insert(id) },
                             onDelete: { deleteMemo($0) },
@@ -320,7 +327,7 @@ struct QuickSortView: View {
 
             // コントローラーエリア（弧 + 3編集ボタン）固定
             controllerButtons
-                .offset(y: -40)
+                .offset(y: -50)
 
             // 操作パネル（前へ / ゴミ箱 / ロック / 次へ）固定
             bottomControlPanel
@@ -502,16 +509,16 @@ struct QuickSortView: View {
                         .frame(width: 28, height: 28)
                         .background(
                             Circle()
-                                .fill(currentMemo?.isLocked == true ? Color.orange.opacity(0.12) : Color.secondary.opacity(0.08))
+                                .fill(currentMemo?.isLocked == true ? Color.orange.opacity(0.12) : Color.secondary.opacity(0.15))
                         )
                         .overlay(
                             Circle()
-                                .stroke(currentMemo?.isLocked == true ? Color.orange.opacity(0.3) : Color.secondary.opacity(0.15), lineWidth: 1)
+                                .stroke(currentMemo?.isLocked == true ? Color.orange.opacity(0.3) : Color.secondary.opacity(0.3), lineWidth: 1)
                         )
                     Text(currentMemo?.isLocked == true ? "解除" : "ロック")
                         .font(.system(size: 9, weight: .medium))
                 }
-                .foregroundStyle(currentMemo?.isLocked == true ? Color.orange : Color.secondary.opacity(0.4))
+                .foregroundStyle(currentMemo?.isLocked == true ? Color.orange : Color.secondary.opacity(0.7))
             }
             .buttonStyle(.plain)
             .offset(x: 74, y: -10)

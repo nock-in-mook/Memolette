@@ -12,7 +12,8 @@ struct QuickSortCellView: View {
     let memo: Memo
     var isActive: Bool = false
     @Binding var editMode: CellEditMode
-    var keyboardHeight: CGFloat = 0
+    // セル内で直接キーボード高さを監視（UICollectionView経由だと伝播しないため）
+    @State private var keyboardHeight: CGFloat = 0
 
     // ルーレット領域の高さ
     static let dialAreaHeight: CGFloat = 250
@@ -164,6 +165,17 @@ struct QuickSortCellView: View {
             if showDeleteConfirm {
                 deleteConfirmDialog
             }
+        }
+        // セル内で直接キーボード高さを監視（カスタムキーボード対応）
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { notification in
+            if let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
+                let screenHeight = UIScreen.main.bounds.height
+                let kbH = screenHeight - frame.origin.y
+                keyboardHeight = kbH > 0 ? kbH : 0
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            keyboardHeight = 0
         }
     }
 

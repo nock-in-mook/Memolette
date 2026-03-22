@@ -108,7 +108,10 @@ struct MemoDetailView: View {
                     }
 
                     // 削除ボタン
-                    Button { showDeleteAlert = true } label: {
+                    Button {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                        showDeleteAlert = true
+                    } label: {
                         Image(systemName: "trash")
                             .font(.system(size: 14))
                             .foregroundStyle(.red.opacity(0.6))
@@ -309,6 +312,7 @@ struct MemoDetailView: View {
 
             // 「ここに保存」ボタン（タグ変更の確定用）
             Button {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 if isEditing { saveEdits() }
                 showSaveToTagAlert = true
             } label: {

@@ -493,6 +493,7 @@ struct MainView: View {
             },
             isCompact: useSideBySide ? false : isInputExpanded,
             onAddToCurrentTab: { tagID in
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 pendingSaveTagID = tagID
                 showSaveToTabAlert = true
             },

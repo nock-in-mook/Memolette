@@ -119,7 +119,10 @@ struct QuickSortCellView: View {
             applyTagFromDial()
         }
         .onChange(of: isTitleFocused) { _, focused in
-            if !focused {
+            if focused {
+                // 直接タップでフォーカスされた場合もeditModeを同期
+                if editMode != .title { editMode = .title }
+            } else {
                 commitTitle()
                 if editMode == .title { editMode = .none }
             }
@@ -291,7 +294,7 @@ struct QuickSortCellView: View {
         case .title:
             if isContentEditing { commitContent(); isContentEditing = false; isContentFocused = false }
             if showDialArea { withAnimation(.easeInOut(duration: 0.25)) { showDialArea = false } }
-            isTitleFocused = true
+            if !isTitleFocused { isTitleFocused = true }
             flashTitle = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { flashTitle = false }
         case .content:

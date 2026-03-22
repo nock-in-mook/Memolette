@@ -243,6 +243,7 @@ struct QuickSortView: View {
                     // 左端: ✕ 丸囲み
                     HStack {
                         Button {
+                            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                             withAnimation(.easeOut(duration: 0.2)) { showExitConfirm = true }
                         } label: {
                             Image(systemName: "xmark")
@@ -263,6 +264,7 @@ struct QuickSortView: View {
                     HStack {
                         Spacer()
                         Button {
+                            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                             withAnimation(.easeOut(duration: 0.25)) { showFinishConfirm = true }
                         } label: {
                             Text("整理をおわる")
@@ -421,6 +423,7 @@ struct QuickSortView: View {
 
             // ゴミ箱
             Button {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 withAnimation(.easeOut(duration: 0.2)) { showDeleteConfirmFromPanel = true }
             } label: {
                 VStack(spacing: 2) {
@@ -438,6 +441,7 @@ struct QuickSortView: View {
             // ▷ 次へ / 完了
             if isLastPage {
                 Button {
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                     withAnimation(.easeOut(duration: 0.25)) { showFinishConfirm = true }
                 } label: {
                     HStack(spacing: 4) {
@@ -616,7 +620,7 @@ struct QuickSortView: View {
                         .font(.system(size: 32))
                         .foregroundStyle(.orange)
 
-                    Text("爆速メモ整理モードを終了")
+                    Text("整理を終了")
                         .font(.system(size: 17, weight: .bold, design: .rounded))
 
                     Text("変更は保存されません。\nよろしいですか？")

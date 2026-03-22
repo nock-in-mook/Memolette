@@ -150,6 +150,7 @@ struct MemoInputView: View {
 
                 // 削除
                 Button {
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                     withAnimation(.easeOut(duration: 0.2)) { showTagActionSheet = false }
                     showTagDeleteAlert = true
                 } label: {
@@ -678,7 +679,10 @@ struct MemoInputView: View {
     private var footerRow: some View {
         HStack(spacing: 16) {
             // 左: 削除
-            Button { showDeleteAlert = true } label: {
+            Button {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                showDeleteAlert = true
+            } label: {
                 Image(systemName: "trash")
                     .font(.system(size: 18))
                     .foregroundStyle(.red.opacity(0.5))
@@ -805,6 +809,7 @@ struct MemoInputView: View {
                         }
                     },
                     onDeleteTag: { id in
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                         if let uuid = UUID(uuidString: id) {
                             longPressedTagID = uuid
                             showTagDeleteAlert = true

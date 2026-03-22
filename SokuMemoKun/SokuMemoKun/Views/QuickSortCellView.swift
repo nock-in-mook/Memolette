@@ -77,7 +77,6 @@ struct QuickSortCellView: View {
             let baseCardH = showDialArea ? normalH
                            : isExpanded ? expandedH
                            : isContentEditing ? (editFromTap ? normalH : editH)
-                           : isTitleFocused ? editH
                            : normalH
             let maxCardH = keyboardHeight > 0 ? geo.size.height - keyboardHeight - 20 : geo.size.height * 0.80
             let cardH = min(baseCardH, maxCardH)
@@ -91,7 +90,6 @@ struct QuickSortCellView: View {
                         .frame(maxWidth: .infinity)
                         .animation(.easeInOut(duration: 0.25), value: isContentEditing)
                         .animation(.easeInOut(duration: 0.25), value: isExpanded)
-                        .animation(.easeInOut(duration: 0.25), value: isTitleFocused)
                         .animation(.easeInOut(duration: 0.25), value: showDialArea)
                         .animation(.easeInOut(duration: 0.25), value: keyboardHeight)
 

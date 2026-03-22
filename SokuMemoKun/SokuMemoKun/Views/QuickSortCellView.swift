@@ -451,6 +451,16 @@ struct QuickSortCellView: View {
                     )
                 )
                 .shadow(color: .black.opacity(0.1), radius: 8, y: 4)
+
+                // ロックアイコン（タブ右の空きスペース）
+                if memo.isLocked {
+                    HStack(spacing: 4) {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.orange.opacity(0.7))
+                    }
+                    .offset(x: tabW + 8, y: 8)
+                }
             }
         }
     }

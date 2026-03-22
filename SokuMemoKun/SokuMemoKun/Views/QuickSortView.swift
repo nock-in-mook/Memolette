@@ -53,6 +53,10 @@ struct QuickSortView: View {
     @State private var showResult = false
     @State private var showDeleteReview = false
 
+    // トースト通知
+    @State private var toastMessage: String = ""
+    @State private var showToast = false
+
     // アクティブなメモ（削除キューを除外した配列）
     private var activeMemos: [Memo] {
         let skippedIDs = Set(deleteQueue.map { $0.id })
@@ -152,6 +156,24 @@ struct QuickSortView: View {
                             withAnimation(.easeOut(duration: 0.25)) { showResult = false }
                         }
                     )
+                }
+
+                // トースト通知
+                if showToast {
+                    VStack {
+                        Spacer()
+                        Text(toastMessage)
+                            .font(.system(size: 14, weight: .medium, design: .rounded))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                            .background(
+                                Capsule().fill(Color.black.opacity(0.75))
+                            )
+                            .padding(.bottom, 120)
+                    }
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+                    .allowsHitTesting(false)
                 }
             }
         }
@@ -421,20 +443,52 @@ struct QuickSortView: View {
 
             Spacer()
 
-            // ゴミ箱
-            Button {
-                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                withAnimation(.easeOut(duration: 0.2)) { showDeleteConfirmFromPanel = true }
-            } label: {
-                VStack(spacing: 2) {
-                    Image(systemName: "trash")
-                        .font(.system(size: 26, weight: .medium))
-                    Text("削除")
-                        .font(.system(size: 11, weight: .medium))
+            // ゴミ箱 + ロックボタン
+            VStack(spacing: 8) {
+                // ロックボタン（ゴミ箱の右上）
+                HStack(spacing: 0) {
+                    Spacer()
+                    Button {
+                        if let memo = currentMemo {
+                            memo.isLocked.toggle()
+                            try? modelContext.save()
+                            toastMessage = memo.isLocked ? "メモがロックされました（削除防止）" : "ロックが解除されました"
+                            withAnimation(.easeOut(duration: 0.2)) { showToast = true }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
+                                withAnimation(.easeOut(duration: 0.3)) { showToast = false }
+                            }
+                        }
+                    } label: {
+                        Image(systemName: currentMemo?.isLocked == true ? "lock.fill" : "lock.open")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(currentMemo?.isLocked == true ? .orange : .secondary.opacity(0.5))
+                    }
+                    .buttonStyle(.plain)
                 }
-                .foregroundStyle(.red.opacity(0.6))
+
+                // ゴミ箱
+                Button {
+                    if currentMemo?.isLocked == true {
+                        toastMessage = "このメモはロックされています"
+                        withAnimation(.easeOut(duration: 0.2)) { showToast = true }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                            withAnimation(.easeOut(duration: 0.3)) { showToast = false }
+                        }
+                        return
+                    }
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    withAnimation(.easeOut(duration: 0.2)) { showDeleteConfirmFromPanel = true }
+                } label: {
+                    VStack(spacing: 2) {
+                        Image(systemName: "trash")
+                            .font(.system(size: 26, weight: .medium))
+                        Text("削除")
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    .foregroundStyle(currentMemo?.isLocked == true ? Color.secondary.opacity(0.3) : Color.red.opacity(0.6))
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
 
             Spacer()
 

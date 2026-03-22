@@ -67,11 +67,14 @@ struct QuickSortCellView: View {
             // キーボード表示中はカードがキーボードに被らないよう制限
             let normalH = geo.size.height * 0.35
             let editH = geo.size.height * 0.55
-            let expandedH = geo.size.height * 0.65
-            let baseCardH = (isContentEditing && !showDialArea) ? editH
+            let expandedH = geo.size.height * 0.80
+            // ルーレット中は通常サイズ、編集中はeditH、タイトル編集中はeditH、拡大中はexpandedH
+            let baseCardH = showDialArea ? normalH
+                           : isContentEditing ? editH
+                           : isTitleFocused ? editH
                            : isExpanded ? expandedH
                            : normalH
-            let maxCardH = keyboardHeight > 0 ? geo.size.height - keyboardHeight - 20 : geo.size.height * 0.55
+            let maxCardH = keyboardHeight > 0 ? geo.size.height - keyboardHeight - 20 : geo.size.height * 0.80
             let cardH = min(baseCardH, maxCardH)
 
             VStack(spacing: 0) {
@@ -83,6 +86,7 @@ struct QuickSortCellView: View {
                         .frame(maxWidth: .infinity)
                         .animation(.easeInOut(duration: 0.25), value: isContentEditing)
                         .animation(.easeInOut(duration: 0.25), value: isExpanded)
+                        .animation(.easeInOut(duration: 0.25), value: isTitleFocused)
                         .animation(.easeInOut(duration: 0.25), value: showDialArea)
                         .animation(.easeInOut(duration: 0.25), value: keyboardHeight)
 
@@ -300,9 +304,8 @@ struct QuickSortCellView: View {
 
     // 外部からの編集モード切替
     private func applyEditMode(_ mode: CellEditMode) {
-        // 閲覧拡大を常にリセット
-        isExpanded = false
         showExpandButton = false
+        // isExpanded はユーザーが明示的に縮小するまで保持する
 
         switch mode {
         case .none:
@@ -433,6 +436,8 @@ struct QuickSortCellView: View {
                             // 拡大ボタン
                             if showExpandButton && !isExpanded {
                                 Button {
+                                    if showDialArea { withAnimation(.easeInOut(duration: 0.25)) { showDialArea = false } }
+                                    if editMode == .tag { editMode = .none }
                                     withAnimation(.easeInOut(duration: 0.25)) { isExpanded = true }
                                     showExpandButton = false
                                 } label: {
@@ -440,7 +445,7 @@ struct QuickSortCellView: View {
                                         .font(.system(size: 13, weight: .medium))
                                         .foregroundStyle(.white)
                                         .frame(width: 30, height: 30)
-                                        .background(Circle().fill(Color.black.opacity(0.5)))
+                                        .background(Circle().fill(Color.blue.opacity(0.7)))
                                 }
                                 .buttonStyle(.plain)
                                 .padding(8)
@@ -455,7 +460,7 @@ struct QuickSortCellView: View {
                                         .font(.system(size: 13, weight: .medium))
                                         .foregroundStyle(.white)
                                         .frame(width: 30, height: 30)
-                                        .background(Circle().fill(Color.black.opacity(0.5)))
+                                        .background(Circle().fill(Color.blue.opacity(0.7)))
                                 }
                                 .buttonStyle(.plain)
                                 .padding(8)

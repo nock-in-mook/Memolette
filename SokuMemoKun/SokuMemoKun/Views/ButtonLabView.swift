@@ -75,784 +75,370 @@ struct TapPressableView<Label: View>: View {
     }
 }
 
-// ボタンデザインラボ: 爆速モード用ボタンの候補一覧
+// アニメ塗りボタンラボ: グラデーションに頼らないボタン表現を探る
 struct ButtonLabView: View {
+    // 3色セット（タイトル編集、本文編集、タグ編集）
+    private let colorSets: [(name: String, base: Color, accent: Color)] = [
+        ("オレンジ系", .orange, .orange),
+        ("グレー系", Color(white: 0.85), Color(white: 0.65)),
+        ("シアン系", .cyan, .cyan),
+    ]
+
     var body: some View {
         ScrollView {
-            // ── 押せるボタン（インタラクティブ）──
-            VStack(spacing: 8) {
-                Text("押せるボタン")
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                Text("実際にタップして押し心地を確認！")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 16)
+            VStack(spacing: 24) {
+                // 説明
+                VStack(spacing: 4) {
+                    Text("アニメ塗りボタンラボ")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Text("グラデーションに頼らず、フラットUIに馴染むボタン表現を探る")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
 
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 24) {
-                ForEach(0..<pressableButtons.count, id: \.self) { i in
-                    VStack(spacing: 6) {
-                        Text("P\(i + 1)")
-                            .font(.system(size: 10, weight: .medium, design: .monospaced))
-                            .foregroundStyle(.secondary)
-                        pressableButtons[i]
-                    }
+                // 各パターン
+                ForEach(0..<patterns.count, id: \.self) { i in
+                    patternSection(index: i, pattern: patterns[i])
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 24)
-
-            Divider().padding(.horizontal, 16)
-
-            // ── 静的パターン ──
-            VStack(spacing: 8) {
-                Text("静的デザイン")
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 16)
-
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 20) {
-                ForEach(0..<buttonStyles.count, id: \.self) { i in
-                    VStack(spacing: 6) {
-                        Text("#\(i + 1)")
-                            .font(.system(size: 10, weight: .medium, design: .monospaced))
-                            .foregroundStyle(.secondary)
-                        buttonStyles[i]
-                    }
-                }
-            }
-            .padding(16)
+            .padding(.bottom, 40)
         }
-        .navigationTitle("ボタンデザインラボ")
+        .navigationTitle("ボタンラボ")
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    // MARK: - 押せるボタンパターン
+    // パターン表示（3色×1パターン）
+    private func patternSection(index: Int, pattern: ButtonPattern) -> some View {
+        VStack(spacing: 8) {
+            HStack {
+                Text("A\(index + 1): \(pattern.name)")
+                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            .padding(.horizontal, 16)
 
-    private var pressableButtons: [AnyView] {
-        [
-            // P1: シンプル + 底影
-            AnyView(
-                Button {} label: {
-                    Text("本文編集")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .padding(.horizontal, 18).padding(.vertical, 8)
-                        .background(Capsule().fill(Color(white: 0.93)))
+            HStack(spacing: 16) {
+                ForEach(0..<colorSets.count, id: \.self) { ci in
+                    let cs = colorSets[ci]
+                    TapPressableView(shadowHeight: 5, shadowColor: cs.accent.opacity(0.3)) {
+                    } label: {
+                        pattern.builder(cs.name == "グレー系" ? "本文編集" : (cs.name == "オレンジ系" ? "タイトル編集" : "タグ編集"),
+                                        cs.base, cs.accent)
+                    }
                 }
-                .buttonStyle(PressableButtonStyle(shadowHeight: 4))
-            ),
-            // P2: 底影 + グラデ
-            AnyView(
-                Button {} label: {
-                    Text("本文編集")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .padding(.horizontal, 18).padding(.vertical, 8)
-                        .background(
-                            Capsule().fill(
-                                LinearGradient(colors: [Color(white: 0.98), Color(white: 0.88)],
-                                               startPoint: .top, endPoint: .bottom)
-                            )
-                        )
-                }
-                .buttonStyle(PressableButtonStyle(shadowHeight: 5))
-            ),
-            // P3: 底影 + ベベル
-            AnyView(
-                Button {} label: {
-                    Text("本文編集")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .padding(.horizontal, 18).padding(.vertical, 8)
-                        .background(
-                            Capsule().fill(Color(white: 0.93))
-                                .overlay(
-                                    Capsule().strokeBorder(
-                                        LinearGradient(colors: [.white.opacity(0.9), .black.opacity(0.15)],
-                                                       startPoint: .top, endPoint: .bottom),
-                                        lineWidth: 1.5
-                                    )
-                                )
-                        )
-                }
-                .buttonStyle(PressableButtonStyle(shadowHeight: 5))
-            ),
-            // P4: 底バー + グラデ（記事風）
-            AnyView(
-                Button {} label: {
-                    Text("本文編集")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .padding(.horizontal, 18).padding(.vertical, 8)
-                        .background(
-                            ZStack {
-                                Capsule().fill(Color(white: 0.72))
-                                    .offset(y: 4)
-                                Capsule().fill(
-                                    LinearGradient(colors: [Color(white: 0.98), Color(white: 0.90)],
-                                                   startPoint: .top, endPoint: .bottom)
-                                )
-                            }
-                        )
-                }
-                .buttonStyle(PressableButtonStyle(shadowHeight: 4, shadowColor: .clear))
-            ),
-            // P5: グロス + 押せる
-            AnyView(
-                Button {} label: {
-                    Text("本文編集")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .padding(.horizontal, 18).padding(.vertical, 8)
-                        .background(
-                            ZStack {
-                                Capsule().fill(Color(white: 0.86))
-                                Capsule().fill(
-                                    LinearGradient(colors: [.white.opacity(0.5), .clear],
-                                                   startPoint: .top, endPoint: .center)
-                                )
-                            }
-                        )
-                }
-                .buttonStyle(PressableButtonStyle(shadowHeight: 5, shadowColor: .black.opacity(0.3)))
-            ),
-            // P6: ゲームボタン（全部盛り + 押せる）
-            AnyView(
-                Button {} label: {
-                    Text("本文編集")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .padding(.horizontal, 18).padding(.vertical, 8)
-                        .background(
-                            ZStack {
-                                Capsule().fill(
-                                    LinearGradient(colors: [Color(white: 0.97), Color(white: 0.83)],
-                                                   startPoint: .top, endPoint: .bottom)
-                                )
-                                Capsule().fill(
-                                    LinearGradient(colors: [.white.opacity(0.4), .clear],
-                                                   startPoint: .top, endPoint: .center)
-                                ).padding(2)
-                            }
-                        )
-                        .overlay(
-                            Capsule().strokeBorder(
-                                LinearGradient(colors: [.white.opacity(0.7), Color(white: 0.6)],
-                                               startPoint: .top, endPoint: .bottom),
-                                lineWidth: 1
-                            )
-                        )
-                }
-                .buttonStyle(PressableButtonStyle(shadowHeight: 5, shadowColor: .black.opacity(0.35)))
-            ),
-            // P7: 緑 押せる
-            AnyView(
-                Button {} label: {
-                    Text("タイトル編集")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .padding(.horizontal, 14).padding(.vertical, 8)
-                        .background(
-                            ZStack {
-                                Capsule().fill(
-                                    LinearGradient(colors: [Color.green.opacity(0.12), Color.green.opacity(0.28)],
-                                                   startPoint: .top, endPoint: .bottom)
-                                )
-                                Capsule().fill(
-                                    LinearGradient(colors: [.white.opacity(0.35), .clear],
-                                                   startPoint: .top, endPoint: .center)
-                                ).padding(2)
-                            }
-                        )
-                        .overlay(
-                            Capsule().strokeBorder(
-                                LinearGradient(colors: [.white.opacity(0.6), Color.green.opacity(0.3)],
-                                               startPoint: .top, endPoint: .bottom),
-                                lineWidth: 1
-                            )
-                        )
-                }
-                .buttonStyle(PressableButtonStyle(shadowHeight: 5, shadowColor: Color.green.opacity(0.35)))
-            ),
-            // P8: 青 押せる
-            AnyView(
-                Button {} label: {
-                    Text("タグ編集")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .padding(.horizontal, 18).padding(.vertical, 8)
-                        .background(
-                            ZStack {
-                                Capsule().fill(
-                                    LinearGradient(colors: [Color.blue.opacity(0.1), Color.blue.opacity(0.25)],
-                                                   startPoint: .top, endPoint: .bottom)
-                                )
-                                Capsule().fill(
-                                    LinearGradient(colors: [.white.opacity(0.35), .clear],
-                                                   startPoint: .top, endPoint: .center)
-                                ).padding(2)
-                            }
-                        )
-                        .overlay(
-                            Capsule().strokeBorder(
-                                LinearGradient(colors: [.white.opacity(0.6), Color.blue.opacity(0.3)],
-                                               startPoint: .top, endPoint: .bottom),
-                                lineWidth: 1
-                            )
-                        )
-                }
-                .buttonStyle(PressableButtonStyle(shadowHeight: 5, shadowColor: Color.blue.opacity(0.35)))
-            ),
-            // P9: 底バー色付き + 押せる（緑）
-            AnyView(
-                Button {} label: {
-                    Text("タイトル編集")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .padding(.horizontal, 14).padding(.vertical, 8)
-                        .background(
-                            ZStack {
-                                Capsule().fill(Color.green.opacity(0.45)).offset(y: 4)
-                                Capsule().fill(
-                                    LinearGradient(colors: [Color.green.opacity(0.1), Color.green.opacity(0.25)],
-                                                   startPoint: .top, endPoint: .bottom)
-                                )
-                            }
-                        )
-                }
-                .buttonStyle(PressableButtonStyle(shadowHeight: 4, shadowColor: .clear))
-            ),
-            // P10: 底バー色付き + 押せる（青）
-            AnyView(
-                Button {} label: {
-                    Text("タグ編集")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .padding(.horizontal, 18).padding(.vertical, 8)
-                        .background(
-                            ZStack {
-                                Capsule().fill(Color.blue.opacity(0.4)).offset(y: 4)
-                                Capsule().fill(
-                                    LinearGradient(colors: [Color.blue.opacity(0.08), Color.blue.opacity(0.22)],
-                                                   startPoint: .top, endPoint: .bottom)
-                                )
-                            }
-                        )
-                }
-                .buttonStyle(PressableButtonStyle(shadowHeight: 4, shadowColor: .clear))
-            ),
-            // P11: 厚み強め（影8px）
-            AnyView(
-                Button {} label: {
-                    Text("本文編集")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .padding(.horizontal, 18).padding(.vertical, 8)
-                        .background(
-                            Capsule().fill(
-                                LinearGradient(colors: [Color(white: 0.98), Color(white: 0.86)],
-                                               startPoint: .top, endPoint: .bottom)
-                            )
-                        )
-                        .overlay(
-                            Capsule().strokeBorder(
-                                LinearGradient(colors: [.white.opacity(0.8), .black.opacity(0.1)],
-                                               startPoint: .top, endPoint: .bottom),
-                                lineWidth: 1
-                            )
-                        )
-                }
-                .buttonStyle(PressableButtonStyle(shadowHeight: 8, shadowColor: .black.opacity(0.3)))
-            ),
-            // P12: 底バー厚め + グロス
-            AnyView(
-                Button {} label: {
-                    Text("本文編集")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .padding(.horizontal, 18).padding(.vertical, 8)
-                        .background(
-                            ZStack {
-                                Capsule().fill(Color(white: 0.65)).offset(y: 6)
-                                Capsule().fill(
-                                    LinearGradient(colors: [Color(white: 0.98), Color(white: 0.87)],
-                                                   startPoint: .top, endPoint: .bottom)
-                                )
-                                Capsule().fill(
-                                    LinearGradient(colors: [.white.opacity(0.5), .clear],
-                                                   startPoint: .top, endPoint: .center)
-                                ).padding(2)
-                            }
-                        )
-                }
-                .buttonStyle(PressableButtonStyle(shadowHeight: 6, shadowColor: .clear))
-            ),
-        ]
+            }
+            .padding(.horizontal, 16)
+
+            Divider().padding(.horizontal, 16).padding(.top, 4)
+        }
     }
 
-    // 全パターン
-    private var buttonStyles: [AnyView] {
+    // MARK: - パターン定義
+
+    private struct ButtonPattern {
+        let name: String
+        let builder: (String, Color, Color) -> AnyView
+    }
+
+    private var patterns: [ButtonPattern] {
         [
-            // 1: フラット + ドロップシャドウ
-            AnyView(
-                Text("本文編集")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 18).padding(.vertical, 8)
-                    .background(Capsule().fill(Color(white: 0.93)))
-                    .shadow(color: .black.opacity(0.2), radius: 3, y: 2)
-            ),
-            // 2: 濃い影 + 大きめオフセット
-            AnyView(
-                Text("本文編集")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 18).padding(.vertical, 8)
-                    .background(Capsule().fill(Color(white: 0.95)))
-                    .shadow(color: .black.opacity(0.35), radius: 4, y: 3)
-            ),
-            // 3: ダブルシャドウ（ニューモフィズム風・白背景）
-            AnyView(
-                Text("本文編集")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 18).padding(.vertical, 8)
-                    .background(Capsule().fill(Color(white: 0.94)))
-                    .shadow(color: .black.opacity(0.15), radius: 4, x: 2, y: 2)
-                    .shadow(color: .white.opacity(0.8), radius: 4, x: -2, y: -2)
-            ),
-            // 4: ニューモフィズム凸（濃いめ）
-            AnyView(
-                Text("本文編集")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 18).padding(.vertical, 8)
-                    .background(Capsule().fill(Color(white: 0.92)))
-                    .shadow(color: .black.opacity(0.25), radius: 5, x: 3, y: 3)
-                    .shadow(color: .white.opacity(0.9), radius: 5, x: -3, y: -3)
-            ),
-            // 5: 上ハイライト + 下シャドウ（出っ張りボタン）
-            AnyView(
-                Text("本文編集")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 18).padding(.vertical, 8)
-                    .background(
-                        Capsule().fill(
-                            LinearGradient(colors: [Color(white: 0.98), Color(white: 0.88)],
-                                           startPoint: .top, endPoint: .bottom)
+            // A1: ベタ塗り（完全フラット）
+            ButtonPattern(name: "ベタ塗り") { text, base, _ in
+                AnyView(
+                    Text(text)
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 14).padding(.top, 6).padding(.bottom, 8)
+                        .background(ArcCapsule().fill(base.opacity(0.25)))
+                )
+            },
+
+            // A2: ベタ塗り + 細い枠線
+            ButtonPattern(name: "ベタ + 枠線") { text, base, accent in
+                AnyView(
+                    Text(text)
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 14).padding(.top, 6).padding(.bottom, 8)
+                        .background(ArcCapsule().fill(base.opacity(0.2)))
+                        .overlay(ArcCapsule().stroke(accent.opacity(0.4), lineWidth: 1))
+                )
+            },
+
+            // A3: ベタ塗り + 下だけ濃い（2段セル塗り）
+            ButtonPattern(name: "2段セル塗り") { text, base, _ in
+                AnyView(
+                    Text(text)
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 14).padding(.top, 6).padding(.bottom, 8)
+                        .background(
+                            ZStack {
+                                ArcCapsule().fill(base.opacity(0.35))
+                                // 上半分だけ明るく
+                                ArcCapsule().fill(Color.white.opacity(0.4))
+                                    .mask(
+                                        VStack(spacing: 0) {
+                                            Rectangle()
+                                            Color.clear
+                                        }
+                                    )
+                            }
                         )
-                    )
-                    .shadow(color: .black.opacity(0.2), radius: 3, y: 2)
-            ),
-            // 6: 強めグラデーション + シャドウ
-            AnyView(
-                Text("本文編集")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 18).padding(.vertical, 8)
-                    .background(
-                        Capsule().fill(
-                            LinearGradient(colors: [Color(white: 1.0), Color(white: 0.82)],
-                                           startPoint: .top, endPoint: .bottom)
+                )
+            },
+
+            // A4: ベタ + 上部ハイライトライン（アニメ光沢）
+            ButtonPattern(name: "上部ハイライト線") { text, base, _ in
+                AnyView(
+                    Text(text)
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 14).padding(.top, 6).padding(.bottom, 8)
+                        .background(
+                            ArcCapsule().fill(base.opacity(0.25))
                         )
-                    )
-                    .shadow(color: .black.opacity(0.3), radius: 4, y: 3)
-            ),
-            // 7: 枠線 + グラデーション + シャドウ
-            AnyView(
-                Text("本文編集")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 18).padding(.vertical, 8)
-                    .background(
-                        Capsule().fill(
-                            LinearGradient(colors: [Color(white: 0.97), Color(white: 0.87)],
-                                           startPoint: .top, endPoint: .bottom)
-                        )
-                    )
-                    .overlay(Capsule().stroke(Color(white: 0.75), lineWidth: 1))
-                    .shadow(color: .black.opacity(0.2), radius: 3, y: 2)
-            ),
-            // 8: インナーシャドウ風（overlay暗め上端）
-            AnyView(
-                Text("本文編集")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 18).padding(.vertical, 8)
-                    .background(
-                        Capsule().fill(Color(white: 0.93))
-                            .overlay(
-                                Capsule().fill(
-                                    LinearGradient(colors: [.black.opacity(0.08), .clear],
-                                                   startPoint: .bottom, endPoint: .top)
+                        .overlay(
+                            ArcCapsule()
+                                .stroke(Color.white.opacity(0.7), lineWidth: 1.5)
+                                .mask(
+                                    VStack(spacing: 0) {
+                                        Rectangle().frame(height: 8)
+                                        Spacer()
+                                    }
                                 )
-                            )
-                    )
-                    .shadow(color: .black.opacity(0.2), radius: 3, y: 2)
-            ),
-            // 9: ぷっくりグラデ（中央が明るい）
-            AnyView(
-                Text("本文編集")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 18).padding(.vertical, 8)
-                    .background(
-                        Capsule().fill(
-                            LinearGradient(colors: [Color(white: 0.90), Color(white: 0.97), Color(white: 0.88)],
-                                           startPoint: .top, endPoint: .bottom)
                         )
-                    )
-                    .shadow(color: .black.opacity(0.25), radius: 4, y: 3)
-            ),
-            // 10: ぷっくり + 枠 + ハイライト
-            AnyView(
-                Text("本文編集")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 18).padding(.vertical, 8)
-                    .background(
-                        Capsule().fill(
-                            LinearGradient(colors: [Color(white: 0.88), Color(white: 0.98), Color(white: 0.86)],
-                                           startPoint: .top, endPoint: .bottom)
+                )
+            },
+
+            // A5: ベタ + 白インナーシャドウ
+            ButtonPattern(name: "インナーシャドウ") { text, base, _ in
+                AnyView(
+                    Text(text)
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 14).padding(.top, 6).padding(.bottom, 8)
+                        .background(ArcCapsule().fill(base.opacity(0.3)))
+                        .overlay(
+                            ArcCapsule()
+                                .stroke(Color.white.opacity(0.9), lineWidth: 3)
+                                .blur(radius: 2)
+                                .mask(ArcCapsule())
                         )
-                    )
-                    .overlay(Capsule().stroke(Color(white: 0.7), lineWidth: 0.5))
-                    .shadow(color: .black.opacity(0.3), radius: 4, y: 3)
-            ),
-            // 11: 3Dベベル風（上が白、下が暗い枠）
-            AnyView(
-                Text("本文編集")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 18).padding(.vertical, 8)
-                    .background(
-                        Capsule().fill(Color(white: 0.93))
-                            .overlay(
-                                Capsule().strokeBorder(
-                                    LinearGradient(colors: [.white.opacity(0.8), .black.opacity(0.15)],
-                                                   startPoint: .top, endPoint: .bottom),
-                                    lineWidth: 1.5
+                )
+            },
+
+            // A6: ベタ + 下エッジだけ暗い（影彫り風）
+            ButtonPattern(name: "下エッジ影彫り") { text, base, accent in
+                AnyView(
+                    Text(text)
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 14).padding(.top, 6).padding(.bottom, 8)
+                        .background(ArcCapsule().fill(base.opacity(0.22)))
+                        .overlay(
+                            ArcCapsule()
+                                .stroke(accent.opacity(0.3), lineWidth: 1.5)
+                                .mask(
+                                    VStack(spacing: 0) {
+                                        Color.clear
+                                        Rectangle().frame(height: 6)
+                                    }
                                 )
-                            )
-                    )
-                    .shadow(color: .black.opacity(0.2), radius: 3, y: 2)
-            ),
-            // 12: 太ベベル
-            AnyView(
-                Text("本文編集")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 18).padding(.vertical, 8)
-                    .background(
-                        Capsule().fill(Color(white: 0.91))
-                            .overlay(
-                                Capsule().strokeBorder(
-                                    LinearGradient(colors: [.white.opacity(0.9), .black.opacity(0.2)],
-                                                   startPoint: .top, endPoint: .bottom),
-                                    lineWidth: 2.5
+                        )
+                )
+            },
+
+            // A7: 不透明ベース + 色うすがけ（現行方式の改良）
+            ButtonPattern(name: "不透明ベース+色") { text, base, _ in
+                AnyView(
+                    Text(text)
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 14).padding(.top, 6).padding(.bottom, 8)
+                        .background(
+                            ZStack {
+                                ArcCapsule().fill(Color(white: 0.95))
+                                ArcCapsule().fill(base.opacity(0.15))
+                            }
+                        )
+                )
+            },
+
+            // A8: 不透明ベース + 色 + 上ハイライト
+            ButtonPattern(name: "不透明+色+ハイライト") { text, base, _ in
+                AnyView(
+                    Text(text)
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 14).padding(.top, 6).padding(.bottom, 8)
+                        .background(
+                            ZStack {
+                                ArcCapsule().fill(Color(white: 0.95))
+                                ArcCapsule().fill(base.opacity(0.18))
+                            }
+                        )
+                        .overlay(
+                            ArcCapsule()
+                                .stroke(Color.white.opacity(0.8), lineWidth: 1.5)
+                                .mask(
+                                    VStack(spacing: 0) {
+                                        Rectangle().frame(height: 6)
+                                        Spacer()
+                                    }
                                 )
-                            )
-                    )
-                    .shadow(color: .black.opacity(0.25), radius: 4, y: 3)
-            ),
-            // 13: グロス（上半分に光沢）
-            AnyView(
-                Text("本文編集")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 18).padding(.vertical, 8)
-                    .background(
-                        ZStack {
-                            Capsule().fill(Color(white: 0.88))
-                            Capsule().fill(
-                                LinearGradient(colors: [.white.opacity(0.5), .clear],
-                                               startPoint: .top, endPoint: .center)
-                            )
-                        }
-                    )
-                    .shadow(color: .black.opacity(0.25), radius: 4, y: 3)
-            ),
-            // 14: グロス + 枠
-            AnyView(
-                Text("本文編集")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 18).padding(.vertical, 8)
-                    .background(
-                        ZStack {
-                            Capsule().fill(Color(white: 0.86))
-                            Capsule().fill(
-                                LinearGradient(colors: [.white.opacity(0.6), .clear],
-                                               startPoint: .top, endPoint: .center)
-                            )
-                        }
-                    )
-                    .overlay(Capsule().stroke(Color(white: 0.65), lineWidth: 0.5))
-                    .shadow(color: .black.opacity(0.3), radius: 4, y: 3)
-            ),
-            // 15: ゲームボタン風（丸め + 濃い影 + グラデ）
-            AnyView(
-                Text("本文編集")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 18).padding(.vertical, 8)
-                    .background(
-                        Capsule().fill(
-                            LinearGradient(colors: [Color(white: 0.97), Color(white: 0.83)],
-                                           startPoint: .top, endPoint: .bottom)
                         )
-                    )
-                    .overlay(
-                        Capsule().strokeBorder(
-                            LinearGradient(colors: [.white.opacity(0.7), .black.opacity(0.1)],
-                                           startPoint: .top, endPoint: .bottom),
-                            lineWidth: 1.5
+                )
+            },
+
+            // A9: ベタ塗り + パキッと2色（上白/下色）
+            ButtonPattern(name: "パキッと2色") { text, base, _ in
+                AnyView(
+                    Text(text)
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 14).padding(.top, 6).padding(.bottom, 8)
+                        .background(
+                            ZStack {
+                                ArcCapsule().fill(base.opacity(0.3))
+                                ArcCapsule().fill(Color.white.opacity(0.5))
+                                    .mask(
+                                        VStack(spacing: 0) {
+                                            Rectangle()
+                                            Color.clear
+                                        }
+                                    )
+                            }
                         )
-                    )
-                    .shadow(color: .black.opacity(0.35), radius: 5, y: 4)
-            ),
-            // 16: ゲームボタン + インナーグロー
-            AnyView(
-                Text("本文編集")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 18).padding(.vertical, 8)
-                    .background(
-                        ZStack {
-                            Capsule().fill(
-                                LinearGradient(colors: [Color(white: 0.95), Color(white: 0.80)],
-                                               startPoint: .top, endPoint: .bottom)
-                            )
-                            Capsule().fill(
-                                LinearGradient(colors: [.white.opacity(0.4), .clear],
-                                               startPoint: .top, endPoint: .center)
-                            ).padding(2)
-                        }
-                    )
-                    .overlay(
-                        Capsule().strokeBorder(
-                            LinearGradient(colors: [.white.opacity(0.6), Color(white: 0.6)],
-                                           startPoint: .top, endPoint: .bottom),
-                            lineWidth: 1
+                        .overlay(ArcCapsule().stroke(base.opacity(0.2), lineWidth: 0.5))
+                )
+            },
+
+            // A10: マット塗り（ベタ + 微量ノイズ風テクスチャ）
+            ButtonPattern(name: "マット塗り") { text, base, _ in
+                AnyView(
+                    Text(text)
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 14).padding(.top, 6).padding(.bottom, 8)
+                        .background(
+                            ZStack {
+                                ArcCapsule().fill(base.opacity(0.2))
+                                ArcCapsule().fill(Color(white: 0.5).opacity(0.03))
+                            }
                         )
-                    )
-                    .shadow(color: .black.opacity(0.35), radius: 5, y: 4)
-            ),
-            // 17: 底上げ立体（下に太い影バー）
-            AnyView(
-                Text("本文編集")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 18).padding(.vertical, 8)
-                    .background(
-                        ZStack {
-                            Capsule().fill(Color(white: 0.75)).offset(y: 3)
-                            Capsule().fill(
-                                LinearGradient(colors: [Color(white: 0.97), Color(white: 0.90)],
-                                               startPoint: .top, endPoint: .bottom)
-                            )
-                        }
-                    )
-            ),
-            // 18: 底上げ + ベベル
-            AnyView(
-                Text("本文編集")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 18).padding(.vertical, 8)
-                    .background(
-                        ZStack {
-                            Capsule().fill(Color(white: 0.70)).offset(y: 3)
-                            Capsule().fill(
-                                LinearGradient(colors: [Color(white: 0.98), Color(white: 0.88)],
-                                               startPoint: .top, endPoint: .bottom)
-                            )
-                            .overlay(
-                                Capsule().strokeBorder(
-                                    LinearGradient(colors: [.white.opacity(0.8), .black.opacity(0.1)],
-                                                   startPoint: .top, endPoint: .bottom),
-                                    lineWidth: 1
+                        .overlay(ArcCapsule().stroke(Color(white: 0.75), lineWidth: 0.5))
+                )
+            },
+
+            // A11: ぷっくり（中央明るめ、端暗め、境界パキッと）
+            ButtonPattern(name: "ぷっくりセル塗り") { text, base, _ in
+                AnyView(
+                    Text(text)
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 14).padding(.top, 6).padding(.bottom, 8)
+                        .background(
+                            ZStack {
+                                ArcCapsule().fill(base.opacity(0.3))
+                                // 上1/3を白くする（パキッとハイライト）
+                                ArcCapsule().fill(Color.white.opacity(0.45))
+                                    .mask(
+                                        VStack(spacing: 0) {
+                                            Rectangle().frame(height: 10)
+                                            Color.clear
+                                        }
+                                    )
+                            }
+                        )
+                        .overlay(ArcCapsule().stroke(base.opacity(0.15), lineWidth: 0.5))
+                )
+            },
+
+            // A12: エアブラシ（放射状ハイライト）
+            ButtonPattern(name: "エアブラシ") { text, base, _ in
+                AnyView(
+                    Text(text)
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 14).padding(.top, 6).padding(.bottom, 8)
+                        .background(
+                            ZStack {
+                                ArcCapsule().fill(base.opacity(0.25))
+                                RadialGradient(
+                                    colors: [Color.white.opacity(0.5), .clear],
+                                    center: UnitPoint(x: 0.35, y: 0.3),
+                                    startRadius: 0,
+                                    endRadius: 40
                                 )
-                            )
-                        }
-                    )
-            ),
-            // 19: 底上げ厚め
-            AnyView(
-                Text("本文編集")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 18).padding(.vertical, 8)
-                    .background(
-                        ZStack {
-                            Capsule().fill(Color(white: 0.68)).offset(y: 4)
-                            Capsule().fill(
-                                LinearGradient(colors: [Color(white: 1.0), Color(white: 0.88)],
-                                               startPoint: .top, endPoint: .bottom)
-                            )
-                        }
-                    )
-            ),
-            // 20: グロス + 底上げ + ベベル（全部盛り）
-            AnyView(
-                Text("本文編集")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 18).padding(.vertical, 8)
-                    .background(
-                        ZStack {
-                            Capsule().fill(Color(white: 0.65)).offset(y: 4)
-                            Capsule().fill(
-                                LinearGradient(colors: [Color(white: 0.97), Color(white: 0.85)],
-                                               startPoint: .top, endPoint: .bottom)
-                            )
-                            Capsule().fill(
-                                LinearGradient(colors: [.white.opacity(0.5), .clear],
-                                               startPoint: .top, endPoint: .center)
-                            ).padding(2)
-                        }
-                    )
-                    .overlay(
-                        Capsule().strokeBorder(
-                            LinearGradient(colors: [.white.opacity(0.7), Color(white: 0.6)],
-                                           startPoint: .top, endPoint: .bottom),
-                            lineWidth: 1
+                                .clipShape(ArcCapsule())
+                            }
                         )
-                    )
-            ),
-            // 21: 緑バージョン（フラット影）
-            AnyView(
-                Text("タイトル編集")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 14).padding(.vertical, 8)
-                    .background(Capsule().fill(Color.green.opacity(0.2)))
-                    .shadow(color: .black.opacity(0.2), radius: 3, y: 2)
-            ),
-            // 22: 緑グラデ + 影
-            AnyView(
-                Text("タイトル編集")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 14).padding(.vertical, 8)
-                    .background(
-                        Capsule().fill(
-                            LinearGradient(colors: [Color.green.opacity(0.15), Color.green.opacity(0.3)],
-                                           startPoint: .top, endPoint: .bottom)
+                )
+            },
+
+            // A13: 影だけ（背景なし、影で浮かせる）
+            ButtonPattern(name: "影のみ（背景なし）") { text, _, accent in
+                AnyView(
+                    Text(text)
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 14).padding(.top, 6).padding(.bottom, 8)
+                        .background(ArcCapsule().fill(Color(uiColor: .systemBackground)))
+                        .shadow(color: accent.opacity(0.3), radius: 3, y: 2)
+                )
+            },
+
+            // A14: くっきり枠 + ベタ（コミック風）
+            ButtonPattern(name: "コミック枠") { text, base, accent in
+                AnyView(
+                    Text(text)
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 14).padding(.top, 6).padding(.bottom, 8)
+                        .background(ArcCapsule().fill(base.opacity(0.15)))
+                        .overlay(ArcCapsule().stroke(accent.opacity(0.5), lineWidth: 2))
+                )
+            },
+
+            // A15: すりガラス風
+            ButtonPattern(name: "すりガラス風") { text, base, _ in
+                AnyView(
+                    Text(text)
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 14).padding(.top, 6).padding(.bottom, 8)
+                        .background(
+                            ZStack {
+                                ArcCapsule().fill(.ultraThinMaterial)
+                                ArcCapsule().fill(base.opacity(0.1))
+                            }
                         )
-                    )
-                    .shadow(color: .black.opacity(0.2), radius: 3, y: 2)
-            ),
-            // 23: 緑ベベル
-            AnyView(
-                Text("タイトル編集")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 14).padding(.vertical, 8)
-                    .background(
-                        Capsule().fill(Color.green.opacity(0.2))
-                            .overlay(
-                                Capsule().strokeBorder(
-                                    LinearGradient(colors: [.white.opacity(0.8), Color.green.opacity(0.3)],
-                                                   startPoint: .top, endPoint: .bottom),
-                                    lineWidth: 1.5
-                                )
-                            )
-                    )
-                    .shadow(color: .black.opacity(0.2), radius: 3, y: 2)
-            ),
-            // 24: 緑底上げ
-            AnyView(
-                Text("タイトル編集")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 14).padding(.vertical, 8)
-                    .background(
-                        ZStack {
-                            Capsule().fill(Color.green.opacity(0.4)).offset(y: 3)
-                            Capsule().fill(
-                                LinearGradient(colors: [Color.green.opacity(0.1), Color.green.opacity(0.25)],
-                                               startPoint: .top, endPoint: .bottom)
-                            )
-                        }
-                    )
-            ),
-            // 25: 青バージョン（フラット影）
-            AnyView(
-                Text("タグ編集")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 18).padding(.vertical, 8)
-                    .background(Capsule().fill(Color.blue.opacity(0.15)))
-                    .shadow(color: .black.opacity(0.2), radius: 3, y: 2)
-            ),
-            // 26: 青グラデ + 影
-            AnyView(
-                Text("タグ編集")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 18).padding(.vertical, 8)
-                    .background(
-                        Capsule().fill(
-                            LinearGradient(colors: [Color.blue.opacity(0.1), Color.blue.opacity(0.25)],
-                                           startPoint: .top, endPoint: .bottom)
+                )
+            },
+
+            // A16: ベタ + 白インナー + 枠（合わせ技）
+            ButtonPattern(name: "ベタ+インナー+枠") { text, base, accent in
+                AnyView(
+                    Text(text)
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 14).padding(.top, 6).padding(.bottom, 8)
+                        .background(ArcCapsule().fill(base.opacity(0.25)))
+                        .overlay(
+                            ArcCapsule()
+                                .stroke(Color.white.opacity(0.85), lineWidth: 2.5)
+                                .blur(radius: 1.5)
+                                .mask(ArcCapsule())
                         )
-                    )
-                    .shadow(color: .black.opacity(0.2), radius: 3, y: 2)
-            ),
-            // 27: 青ベベル
-            AnyView(
-                Text("タグ編集")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 18).padding(.vertical, 8)
-                    .background(
-                        Capsule().fill(Color.blue.opacity(0.15))
-                            .overlay(
-                                Capsule().strokeBorder(
-                                    LinearGradient(colors: [.white.opacity(0.8), Color.blue.opacity(0.3)],
-                                                   startPoint: .top, endPoint: .bottom),
-                                    lineWidth: 1.5
-                                )
-                            )
-                    )
-                    .shadow(color: .black.opacity(0.2), radius: 3, y: 2)
-            ),
-            // 28: 青底上げ
-            AnyView(
-                Text("タグ編集")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 18).padding(.vertical, 8)
-                    .background(
-                        ZStack {
-                            Capsule().fill(Color.blue.opacity(0.35)).offset(y: 3)
-                            Capsule().fill(
-                                LinearGradient(colors: [Color.blue.opacity(0.08), Color.blue.opacity(0.2)],
-                                               startPoint: .top, endPoint: .bottom)
-                            )
-                        }
-                    )
-            ),
-            // 29: 全部盛り緑
-            AnyView(
-                Text("タイトル編集")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 14).padding(.vertical, 8)
-                    .background(
-                        ZStack {
-                            Capsule().fill(Color.green.opacity(0.45)).offset(y: 4)
-                            Capsule().fill(
-                                LinearGradient(colors: [Color.green.opacity(0.1), Color.green.opacity(0.28)],
-                                               startPoint: .top, endPoint: .bottom)
-                            )
-                            Capsule().fill(
-                                LinearGradient(colors: [.white.opacity(0.4), .clear],
-                                               startPoint: .top, endPoint: .center)
-                            ).padding(2)
-                        }
-                    )
-                    .overlay(
-                        Capsule().strokeBorder(
-                            LinearGradient(colors: [.white.opacity(0.6), Color.green.opacity(0.3)],
-                                           startPoint: .top, endPoint: .bottom),
-                            lineWidth: 1
-                        )
-                    )
-            ),
-            // 30: 全部盛り青
-            AnyView(
-                Text("タグ編集")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 18).padding(.vertical, 8)
-                    .background(
-                        ZStack {
-                            Capsule().fill(Color.blue.opacity(0.4)).offset(y: 4)
-                            Capsule().fill(
-                                LinearGradient(colors: [Color.blue.opacity(0.08), Color.blue.opacity(0.22)],
-                                               startPoint: .top, endPoint: .bottom)
-                            )
-                            Capsule().fill(
-                                LinearGradient(colors: [.white.opacity(0.4), .clear],
-                                               startPoint: .top, endPoint: .center)
-                            ).padding(2)
-                        }
-                    )
-                    .overlay(
-                        Capsule().strokeBorder(
-                            LinearGradient(colors: [.white.opacity(0.6), Color.blue.opacity(0.3)],
-                                           startPoint: .top, endPoint: .bottom),
-                            lineWidth: 1
-                        )
-                    )
-            ),
+                        .overlay(ArcCapsule().stroke(accent.opacity(0.25), lineWidth: 0.5))
+                )
+            },
         ]
     }
 }

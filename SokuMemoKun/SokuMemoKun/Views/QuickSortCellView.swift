@@ -403,12 +403,12 @@ struct QuickSortCellView: View {
             // 弧の仕切り線
             ArcDivider()
                 .stroke(Color.secondary.opacity(0.5), lineWidth: 2.5)
-                .frame(height: 60)
+                .frame(height: 70)
 
             // 3ボタン（弧に沿って配置・P2ベース押せるボタン）
             ZStack {
                 // 本文編集（中央固定）
-                TapPressableView(shadowHeight: 5, shadowColor: .black.opacity(0.35)) {
+                TapPressableView(shadowHeight: 5, shadowColor: .black.opacity(0.2)) {
                     commitTitle()
                     isTitleFocused = false
                     onEditBody()
@@ -417,7 +417,7 @@ struct QuickSortCellView: View {
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                         .foregroundStyle(.primary)
                         .padding(.horizontal, 18)
-                        .padding(.top, 5).padding(.bottom, 9)
+                        .padding(.top, 6).padding(.bottom, 8)
                         .background(
                             ArcCapsule().fill(
                                 LinearGradient(colors: [Color(white: 0.98), Color(white: 0.88)],
@@ -425,17 +425,18 @@ struct QuickSortCellView: View {
                             )
                         )
                 }
-                .offset(y: -10)
+                .offset(y: -17)
 
                 // タイトル編集（左）
-                TapPressableView(shadowHeight: 5, shadowColor: .black.opacity(0.35)) {
+                TapPressableView(shadowHeight: 5, shadowColor: .black.opacity(0.2)) {
                     isTitleFocused = true
                 } label: {
                     Text("タイトル編集")
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                         .foregroundStyle(.primary)
+                        
                         .frame(width: 90)
-                        .padding(.top, 5).padding(.bottom, 9)
+                        .padding(.top, 6).padding(.bottom, 8)
                         .background(
                             ZStack {
                                 ArcCapsule().fill(Color(white: 0.95))
@@ -446,11 +447,11 @@ struct QuickSortCellView: View {
                             }
                         )
                 }
-                .rotationEffect(.degrees(-11))
-                .offset(x: -135, y: 0)
+                .rotationEffect(.degrees(-13))
+                .offset(x: -128, y: -2)
 
                 // タグ編集（右）
-                TapPressableView(shadowHeight: 5, shadowColor: .black.opacity(0.35)) {
+                TapPressableView(shadowHeight: 5, shadowColor: .black.opacity(0.2)) {
                     withAnimation(.easeInOut(duration: 0.25)) {
                         showDialArea.toggle()
                     }
@@ -458,8 +459,9 @@ struct QuickSortCellView: View {
                     Text("タグ編集")
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                         .foregroundStyle(.primary)
+                        
                         .frame(width: 90)
-                        .padding(.top, 5).padding(.bottom, 9)
+                        .padding(.top, 6).padding(.bottom, 8)
                         .background(
                             ZStack {
                                 ArcCapsule().fill(Color(white: 0.95))
@@ -470,8 +472,8 @@ struct QuickSortCellView: View {
                             }
                         )
                 }
-                .rotationEffect(.degrees(11))
-                .offset(x: 135, y: 0)
+                .rotationEffect(.degrees(13))
+                .offset(x: 128, y: -2)
             }
             .padding(.top, -22)
 

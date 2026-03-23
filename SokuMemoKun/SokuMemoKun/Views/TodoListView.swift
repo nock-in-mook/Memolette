@@ -92,6 +92,7 @@ struct TodoListView: View {
                                 }
                             }
                             .padding(.top, 8)
+                            .padding(.bottom, 60)
                         }
                         .scrollDismissesKeyboard(.interactively)
                         .onTapGesture {
@@ -107,8 +108,9 @@ struct TodoListView: View {
                             if let id = newID {
                                 // 少し待ってからスクロール（ForEach描画完了後）
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                        proxy.scrollTo(id, anchor: .center)
+                                    withAnimation(.easeInOut(duration: 0.15)) {
+                                        // 見える位置にスクロール（最小限の移動）
+                                        proxy.scrollTo(id, anchor: .bottom)
                                     }
                                 }
                             }

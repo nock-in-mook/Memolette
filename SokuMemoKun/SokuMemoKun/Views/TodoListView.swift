@@ -284,18 +284,11 @@ struct TodoListView: View {
 
             // メインコンテンツ（帯スタイル）
             HStack(spacing: 8) {
-                // チェックボックス
-                Button {
-                    item.isDone.toggle()
-                    item.updatedAt = Date()
-                    try? modelContext.save()
-                } label: {
-                    Image(systemName: item.isDone ? "checkmark.circle.fill" : "circle")
-                        .font(.system(size: 20))
-                        .foregroundStyle(item.isDone ? .green : .secondary.opacity(0.5))
-                        .animation(.easeInOut(duration: 0.2), value: item.isDone)
-                }
-                .buttonStyle(.plain)
+                // チェックボックスアイコン
+                Image(systemName: item.isDone ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 20))
+                    .foregroundStyle(item.isDone ? .green : .secondary.opacity(0.5))
+                    .animation(.easeInOut(duration: 0.2), value: item.isDone)
 
                 // タイトル（通常表示 or インライン編集）
                 if isEditing {
@@ -315,10 +308,6 @@ struct TodoListView: View {
                         .foregroundStyle(item.isDone ? .secondary : .primary)
                         .animation(.easeInOut(duration: 0.2), value: item.isDone)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            startEditing(item: item)
-                        }
                 }
 
                 // 展開/折りたたみ矢印
@@ -367,6 +356,15 @@ struct TodoListView: View {
             )
             .padding(.leading, 16 + indentLeading(depth))
             .padding(.trailing, 16)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                // 編集中でなければチェックトグル
+                if !isEditing {
+                    item.isDone.toggle()
+                    item.updatedAt = Date()
+                    try? modelContext.save()
+                }
+            }
             .background(Color(UIColor.systemBackground))
             .offset(x: isSwiped ? -70 : 0)
             .gesture(

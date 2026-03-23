@@ -78,7 +78,7 @@ struct TodoListView: View {
                                 HStack(spacing: 4) {
                                     Image(systemName: "hand.tap")
                                         .font(.system(size: 10))
-                                    Text("項目を長押しで編集・削除")
+                                    Text("長押しで編集 ・ 左スワイプで削除")
                                         .font(.system(size: 11))
                                 }
                                 .foregroundStyle(.secondary.opacity(0.4))

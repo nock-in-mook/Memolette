@@ -42,16 +42,10 @@ struct TodoListsView: View {
                     }
                 }
             }
-            .alert("新しいリスト", isPresented: $showNewListDialog) {
-                TextField("リストのタイトル", text: $newListTitle)
-                Button("作成") {
-                    createList()
+            .overlay {
+                if showNewListDialog {
+                    newListDialogOverlay
                 }
-                Button("キャンセル", role: .cancel) {
-                    newListTitle = ""
-                }
-            } message: {
-                Text("リストのタイトルを入力してください")
             }
             .fullScreenCover(item: $selectedList) { list in
                 TodoListView(todoList: list) {
@@ -166,6 +160,92 @@ struct TodoListsView: View {
         return "\(done)/\(total) 完了"
     }
 
+    // MARK: - 新規リスト作成ダイアログ（リッチ版）
+    private var newListDialogOverlay: some View {
+        ZStack {
+            // 半透明背景
+            Color.black.opacity(0.4)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        showNewListDialog = false
+                        newListTitle = ""
+                    }
+                }
+
+            // ダイアログカード
+            VStack(spacing: 20) {
+                // タイトル
+                Text("新しいリスト")
+                    .font(.system(size: 18, weight: .bold))
+
+                Text("リストのタイトルを入力してください")
+                    .font(.system(size: 14))
+                    .foregroundStyle(.secondary)
+
+                // テキスト入力
+                TextField("例: 買い物リスト", text: $newListTitle)
+                    .font(.system(size: 16))
+                    .padding(12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color(UIColor.tertiarySystemBackground))
+                    )
+                    .focused($isNewListTitleFocused)
+                    .onSubmit {
+                        createList()
+                    }
+                    .onAppear {
+                        isNewListTitleFocused = true
+                    }
+
+                // ボタン
+                HStack(spacing: 12) {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showNewListDialog = false
+                            newListTitle = ""
+                        }
+                    } label: {
+                        Text("キャンセル")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 11)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color(UIColor.tertiarySystemBackground))
+                            )
+                    }
+
+                    Button {
+                        createList()
+                    } label: {
+                        Text("作成")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 11)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(newListTitle.trimmingCharacters(in: .whitespaces).isEmpty ? Color.gray : Color.blue)
+                            )
+                    }
+                    .disabled(newListTitle.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            }
+            .padding(24)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(UIColor.secondarySystemBackground))
+                    .shadow(color: .black.opacity(0.2), radius: 20, y: 8)
+            )
+            .padding(.horizontal, 32)
+            .transition(.scale(scale: 0.9).combined(with: .opacity))
+        }
+        .animation(.easeInOut(duration: 0.2), value: showNewListDialog)
+    }
+
     // MARK: - リスト作成
     private func createList() {
         let trimmed = newListTitle.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -174,8 +254,13 @@ struct TodoListsView: View {
         modelContext.insert(list)
         try? modelContext.save()
         newListTitle = ""
+        withAnimation(.easeInOut(duration: 0.2)) {
+            showNewListDialog = false
+        }
         // 作成後すぐに開く
-        selectedList = list
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            selectedList = list
+        }
     }
 
     // MARK: - リスト削除（中の項目も削除）

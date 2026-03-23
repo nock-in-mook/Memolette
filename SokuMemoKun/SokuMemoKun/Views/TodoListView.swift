@@ -23,11 +23,11 @@ struct TodoListView: View {
         queryItems.filter { $0.listID == todoList.id }
     }
 
-    // 新規項目入力用（ルートレベル）
+    // 新規項目入力用
     @State private var newItemText = ""
-    @FocusState private var isNewItemFocused: Bool
-    // 子項目入力用
     @State private var newChildTexts: [UUID: String] = [:]
+    @State private var activeAddField: String?   // 入力欄を表示中のrowID
+    @FocusState private var isNewItemFocused: Bool
     @FocusState private var focusedAddField: String?
 
     // 展開中の項目（子を表示中）
@@ -103,6 +103,7 @@ struct TodoListView: View {
                         }
                         withAnimation(.easeInOut(duration: 0.2)) {
                             swipedItemID = nil
+                            activeAddField = nil
                         }
                     }
                 }
@@ -239,12 +240,8 @@ struct TodoListView: View {
             appendRows(for: item, depth: 0, into: &rows)
         }
 
-        // ルートレベルの追加行
+        // ルートレベルの追加ボタン
         rows.append(FlatRow(id: "add-root", kind: .addButton(parentID: nil), depth: 0))
-        // 入力中ならもう1行先読み追加行を出す
-        if !newItemText.isEmpty {
-            rows.append(FlatRow(id: "add-root-next", kind: .addButton(parentID: nil), depth: 0))
-        }
         return rows
     }
 
@@ -259,12 +256,8 @@ struct TodoListView: View {
             for child in kids {
                 appendRows(for: child, depth: depth + 1, into: &rows)
             }
-            // 子の追加行
+            // 子の追加ボタン
             rows.append(FlatRow(id: "add-\(item.id.uuidString)", kind: .addButton(parentID: item.id), depth: depth + 1))
-            // 子レベルでも入力中なら先読み行を出す
-            if let text = newChildTexts[item.id], !text.isEmpty {
-                rows.append(FlatRow(id: "add-\(item.id.uuidString)-next", kind: .addButton(parentID: item.id), depth: depth + 1))
-            }
         }
     }
 
@@ -458,80 +451,82 @@ struct TodoListView: View {
         .animation(.easeInOut(duration: 0.15), value: dragTargetIndex)
     }
 
-    // MARK: - 追加行（「+ 項目を追加」）
+    // MARK: - 追加ボタン / 入力行
     @ViewBuilder
     private func addItemRow(parentID: UUID?, depth: Int, rowID: String) -> some View {
-        let isNext = rowID.hasSuffix("-next")
+        if activeAddField == rowID {
+            // 入力モード
+            HStack(spacing: 8) {
+                Image(systemName: "plus")
+                    .font(.system(size: 14))
+                    .foregroundStyle(.blue.opacity(0.5))
 
-        HStack(spacing: 8) {
-            Image(systemName: "plus")
-                .font(.system(size: 14))
-                .foregroundStyle(.secondary.opacity(0.4))
-
-            if isNext {
-                // 先読み行：タップで前の入力を確定し、こちらにフォーカス移動
-                Text("項目を追加")
-                    .font(.system(size: 16))
-                    .foregroundStyle(.secondary.opacity(0.4))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        if parentID == nil {
+                if parentID == nil {
+                    TextField("項目を追加", text: $newItemText)
+                        .font(.system(size: 16))
+                        .focused($isNewItemFocused)
+                        .onSubmit {
                             let text = newItemText
                             newItemText = ""
-                            addItem(title: text, parentID: nil)
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                                isNewItemFocused = true
-                            }
-                        } else if let pid = parentID {
-                            let text = newChildTexts[pid] ?? ""
-                            newChildTexts[pid] = ""
-                            addItem(title: text, parentID: pid)
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                                focusedAddField = "add-\(pid.uuidString)"
+                            if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                activeAddField = nil
+                            } else {
+                                addItem(title: text, parentID: nil)
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                    isNewItemFocused = true
+                                }
                             }
                         }
-                    }
-            } else if parentID == nil {
-                TextField("項目を追加", text: $newItemText)
-                    .font(.system(size: 16))
-                    .foregroundStyle(.secondary)
-                    .focused($isNewItemFocused)
-                    .onSubmit {
-                        let text = newItemText
-                        newItemText = ""
-                        addItem(title: text, parentID: nil)
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                            isNewItemFocused = true
+                } else {
+                    let binding = Binding<String>(
+                        get: { newChildTexts[parentID!] ?? "" },
+                        set: { newChildTexts[parentID!] = $0 }
+                    )
+                    TextField("項目を追加", text: binding)
+                        .font(.system(size: 16))
+                        .focused($focusedAddField, equals: rowID)
+                        .onSubmit {
+                            let text = binding.wrappedValue
+                            newChildTexts[parentID!] = ""
+                            if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                activeAddField = nil
+                            } else {
+                                addItem(title: text, parentID: parentID)
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                    focusedAddField = rowID
+                                }
+                            }
                         }
-                    }
-            } else {
-                let binding = Binding<String>(
-                    get: { newChildTexts[parentID!] ?? "" },
-                    set: { newChildTexts[parentID!] = $0 }
-                )
-                TextField("項目を追加", text: binding)
-                    .font(.system(size: 16))
-                    .foregroundStyle(.secondary)
-                    .focused($focusedAddField, equals: rowID)
-                    .onSubmit {
-                        let text = binding.wrappedValue
-                        newChildTexts[parentID!] = ""
-                        addItem(title: text, parentID: parentID)
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                            focusedAddField = rowID
-                        }
-                    }
+                }
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .strokeBorder(Color.blue.opacity(0.25), style: StrokeStyle(lineWidth: 1, dash: [4]))
+            )
+            .padding(.leading, 16 + indentLeading(depth))
+            .padding(.trailing, 16)
+        } else {
+            // ＋ボタンだけ
+            Button {
+                activeAddField = rowID
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    if parentID == nil {
+                        isNewItemFocused = true
+                    } else {
+                        focusedAddField = rowID
+                    }
+                }
+            } label: {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 22))
+                    .foregroundStyle(.secondary.opacity(0.25))
+            }
+            .padding(.leading, 16 + indentLeading(depth) + 14)
+            .padding(.vertical, 4)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .strokeBorder(Color.secondary.opacity(0.2), style: StrokeStyle(lineWidth: 1, dash: [4]))
-        )
-        .padding(.leading, 16 + indentLeading(depth))
-        .padding(.trailing, 16)
     }
 
     // MARK: - 項目を削除（子も再帰的に削除）

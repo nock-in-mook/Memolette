@@ -143,9 +143,9 @@ struct TodoListsView: View {
             selectedList = list
         } label: {
             HStack(spacing: 12) {
-                Image(systemName: "checklist")
+                Image(systemName: "bookmark.fill")
                     .font(.system(size: 20))
-                    .foregroundStyle(todoTabColor)
+                    .foregroundStyle(.orange)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(list.title)

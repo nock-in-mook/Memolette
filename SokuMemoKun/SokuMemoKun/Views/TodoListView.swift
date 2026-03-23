@@ -103,6 +103,16 @@ struct TodoListView: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                // キーボード上の「完了」ボタン
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("完了") {
+                        if let editID = editingItemID,
+                           let item = allItems.first(where: { $0.id == editID }) {
+                            commitEdit(item: item)
+                        }
+                    }
+                }
                 ToolbarItem(placement: .topBarLeading) {
                     Button("戻る") {
                         onDismiss()

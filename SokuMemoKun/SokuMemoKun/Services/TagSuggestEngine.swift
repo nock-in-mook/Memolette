@@ -177,8 +177,8 @@ class TagSuggestEngine {
         }
 
         // 親タグと子タグを分類
-        let parentTags = tags.filter { $0.parentTagID == nil }
-        let childTags = tags.filter { $0.parentTagID != nil }
+        let parentTags = tags.filter { $0.parentTagID == nil && !$0.isSystem }
+        let childTags = tags.filter { $0.parentTagID != nil && !$0.isSystem }
 
         // === セクション1: おすすめタグ（辞書マッチあり） ===
         var dictResults: [Suggestion] = []

@@ -12,7 +12,7 @@ struct TagEditView: View {
 
     // 親タグのみ（sortOrder順）
     private var parentTags: [Tag] {
-        tags.filter { $0.parentTagID == nil }.sorted { $0.sortOrder < $1.sortOrder }
+        tags.filter { $0.parentTagID == nil && !$0.isSystem }.sorted { $0.sortOrder < $1.sortOrder }
     }
 
     var body: some View {

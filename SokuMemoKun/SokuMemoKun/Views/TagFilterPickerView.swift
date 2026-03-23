@@ -13,7 +13,7 @@ struct TagFilterPickerView: View {
                 tagButton(label: "すべて", id: "")
 
                 // 既存タグ
-                ForEach(tags) { tag in
+                ForEach(tags.filter { !$0.isSystem }) { tag in
                     tagButton(label: tag.name, id: tag.id.uuidString)
                 }
             }

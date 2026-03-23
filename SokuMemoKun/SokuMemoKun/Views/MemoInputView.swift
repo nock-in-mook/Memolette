@@ -227,7 +227,7 @@ struct MemoInputView: View {
 
     private var parentOptions: [(id: String, name: String, color: Color)] {
         var list: [(String, String, Color)] = [("none", "タグなし", tagColor(for: 0))]
-        let parentTags = tags.filter { $0.parentTagID == nil }.sorted { $0.sortOrder < $1.sortOrder }
+        let parentTags = tags.filter { $0.parentTagID == nil && !$0.isSystem }.sorted { $0.sortOrder < $1.sortOrder }
         for tag in parentTags {
             list.append((tag.id.uuidString, tag.name, tagColor(for: tag.colorIndex)))
         }

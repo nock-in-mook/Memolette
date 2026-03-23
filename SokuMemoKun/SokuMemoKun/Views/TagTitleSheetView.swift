@@ -25,7 +25,7 @@ struct TagTitleSheetView: View {
 
                 Section("タグを選択（任意）") {
                     // 既存タグの選択
-                    ForEach(existingTags) { tag in
+                    ForEach(existingTags.filter { !$0.isSystem }) { tag in
                         Button {
                             toggleTag(tag)
                         } label: {

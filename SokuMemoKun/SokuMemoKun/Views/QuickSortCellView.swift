@@ -656,7 +656,7 @@ struct QuickSortCellView: View {
     // MARK: - ルーレットエリア
 
     private var parentOptions: [(id: String, name: String, color: Color)] {
-        let parentTags = tags.filter { $0.parentTagID == nil }.sorted { $0.sortOrder < $1.sortOrder }
+        let parentTags = tags.filter { $0.parentTagID == nil && !$0.isSystem }.sorted { $0.sortOrder < $1.sortOrder }
         return [("none", "タグなし", Color(white: 0.82))] +
             parentTags.map { ($0.id.uuidString, $0.name, tagColor(for: $0.colorIndex)) }
     }

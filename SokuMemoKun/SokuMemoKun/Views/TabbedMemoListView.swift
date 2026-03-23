@@ -436,7 +436,7 @@ struct TabbedMemoListView: View {
         items.append(("すべて", nil, allTabColorIndex, allTagSortOrder))
         items.append(("よく見る", nil, frequentTabColorIndex, frequentTagSortOrder))
         items.append(("タグなし", nil, 0, noTagSortOrder))
-        for tag in tags where tag.parentTagID == nil {
+        for tag in tags where tag.parentTagID == nil && !tag.isSystem {
             items.append((truncateTabName(tag.name), tag, tag.colorIndex, tag.sortOrder))
         }
         items.sort { $0.order < $1.order }

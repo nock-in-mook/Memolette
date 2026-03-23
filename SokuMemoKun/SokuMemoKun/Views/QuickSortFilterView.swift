@@ -29,7 +29,7 @@ struct QuickSortFilterView: View {
 
     // 親タグ一覧
     private var parentTags: [Tag] {
-        allTags.filter { $0.parentTagID == nil }
+        allTags.filter { $0.parentTagID == nil && !$0.isSystem }
     }
 
     private var filteredCount: Int { filteredMemos.count }

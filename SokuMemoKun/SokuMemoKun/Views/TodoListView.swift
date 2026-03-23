@@ -32,16 +32,6 @@ struct TodoListView: View {
     @State private var isAddingNewItems = false  // 連続追加モード中か
     @FocusState private var isEditingFocused: Bool
 
-    // スワイプ削除
-    @State private var swipedItemID: UUID?
-    @State private var swipeOffset: CGFloat = 0
-
-    // ドラッグ並び替え（ForEachの順序は変えず、オフセットだけで表現）
-    @State private var draggingItemID: UUID?
-    @State private var dragTranslation: CGFloat = 0
-    @State private var dragParentID: UUID?
-    @State private var dragOriginalIndex: Int = 0
-    private let estimatedRowHeight: CGFloat = 48
 
     // 進捗情報
     private var totalCount: Int { allItems.count }
@@ -71,7 +61,6 @@ struct TodoListView: View {
                                     switch row.kind {
                                     case .item(let item):
                                         todoRow(item: item, depth: row.depth)
-                                            .zIndex(draggingItemID == item.id ? 10 : 0)
                                             .id(item.id)
                                     case .addButton(let parentID):
                                         addItemRow(parentID: parentID, depth: row.depth, rowID: row.id)
@@ -83,7 +72,7 @@ struct TodoListView: View {
                                     HStack(spacing: 5) {
                                         Image(systemName: "hand.tap")
                                             .font(.system(size: 12))
-                                        Text("タップで編集 ・ 長押しで並び替え ・ 左スワイプで削除")
+                                        Text("タップで編集 ・ 長押しでメニュー")
                                             .font(.system(size: 13))
                                     }
                                     .foregroundStyle(.secondary.opacity(0.4))
@@ -95,17 +84,6 @@ struct TodoListView: View {
                             .padding(.bottom, 60)
                         }
                         .scrollDismissesKeyboard(.interactively)
-                        .simultaneousGesture(
-                            TapGesture().onEnded {
-                                if let editID = editingItemID,
-                                   let item = allItems.first(where: { $0.id == editID }) {
-                                    commitEdit(item: item)
-                                }
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    swipedItemID = nil
-                                }
-                            }
-                        )
                         .onChange(of: editingItemID) { _, newID in
                             if let id = newID {
                                 // 少し待ってからスクロール（ForEach描画完了後）
@@ -289,181 +267,120 @@ struct TodoListView: View {
     private func todoRow(item: TodoItem, depth: Int) -> some View {
         let isExpanded = expandedItems.contains(item.id)
         let hasKids = hasChildren(item.id)
-        let isSwiped = swipedItemID == item.id
         let isEditing = editingItemID == item.id
 
-        ZStack(alignment: .trailing) {
-            // 削除ボタン（スワイプで露出）
+        // メインコンテンツ（帯スタイル）
+        HStack(spacing: 8) {
+            // チェックボックス
             Button {
-                withAnimation(.easeInOut(duration: 0.25)) {
-                    deleteItem(item)
-                    swipedItemID = nil
-                }
+                item.isDone.toggle()
+                item.updatedAt = Date()
+                try? modelContext.save()
             } label: {
-                Image(systemName: "trash")
-                    .font(.system(size: 16))
-                    .foregroundStyle(.white)
-                    .frame(width: 70)
-                    .frame(maxHeight: .infinity)
+                Image(systemName: item.isDone ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 22))
+                    .foregroundStyle(item.isDone ? .green : .secondary.opacity(0.5))
+                    .animation(.easeInOut(duration: 0.2), value: item.isDone)
+                    .frame(width: 36, height: 36)
+                    .contentShape(Rectangle())
             }
-            .background(Color.red)
+            .buttonStyle(.plain)
 
-            // メインコンテンツ（帯スタイル）
-            HStack(spacing: 8) {
-                // チェックボックス（ここだけがチェックトグル）
+            // タイトル（通常表示 or インライン編集）
+            if isEditing {
+                TextField("項目を入力", text: $editingText)
+                    .font(.system(size: 16))
+                    .focused($isEditingFocused)
+                    .onSubmit {
+                        submitEdit(item: item)
+                    }
+                    .onAppear {
+                        isEditingFocused = true
+                    }
+            } else {
+                Text(item.title)
+                    .font(.system(size: 16))
+                    .strikethrough(item.isDone, color: .secondary)
+                    .foregroundStyle(item.isDone ? .secondary : .primary)
+                    .animation(.easeInOut(duration: 0.2), value: item.isDone)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        startEditing(item: item)
+                    }
+            }
+
+            // 展開/折りたたみ矢印
+            if hasKids {
                 Button {
-                    item.isDone.toggle()
-                    item.updatedAt = Date()
-                    try? modelContext.save()
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        if isExpanded {
+                            expandedItems.remove(item.id)
+                        } else {
+                            expandedItems.insert(item.id)
+                        }
+                    }
                 } label: {
-                    Image(systemName: item.isDone ? "checkmark.circle.fill" : "circle")
-                        .font(.system(size: 22))
-                        .foregroundStyle(item.isDone ? .green : .secondary.opacity(0.5))
-                        .animation(.easeInOut(duration: 0.2), value: item.isDone)
-                        .frame(width: 36, height: 36)
-                        .contentShape(Rectangle())
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.secondary.opacity(0.5))
+                        .frame(width: 30, height: 30)
                 }
                 .buttonStyle(.plain)
-
-                // タイトル（通常表示 or インライン編集）
-                if isEditing {
-                    TextField("項目を入力", text: $editingText)
-                        .font(.system(size: 16))
-                        .focused($isEditingFocused)
-                        .onSubmit {
-                            submitEdit(item: item)
+            } else {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        if isExpanded {
+                            expandedItems.remove(item.id)
+                        } else {
+                            expandedItems.insert(item.id)
                         }
-                        .onAppear {
-                            isEditingFocused = true
-                        }
-                } else {
-                    Text(item.title)
-                        .font(.system(size: 16))
-                        .strikethrough(item.isDone, color: .secondary)
-                        .foregroundStyle(item.isDone ? .secondary : .primary)
-                        .animation(.easeInOut(duration: 0.2), value: item.isDone)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            startEditing(item: item)
-                        }
-                }
-
-                // 展開/折りたたみ矢印
-                if hasKids {
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            if isExpanded {
-                                expandedItems.remove(item.id)
-                            } else {
-                                expandedItems.insert(item.id)
-                            }
-                        }
-                    } label: {
-                        Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.secondary.opacity(0.5))
-                            .frame(width: 30, height: 30)
                     }
-                    .buttonStyle(.plain)
-                } else {
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            if isExpanded {
-                                expandedItems.remove(item.id)
-                            } else {
-                                expandedItems.insert(item.id)
-                            }
-                        }
-                    } label: {
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.secondary.opacity(0.2))
-                            .frame(width: 30, height: 30)
-                    }
-                    .buttonStyle(.plain)
+                } label: {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.secondary.opacity(0.2))
+                        .frame(width: 30, height: 30)
                 }
+                .buttonStyle(.plain)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(item.isDone
-                          ? Color.green.opacity(0.08)
-                          : Color(UIColor.secondarySystemBackground))
-            )
-            .padding(.leading, 16 + indentLeading(depth))
-            .padding(.trailing, 16)
-            .background(Color(UIColor.systemBackground))
-            .offset(x: isSwiped ? -70 : 0)
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 20)
-                    .onChanged { value in
-                        guard draggingItemID == nil else { return }
-                        // 横方向のドラッグのみ反応（縦スクロールを邪魔しない）
-                        guard abs(value.translation.width) > abs(value.translation.height) else { return }
-                        if value.translation.width < 0 {
-                            if swipedItemID != item.id {
-                                swipedItemID = nil
-                            }
-                        }
-                    }
-                    .onEnded { value in
-                        guard draggingItemID == nil else { return }
-                        guard abs(value.translation.width) > abs(value.translation.height) else { return }
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            if value.translation.width < -50 {
-                                swipedItemID = item.id
-                            } else {
-                                swipedItemID = nil
-                            }
-                        }
-                    }
-            )
-            // 長押し＋ドラッグで並び替え
-            .simultaneousGesture(
-                LongPressGesture(minimumDuration: 0.4)
-                    .sequenced(before: DragGesture())
-                    .onChanged { value in
-                        switch value {
-                        case .second(true, let drag):
-                            if draggingItemID == nil {
-                                draggingItemID = item.id
-                                dragParentID = item.parentID
-                                dragTranslation = 0
-                                let siblings = allItems
-                                    .filter { $0.parentID == item.parentID }
-                                    .sorted { $0.sortOrder < $1.sortOrder }
-                                dragOriginalIndex = siblings.firstIndex(where: { $0.id == item.id }) ?? 0
-                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                // 編集中なら確定
-                                if let editID = editingItemID,
-                                   let editItem = allItems.first(where: { $0.id == editID }) {
-                                    commitEdit(item: editItem)
-                                }
-                                swipedItemID = nil
-                            }
-                            if let drag {
-                                dragTranslation = drag.translation.height
-                            }
-                        default: break
-                        }
-                    }
-                    .onEnded { _ in
-                        commitReorder()
-                        draggingItemID = nil
-                        dragTranslation = 0
-                        dragParentID = nil
-                    }
-            )
         }
-        .clipped()
-        // ドラッグ中: ドラッグ行は指に追従、他の行はシフトして空きを作る
-        .offset(y: dragYOffset(for: item))
-        .opacity(draggingItemID == item.id ? 0.85 : 1.0)
-        .scaleEffect(draggingItemID == item.id ? 1.04 : 1.0)
-        .shadow(color: draggingItemID == item.id ? .black.opacity(0.2) : .clear, radius: 10, y: 4)
-        .animation(.easeInOut(duration: 0.15), value: dragTargetIndex)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(item.isDone
+                      ? Color.green.opacity(0.08)
+                      : Color(UIColor.secondarySystemBackground))
+        )
+        .padding(.leading, 16 + indentLeading(depth))
+        .padding(.trailing, 16)
+        // 長押しメニュー（削除・並び替え）
+        .contextMenu {
+            Button {
+                startEditing(item: item)
+            } label: {
+                Label("編集", systemImage: "pencil")
+            }
+            Button {
+                moveItem(item, direction: .up)
+            } label: {
+                Label("上へ移動", systemImage: "arrow.up")
+            }
+            Button {
+                moveItem(item, direction: .down)
+            } label: {
+                Label("下へ移動", systemImage: "arrow.down")
+            }
+            Divider()
+            Button(role: .destructive) {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    deleteItem(item)
+                }
+            } label: {
+                Label("削除", systemImage: "trash")
+            }
+        }
     }
 
     // MARK: - 追加ボタン
@@ -492,67 +409,33 @@ struct TodoListView: View {
         try? modelContext.save()
     }
 
-    // MARK: - ドラッグ並び替え（ForEach順序は不変、オフセットのみで表現）
+    // MARK: - 項目の並び替え（コンテキストメニュー用）
+    private enum MoveDirection { case up, down }
 
-    // ドラッグ先のインデックス（同階層内）
-    private var dragTargetIndex: Int {
-        guard draggingItemID != nil else { return -1 }
-        let siblings = allItems
-            .filter { $0.parentID == dragParentID }
-            .sorted { $0.sortOrder < $1.sortOrder }
-        let shift = Int(round(dragTranslation / estimatedRowHeight))
-        return max(0, min(siblings.count - 1, dragOriginalIndex + shift))
-    }
-
-    // 各行のY方向オフセット
-    private func dragYOffset(for item: TodoItem) -> CGFloat {
-        guard let draggingID = draggingItemID else { return 0 }
-
-        // ドラッグ中の行: 指に追従
-        if item.id == draggingID {
-            return dragTranslation
-        }
-
-        // 別階層の行: 動かさない
-        guard item.parentID == dragParentID else { return 0 }
-
-        let siblings = allItems
-            .filter { $0.parentID == dragParentID }
-            .sorted { $0.sortOrder < $1.sortOrder }
-
-        guard let thisIndex = siblings.firstIndex(where: { $0.id == item.id }) else { return 0 }
-        let target = dragTargetIndex
-
-        // ドラッグ元より下にいて、ターゲットが自分以上の位置 → 上にずれる
-        if dragOriginalIndex < thisIndex && target >= thisIndex {
-            return -estimatedRowHeight
-        }
-        // ドラッグ元より上にいて、ターゲットが自分以下の位置 → 下にずれる
-        if dragOriginalIndex > thisIndex && target <= thisIndex {
-            return estimatedRowHeight
-        }
-        return 0
-    }
-
-    // ドロップ時: sortOrderを確定
-    private func commitReorder() {
-        guard let draggingID = draggingItemID else { return }
+    private func moveItem(_ item: TodoItem, direction: MoveDirection) {
         var siblings = allItems
-            .filter { $0.parentID == dragParentID }
+            .filter { $0.parentID == item.parentID }
             .sorted { $0.sortOrder < $1.sortOrder }
 
-        guard let originalIndex = siblings.firstIndex(where: { $0.id == draggingID }) else { return }
-        let target = dragTargetIndex
+        guard let index = siblings.firstIndex(where: { $0.id == item.id }) else { return }
 
-        if target != originalIndex {
-            let item = siblings.remove(at: originalIndex)
-            siblings.insert(item, at: target)
-            for (i, sibling) in siblings.enumerated() {
-                sibling.sortOrder = i
-                sibling.updatedAt = Date()
-            }
-            try? modelContext.save()
+        let targetIndex: Int
+        switch direction {
+        case .up:
+            guard index > 0 else { return }
+            targetIndex = index - 1
+        case .down:
+            guard index < siblings.count - 1 else { return }
+            targetIndex = index + 1
         }
+
+        siblings.swapAt(index, targetIndex)
+
+        for (i, sibling) in siblings.enumerated() {
+            sibling.sortOrder = i
+            sibling.updatedAt = Date()
+        }
+        try? modelContext.save()
     }
 
     // MARK: - インライン編集開始（既存項目をタップ）
@@ -564,7 +447,6 @@ struct TodoListView: View {
             deleteItem(editItem)
         }
         isAddingNewItems = false
-        swipedItemID = nil
         editingItemID = item.id
         editingText = item.title
     }
@@ -627,7 +509,6 @@ struct TodoListView: View {
         }
 
         isAddingNewItems = true
-        swipedItemID = nil
         editingItemID = item.id
         editingText = ""
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {

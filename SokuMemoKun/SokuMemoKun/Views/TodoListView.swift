@@ -387,14 +387,6 @@ struct TodoListView: View {
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
         .listRowInsets(EdgeInsets(top: 2, leading: 16, bottom: 2, trailing: 16))
-        // 長押しメニュー
-        .contextMenu {
-            Button {
-                startEditing(item: item)
-            } label: {
-                Label("編集", systemImage: "pencil")
-            }
-        }
     }
 
     // MARK: - 追加ボタン

@@ -15,40 +15,69 @@ struct TodoListsView: View {
     // 選択中のリスト（編集画面へ遷移）
     @State private var selectedList: TodoList?
 
+    // TODOタブの緑色
+    private let todoTabColor = Color(red: 0.55, green: 0.82, blue: 0.55)
+
     var body: some View {
         ZStack {
-            NavigationStack {
-                Group {
+            VStack(spacing: 0) {
+                // ツールバー
+                HStack {
+                    Button("閉じる") {
+                        onDismiss()
+                    }
+                    .font(.system(size: 16))
+                    Spacer()
+                    Button {
+                        showNewListDialog = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 16, weight: .semibold))
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .padding(.bottom, 4)
+
+                // TODOタブ
+                HStack(spacing: 0) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "checklist")
+                            .font(.system(size: 14, weight: .bold))
+                        Text("TODO")
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                    }
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 10)
+                    .background(
+                        TrapezoidTabShape()
+                            .fill(todoTabColor)
+                            .shadow(color: .black.opacity(0.4), radius: 5, x: -3, y: 3)
+                    )
+                    Spacer()
+                }
+                .padding(.horizontal, 8)
+                .padding(.top, 6)
+
+                // コンテンツエリア（緑背景）
+                ZStack {
+                    todoTabColor.ignoresSafeArea(edges: .bottom)
+
                     if todoLists.isEmpty {
                         emptyView
                     } else {
                         listView
                     }
                 }
-                .navigationTitle("ToDoリスト")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button("閉じる") {
-                            onDismiss()
-                        }
-                    }
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button {
-                            showNewListDialog = true
-                        } label: {
-                            Image(systemName: "plus")
-                        }
-                    }
-                }
-                .fullScreenCover(item: $selectedList) { list in
-                    TodoListView(todoList: list) {
-                        selectedList = nil
-                    }
+            }
+            .fullScreenCover(item: $selectedList) { list in
+                TodoListView(todoList: list) {
+                    selectedList = nil
                 }
             }
 
-            // ダイアログはNavigationStackの外（キーボードの影響を受けない）
+            // ダイアログ
             if showNewListDialog {
                 newListDialogOverlay
             }
@@ -62,23 +91,24 @@ struct TodoListsView: View {
 
             Image(systemName: "checklist")
                 .font(.system(size: 48))
-                .foregroundStyle(.secondary.opacity(0.4))
+                .foregroundStyle(.white.opacity(0.5))
 
             Text("ToDoリストはまだありません")
-                .font(.system(size: 17))
-                .foregroundStyle(.secondary)
+                .font(.system(size: 17, design: .rounded))
+                .foregroundStyle(.white.opacity(0.7))
 
             Button {
                 showNewListDialog = true
             } label: {
                 Label("リストを作成", systemImage: "plus")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .foregroundStyle(todoTabColor)
                     .padding(.horizontal, 24)
                     .padding(.vertical, 12)
                     .background(
                         RoundedRectangle(cornerRadius: 10)
-                            .fill(Color.blue)
+                            .fill(.white)
+                            .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
                     )
             }
 
@@ -95,7 +125,7 @@ struct TodoListsView: View {
                     listCard(list)
                 }
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 12)
             .padding(.top, 12)
         }
     }
@@ -109,15 +139,15 @@ struct TodoListsView: View {
             HStack(spacing: 12) {
                 Image(systemName: "checklist")
                     .font(.system(size: 20))
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(todoTabColor)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(list.title)
-                        .font(.system(size: 16, weight: .medium))
+                        .font(.system(size: 16, weight: .medium, design: .rounded))
                         .foregroundStyle(.primary)
 
                     Text(itemSummary(for: list))
-                        .font(.system(size: 13))
+                        .font(.system(size: 13, design: .rounded))
                         .foregroundStyle(.secondary)
                 }
 
@@ -131,7 +161,8 @@ struct TodoListsView: View {
             .padding(.vertical, 12)
             .background(
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(Color(UIColor.secondarySystemBackground))
+                    .fill(.white)
+                    .shadow(color: .black.opacity(0.08), radius: 3, y: 1)
             )
         }
         .buttonStyle(.plain)

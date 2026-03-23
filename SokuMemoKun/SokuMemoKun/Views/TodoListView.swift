@@ -109,55 +109,48 @@ struct TodoListView: View {
 
     // MARK: - リッチヘッダー
     private var headerView: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 10) {
-                // リストアイコン
-                Image(systemName: "bookmark.fill")
-                    .font(.system(size: 24))
-                    .foregroundStyle(.orange)
+        HStack(spacing: 10) {
+            // リストアイコン
+            Image(systemName: "bookmark.fill")
+                .font(.system(size: 24))
+                .foregroundStyle(.orange)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(todoList.title)
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(todoList.title)
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
 
-                    if totalCount > 0 {
-                        Text("\(doneCount)/\(totalCount) 完了")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Spacer()
-
-                // 完了率バッジ
                 if totalCount > 0 {
-                    Text("\(Int(progress * 100))%")
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundStyle(progress >= 1.0 ? .green : .blue)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(
-                            Capsule()
-                                .fill((progress >= 1.0 ? Color.green : Color.blue).opacity(0.12))
-                        )
+                    Text("\(doneCount)/\(totalCount) 完了")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.secondary)
                 }
             }
 
-            // 進捗バー
-            if totalCount > 0 {
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(Color.secondary.opacity(0.12))
-                            .frame(height: 6)
+            Spacer()
 
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(progress >= 1.0 ? Color.green : Color.blue)
-                            .frame(width: geo.size.width * progress, height: 6)
-                            .animation(.easeInOut(duration: 0.3), value: progress)
-                    }
+            // 円グラフ（ドーナツ型）
+            if totalCount > 0 {
+                ZStack {
+                    // 背景リング
+                    Circle()
+                        .stroke(Color.secondary.opacity(0.15), lineWidth: 4)
+
+                    // 進捗リング
+                    Circle()
+                        .trim(from: 0, to: progress)
+                        .stroke(
+                            progress >= 1.0 ? Color.green : Color.blue,
+                            style: StrokeStyle(lineWidth: 4, lineCap: .round)
+                        )
+                        .rotationEffect(.degrees(-90))
+                        .animation(.easeInOut(duration: 0.3), value: progress)
+
+                    // パーセント表示
+                    Text("\(Int(progress * 100))")
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundStyle(progress >= 1.0 ? .green : .primary)
                 }
-                .frame(height: 6)
+                .frame(width: 36, height: 36)
             }
         }
         .padding(.horizontal, 20)

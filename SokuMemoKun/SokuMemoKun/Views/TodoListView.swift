@@ -94,6 +94,15 @@ struct TodoListView: View {
                         onDismiss()
                     }
                 }
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: 5) {
+                        Image(systemName: "list.clipboard")
+                            .font(.system(size: 14))
+                            .foregroundStyle(.secondary)
+                        Text("ToDoリスト")
+                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    }
+                }
             }
         }
     }
@@ -103,7 +112,7 @@ struct TodoListView: View {
         VStack(spacing: 8) {
             HStack(spacing: 10) {
                 // リストアイコン
-                Image(systemName: "checklist")
+                Image(systemName: "list.clipboard")
                     .font(.system(size: 24))
                     .foregroundStyle(.blue)
 

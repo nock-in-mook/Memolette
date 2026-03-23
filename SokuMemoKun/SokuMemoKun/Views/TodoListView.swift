@@ -396,10 +396,12 @@ struct TodoListView: View {
             .padding(.trailing, 16)
             .background(Color(UIColor.systemBackground))
             .offset(x: isSwiped ? -70 : 0)
-            .gesture(
+            .simultaneousGesture(
                 DragGesture(minimumDistance: 20)
                     .onChanged { value in
                         guard draggingItemID == nil else { return }
+                        // 横方向のドラッグのみ反応（縦スクロールを邪魔しない）
+                        guard abs(value.translation.width) > abs(value.translation.height) else { return }
                         if value.translation.width < 0 {
                             if swipedItemID != item.id {
                                 swipedItemID = nil
@@ -408,6 +410,7 @@ struct TodoListView: View {
                     }
                     .onEnded { value in
                         guard draggingItemID == nil else { return }
+                        guard abs(value.translation.width) > abs(value.translation.height) else { return }
                         withAnimation(.easeInOut(duration: 0.2)) {
                             if value.translation.width < -50 {
                                 swipedItemID = item.id

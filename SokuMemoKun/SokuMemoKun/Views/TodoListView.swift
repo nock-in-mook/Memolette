@@ -105,6 +105,7 @@ struct TodoListView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("戻る") {
+                        cleanupEmptyItems()
                         onDismiss()
                     }
                 }
@@ -129,6 +130,9 @@ struct TodoListView: View {
                     }
                 }
             }
+        }
+        .onAppear {
+            cleanupEmptyItems()
         }
     }
 
@@ -585,7 +589,7 @@ struct TodoListView: View {
         isAddingNewItems = false
     }
 
-    // MARK: - 空の項目を作成して即編集開始
+    // MARK: - 空の項目を作成して即編集開始（saveはしない＝確定まで永続化しない）
     private func addEmptyItemAndEdit(parentID: UUID?) {
         let siblings = allItems.filter { $0.parentID == parentID }
         let maxOrder = siblings.map(\.sortOrder).max() ?? -1
@@ -593,7 +597,7 @@ struct TodoListView: View {
         let item = TodoItem(title: "", listID: todoList.id, parentID: parentID, sortOrder: maxOrder + 1)
         item.tags = [getOrCreateTodoTag()]
         modelContext.insert(item)
-        try? modelContext.save()
+        // save()しない → 空のまま永続化されない
 
         if let parentID = parentID {
             expandedItems.insert(parentID)
@@ -604,6 +608,17 @@ struct TodoListView: View {
         editingText = ""
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
             isEditingFocused = true
+        }
+    }
+
+    // MARK: - 空タイトルの項目を一括削除
+    private func cleanupEmptyItems() {
+        let empties = allItems.filter { $0.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        for item in empties {
+            modelContext.delete(item)
+        }
+        if !empties.isEmpty {
+            try? modelContext.save()
         }
     }
 

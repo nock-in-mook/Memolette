@@ -146,9 +146,13 @@ struct TodoListView: View {
                         .animation(.easeInOut(duration: 0.3), value: progress)
 
                     // パーセント表示
-                    Text("\(Int(progress * 100))")
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .foregroundStyle(progress >= 1.0 ? .green : .primary)
+                    VStack(spacing: -1) {
+                        Text("\(Int(progress * 100))")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                        Text("%")
+                            .font(.system(size: 7, weight: .medium, design: .rounded))
+                    }
+                    .foregroundStyle(progress >= 1.0 ? .green : .primary)
                 }
                 .frame(width: 36, height: 36)
             }

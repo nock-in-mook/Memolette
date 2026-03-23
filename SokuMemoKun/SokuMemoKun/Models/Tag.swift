@@ -12,10 +12,13 @@ final class Tag {
     var parentTagID: UUID?  // nil = トップレベルタグ（親タグ）
     var sortOrder: Int = 0  // タブの並び順（小さいほど左）
 
-    init(name: String, colorIndex: Int = 1, parentTagID: UUID? = nil) {
+    var isSystem: Bool = false   // システムタグ（TODO等）はtrue、ユーザー作成はfalse
+
+    init(name: String, colorIndex: Int = 1, parentTagID: UUID? = nil, isSystem: Bool = false) {
         self.id = UUID()
         self.name = name
         self.colorIndex = colorIndex
         self.parentTagID = parentTagID
+        self.isSystem = isSystem
     }
 }

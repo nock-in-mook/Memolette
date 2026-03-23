@@ -426,6 +426,21 @@ struct TodoListView: View {
         editingText = ""
     }
 
+    // MARK: - TODOシステムタグの取得or作成
+    private func getOrCreateTodoTag() -> Tag {
+        // isSystemフラグで検索（名前衝突を回避）
+        let descriptor = FetchDescriptor<Tag>(
+            predicate: #Predicate { $0.isSystem == true }
+        )
+        if let existing = try? modelContext.fetch(descriptor).first {
+            return existing
+        }
+        let tag = Tag(name: "TODO", colorIndex: 0, isSystem: true)
+        modelContext.insert(tag)
+        try? modelContext.save()
+        return tag
+    }
+
     // MARK: - 項目を追加
     private func addItem(title: String, parentID: UUID?) {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -436,6 +451,8 @@ struct TodoListView: View {
         let maxOrder = siblings.map(\.sortOrder).max() ?? -1
 
         let item = TodoItem(title: trimmed, listID: todoList.id, parentID: parentID, sortOrder: maxOrder + 1)
+        // 「TODO」システムタグを自動付与
+        item.tags = [getOrCreateTodoTag()]
         modelContext.insert(item)
         try? modelContext.save()
 

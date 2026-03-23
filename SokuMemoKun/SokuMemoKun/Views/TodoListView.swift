@@ -83,7 +83,7 @@ struct TodoListView: View {
                                 HStack(spacing: 5) {
                                     Image(systemName: "hand.tap")
                                         .font(.system(size: 12))
-                                    Text("タップで編集 ・ 長押しでメニュー ・ 左スワイプで削除")
+                                    Text("タップで編集 ・ 長押しで並び替え ・ 左スワイプで削除")
                                         .font(.system(size: 13))
                                 }
                                 .foregroundStyle(.secondary.opacity(0.4))
@@ -141,6 +141,14 @@ struct TodoListView: View {
         }
         .onAppear {
             cleanupEmptyItems()
+        }
+        .onTapGesture {
+            // 枠外タップで編集終了+キーボード閉じる
+            if let editID = editingItemID,
+               let item = allItems.first(where: { $0.id == editID }) {
+                commitEdit(item: item)
+            }
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }
     }
 

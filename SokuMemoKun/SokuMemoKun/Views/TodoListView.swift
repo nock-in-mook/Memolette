@@ -75,11 +75,15 @@ struct TodoListView: View {
                             }
                             // ヒント
                             if allItems.count > 0 {
-                                Text("長押しで編集")
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(.secondary.opacity(0.4))
-                                    .frame(maxWidth: .infinity, alignment: .center)
-                                    .padding(.top, 4)
+                                HStack(spacing: 4) {
+                                    Image(systemName: "hand.tap")
+                                        .font(.system(size: 10))
+                                    Text("項目を長押しで編集・削除")
+                                        .font(.system(size: 11))
+                                }
+                                .foregroundStyle(.secondary.opacity(0.4))
+                                .frame(maxWidth: .infinity, alignment: .center)
+                                .padding(.top, 4)
                             }
                         }
                         .padding(.top, 8)

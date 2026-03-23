@@ -273,9 +273,9 @@ struct TodoListView: View {
         allItems.contains { $0.parentID == itemID }
     }
 
-    // MARK: - 帯の左インデント量
+    // MARK: - 帯の左インデント量（ベース12ptでタイトルからインデント）
     private func indentLeading(_ depth: Int) -> CGFloat {
-        CGFloat(depth) * 24
+        12 + CGFloat(depth) * 24
     }
 
     // MARK: - ToDo行

@@ -231,7 +231,7 @@ struct QuickSortFilterView: View {
             }
 
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .topBarLeading) {
                     Button("閉じる") { onCancel?() ?? dismiss() }
                 }
             }

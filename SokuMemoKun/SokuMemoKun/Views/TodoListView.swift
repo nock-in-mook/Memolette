@@ -75,11 +75,11 @@ struct TodoListView: View {
                             }
                             // ヒント
                             if allItems.count > 0 {
-                                HStack(spacing: 4) {
+                                HStack(spacing: 5) {
                                     Image(systemName: "hand.tap")
-                                        .font(.system(size: 10))
+                                        .font(.system(size: 12))
                                     Text("長押しで編集 ・ 左スワイプで削除")
-                                        .font(.system(size: 11))
+                                        .font(.system(size: 13))
                                 }
                                 .foregroundStyle(.secondary.opacity(0.4))
                                 .frame(maxWidth: .infinity, alignment: .center)
@@ -494,7 +494,7 @@ struct TodoListView: View {
             }
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.vertical, 12)
         .background(
             RoundedRectangle(cornerRadius: 8)
                 .strokeBorder(Color.secondary.opacity(0.2), style: StrokeStyle(lineWidth: 1, dash: [4]))

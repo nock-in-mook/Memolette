@@ -112,9 +112,9 @@ struct TodoListView: View {
         VStack(spacing: 8) {
             HStack(spacing: 10) {
                 // リストアイコン
-                Image(systemName: "list.clipboard")
+                Image(systemName: "bookmark.fill")
                     .font(.system(size: 24))
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(.orange)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(todoList.title)

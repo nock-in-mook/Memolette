@@ -559,6 +559,7 @@ struct TodoListView: View {
             deleteItem(editItem)
         }
         isAddingNewItems = false
+        swipedItemID = nil
         editingItemID = item.id
         editingText = item.title
     }
@@ -621,6 +622,7 @@ struct TodoListView: View {
         }
 
         isAddingNewItems = true
+        swipedItemID = nil
         editingItemID = item.id
         editingText = ""
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {

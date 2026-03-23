@@ -298,7 +298,7 @@ struct MainView: View {
                 QuickSortView(onDismiss: { showQuickSort = false })
             }
             .fullScreenCover(isPresented: $showTodoList) {
-                TodoListView(onDismiss: { showTodoList = false })
+                TodoListsView(onDismiss: { showTodoList = false })
             }
             .sheet(isPresented: $showSettings, onDismiss: {
                 // 設定画面を閉じた時にマスタースイッチの状態を反映

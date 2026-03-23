@@ -4,6 +4,7 @@ import SwiftData
 @Model
 final class TodoItem {
     var id: UUID = UUID()
+    var listID: UUID = UUID()    // 所属するTodoListのID
     var title: String = ""
     var isDone: Bool = false
     var parentID: UUID?          // nil = ルートレベル
@@ -15,8 +16,9 @@ final class TodoItem {
     var dueDate: Date?           // 期限
     var memo: String?            // 補足テキスト
 
-    init(title: String, parentID: UUID? = nil, sortOrder: Int = 0, tags: [Tag] = []) {
+    init(title: String, listID: UUID, parentID: UUID? = nil, sortOrder: Int = 0, tags: [Tag] = []) {
         self.id = UUID()
+        self.listID = listID
         self.title = title
         self.isDone = false
         self.parentID = parentID

@@ -13,13 +13,15 @@ private struct FlatRow: Identifiable {
 }
 
 struct TodoListView: View {
+    let todoList: TodoList
     let onDismiss: () -> Void
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \TodoItem.sortOrder) private var allItems: [TodoItem]
+    @Query(sort: \TodoItem.sortOrder) private var queryItems: [TodoItem]
 
-    // リストタイトル
-    @State private var listTitle = ""
-    @FocusState private var isTitleFocused: Bool
+    // このリストに属する項目のみ
+    private var allItems: [TodoItem] {
+        queryItems.filter { $0.listID == todoList.id }
+    }
 
     // 新規項目入力用（ルートレベル）
     @State private var newItemText = ""
@@ -43,10 +45,10 @@ struct TodoListView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // タイトル入力
-                TextField("リストのタイトル", text: $listTitle)
+                // タイトル表示
+                Text(todoList.title)
                     .font(.system(size: 22, weight: .bold))
-                    .focused($isTitleFocused)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 20)
                     .padding(.top, 16)
                     .padding(.bottom, 12)
@@ -69,7 +71,6 @@ struct TodoListView: View {
                     .padding(.top, 8)
                 }
                 .onTapGesture {
-                    // 編集中なら確定、スワイプ状態ならリセット
                     if let editID = editingItemID,
                        let item = allItems.first(where: { $0.id == editID }) {
                         commitEdit(item: item)
@@ -82,7 +83,7 @@ struct TodoListView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("閉じる") {
+                    Button("戻る") {
                         onDismiss()
                     }
                 }
@@ -434,7 +435,7 @@ struct TodoListView: View {
         let siblings = allItems.filter { $0.parentID == parentID }
         let maxOrder = siblings.map(\.sortOrder).max() ?? -1
 
-        let item = TodoItem(title: trimmed, parentID: parentID, sortOrder: maxOrder + 1)
+        let item = TodoItem(title: trimmed, listID: todoList.id, parentID: parentID, sortOrder: maxOrder + 1)
         modelContext.insert(item)
         try? modelContext.save()
 

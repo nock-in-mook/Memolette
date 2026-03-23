@@ -107,7 +107,7 @@ struct MainView: View {
                                     } label: {
                                         Image(systemName: "checklist")
                                             .font(.system(size: 13, weight: .semibold))
-                                            .foregroundStyle(.blue.opacity(0.7))
+                                            .foregroundStyle(.green.opacity(0.8))
                                             .frame(width: 44, height: 30)
                                     }
                                     .buttonStyle(.plain)

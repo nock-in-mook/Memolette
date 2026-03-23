@@ -32,6 +32,9 @@ struct TodoListView: View {
     @State private var isAddingNewItems = false  // 連続追加モード中か
     @FocusState private var isEditingFocused: Bool
 
+    // 並び替えモード
+    @State private var editMode: EditMode = .inactive
+
 
     // 進捗情報
     private var totalCount: Int { allItems.count }
@@ -75,6 +78,7 @@ struct TodoListView: View {
                                         .id(row.id)
                                 }
                             }
+                            .onMove(perform: moveFlatRows)
                             // ヒント
                             if allItems.count > 0 {
                                 HStack(spacing: 5) {
@@ -94,6 +98,7 @@ struct TodoListView: View {
                         .listStyle(.plain)
                         .scrollContentBackground(.hidden)
                         .scrollDismissesKeyboard(.interactively)
+                        .environment(\.editMode, $editMode)
                         .onChange(of: editingItemID) { _, newID in
                             if let id = newID {
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
@@ -115,7 +120,14 @@ struct TodoListView: View {
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    if editingItemID != nil {
+                    if editMode == .active {
+                        Button("完了") {
+                            withAnimation {
+                                editMode = .inactive
+                            }
+                        }
+                        .fontWeight(.semibold)
+                    } else if editingItemID != nil {
                         Button("完了") {
                             if let editID = editingItemID,
                                let item = allItems.first(where: { $0.id == editID }) {
@@ -123,6 +135,15 @@ struct TodoListView: View {
                             }
                         }
                         .fontWeight(.semibold)
+                    } else if !allItems.isEmpty {
+                        Button {
+                            withAnimation {
+                                editMode = .active
+                            }
+                        } label: {
+                            Image(systemName: "arrow.up.arrow.down.circle")
+                                .font(.system(size: 18))
+                        }
                     }
                 }
                 ToolbarItem(placement: .principal) {
@@ -366,22 +387,12 @@ struct TodoListView: View {
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
         .listRowInsets(EdgeInsets(top: 2, leading: 16, bottom: 2, trailing: 16))
-        // 長押しメニュー（編集・並び替え）
+        // 長押しメニュー
         .contextMenu {
             Button {
                 startEditing(item: item)
             } label: {
                 Label("編集", systemImage: "pencil")
-            }
-            Button {
-                moveItem(item, direction: .up)
-            } label: {
-                Label("上へ移動", systemImage: "arrow.up")
-            }
-            Button {
-                moveItem(item, direction: .down)
-            } label: {
-                Label("下へ移動", systemImage: "arrow.down")
             }
         }
     }
@@ -415,31 +426,23 @@ struct TodoListView: View {
         try? modelContext.save()
     }
 
-    // MARK: - 項目の並び替え（コンテキストメニュー用）
-    private enum MoveDirection { case up, down }
+    // MARK: - ドラッグ並び替え（List .onMove）
+    private func moveFlatRows(from source: IndexSet, to destination: Int) {
+        // flatRowsからアイテム行だけ抽出（同階層のみ移動可能）
+        var rows = flatRows
+        rows.move(fromOffsets: source, toOffset: destination)
 
-    private func moveItem(_ item: TodoItem, direction: MoveDirection) {
-        var siblings = allItems
-            .filter { $0.parentID == item.parentID }
-            .sorted { $0.sortOrder < $1.sortOrder }
-
-        guard let index = siblings.firstIndex(where: { $0.id == item.id }) else { return }
-
-        let targetIndex: Int
-        switch direction {
-        case .up:
-            guard index > 0 else { return }
-            targetIndex = index - 1
-        case .down:
-            guard index < siblings.count - 1 else { return }
-            targetIndex = index + 1
+        // 移動されたアイテムの親を特定して、同階層のsortOrderを振り直す
+        // ルートレベルのアイテムだけ抽出して順序更新
+        let rootItems = rows.compactMap { row -> TodoItem? in
+            if case .item(let item) = row.kind, item.parentID == nil {
+                return item
+            }
+            return nil
         }
-
-        siblings.swapAt(index, targetIndex)
-
-        for (i, sibling) in siblings.enumerated() {
-            sibling.sortOrder = i
-            sibling.updatedAt = Date()
+        for (i, item) in rootItems.enumerated() {
+            item.sortOrder = i
+            item.updatedAt = Date()
         }
         try? modelContext.save()
     }

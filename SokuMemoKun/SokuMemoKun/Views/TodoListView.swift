@@ -439,14 +439,19 @@ struct TodoListView: View {
                     .contentShape(Rectangle())
                     .onTapGesture {
                         if parentID == nil {
-                            addItem(title: newItemText, parentID: nil)
+                            let text = newItemText
                             newItemText = ""
-                            isNewItemFocused = true
+                            addItem(title: text, parentID: nil)
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                isNewItemFocused = true
+                            }
                         } else if let pid = parentID {
                             let text = newChildTexts[pid] ?? ""
-                            addItem(title: text, parentID: pid)
                             newChildTexts[pid] = ""
-                            focusedAddField = "add-\(pid.uuidString)"
+                            addItem(title: text, parentID: pid)
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                focusedAddField = "add-\(pid.uuidString)"
+                            }
                         }
                     }
             } else if parentID == nil {
@@ -455,9 +460,12 @@ struct TodoListView: View {
                     .foregroundStyle(.secondary)
                     .focused($isNewItemFocused)
                     .onSubmit {
-                        addItem(title: newItemText, parentID: nil)
+                        let text = newItemText
                         newItemText = ""
-                        isNewItemFocused = true
+                        addItem(title: text, parentID: nil)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                            isNewItemFocused = true
+                        }
                     }
             } else {
                 let binding = Binding<String>(
@@ -469,9 +477,12 @@ struct TodoListView: View {
                     .foregroundStyle(.secondary)
                     .focused($focusedAddField, equals: rowID)
                     .onSubmit {
-                        addItem(title: binding.wrappedValue, parentID: parentID)
+                        let text = binding.wrappedValue
                         newChildTexts[parentID!] = ""
-                        focusedAddField = rowID
+                        addItem(title: text, parentID: parentID)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                            focusedAddField = rowID
+                        }
                     }
             }
         }

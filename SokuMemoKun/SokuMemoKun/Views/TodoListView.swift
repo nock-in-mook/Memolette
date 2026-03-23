@@ -32,8 +32,6 @@ struct TodoListView: View {
     @State private var isAddingNewItems = false  // 連続追加モード中か
     @FocusState private var isEditingFocused: Bool
 
-    // 並び替えモード
-    @State private var editMode: EditMode = .inactive
 
 
     // 進捗情報
@@ -98,7 +96,6 @@ struct TodoListView: View {
                         .listStyle(.plain)
                         .scrollContentBackground(.hidden)
                         .scrollDismissesKeyboard(.interactively)
-                        .environment(\.editMode, $editMode)
                         .onChange(of: editingItemID) { _, newID in
                             if let id = newID {
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
@@ -120,14 +117,7 @@ struct TodoListView: View {
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    if editMode == .active {
-                        Button("完了") {
-                            withAnimation {
-                                editMode = .inactive
-                            }
-                        }
-                        .fontWeight(.semibold)
-                    } else if editingItemID != nil {
+                    if editingItemID != nil {
                         Button("完了") {
                             if let editID = editingItemID,
                                let item = allItems.first(where: { $0.id == editID }) {
@@ -135,15 +125,6 @@ struct TodoListView: View {
                             }
                         }
                         .fontWeight(.semibold)
-                    } else if !allItems.isEmpty {
-                        Button {
-                            withAnimation {
-                                editMode = .active
-                            }
-                        } label: {
-                            Image(systemName: "arrow.up.arrow.down.circle")
-                                .font(.system(size: 18))
-                        }
                     }
                 }
                 ToolbarItem(placement: .principal) {

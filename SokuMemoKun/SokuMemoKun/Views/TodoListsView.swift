@@ -31,8 +31,8 @@ struct TodoListsView: View {
                     Button {
                         showNewListDialog = true
                     } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: 16, weight: .semibold))
+                        Label("新規", systemImage: "plus")
+                            .font(.system(size: 14, weight: .semibold))
                     }
                 }
                 .padding(.horizontal, 16)

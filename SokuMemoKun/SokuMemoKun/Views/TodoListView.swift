@@ -270,7 +270,7 @@ struct TodoListView: View {
 
     // MARK: - 帯の左インデント量
     private let indentBase: CGFloat = 12   // ルートのインデント
-    private let indentStep: CGFloat = 28   // 階層ごとのインデント幅
+    private let indentStep: CGFloat = 36   // 階層ごとのインデント幅
 
     private func indentLeading(_ depth: Int) -> CGFloat {
         indentBase + CGFloat(depth) * indentStep
@@ -362,9 +362,11 @@ struct TodoListView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .padding(.leading, indentLeading(depth))
-        // 上下の区切り線
-        .overlay(alignment: .bottom) {
-            Divider()
+        // 下の区切り線
+        .background(alignment: .bottom) {
+            Rectangle()
+                .fill(Color.secondary.opacity(0.15))
+                .frame(height: 0.5)
                 .padding(.leading, indentLeading(depth) + 12)
         }
         // ツリーライン（子項目のみ）

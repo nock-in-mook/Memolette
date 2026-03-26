@@ -26,6 +26,8 @@ struct TodoListView: View {
 
     // 展開中の項目（子を表示中）
     @State private var expandedItems: Set<UUID> = []
+    // 最大階層数（depth 0〜5 = 6階層、色帯2周分）
+    private let maxDepth = 5
 
     // 編集中の項目
     @State private var editingItemID: UUID?
@@ -127,6 +129,23 @@ struct TodoListView: View {
                             }
                         }
                         .fontWeight(.semibold)
+                    } else {
+                        // 全展開/全収納トグル
+                        let hasAnyChildren = allItems.contains(where: { hasChildren($0.id) })
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                if isAllExpanded {
+                                    expandedItems.removeAll()
+                                } else {
+                                    expandedItems = Set(allItems.filter { hasChildren($0.id) }.map(\.id))
+                                }
+                            }
+                        } label: {
+                            Text(isAllExpanded ? "全収納" : "全展開")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundStyle(hasAnyChildren ? .blue : .secondary.opacity(0.3))
+                        }
+                        .disabled(!hasAnyChildren)
                     }
                 }
                 ToolbarItem(placement: .principal) {
@@ -267,8 +286,10 @@ struct TodoListView: View {
             for (i, child) in kids.enumerated() {
                 appendRows(for: child, depth: depth + 1, isLast: i == kids.count - 1, into: &rows)
             }
-            // 子の追加ボタン
-            rows.append(FlatRow(id: "add-\(item.id.uuidString)", kind: .addButton(parentID: item.id), depth: depth + 1, isLastChild: true))
+            // 子の追加ボタン（最大階層では表示しない）
+            if depth + 1 <= maxDepth {
+                rows.append(FlatRow(id: "add-\(item.id.uuidString)", kind: .addButton(parentID: item.id), depth: depth + 1, isLastChild: true))
+            }
         }
     }
 
@@ -277,17 +298,22 @@ struct TodoListView: View {
         allItems.contains { $0.parentID == itemID }
     }
 
+    // 全展開中かどうか
+    private var isAllExpanded: Bool {
+        let parents = Set(allItems.filter { hasChildren($0.id) }.map(\.id))
+        return !parents.isEmpty && parents.isSubset(of: expandedItems)
+    }
+
     // MARK: - 帯の左インデント量
     private let indentBase: CGFloat = 12   // ルートのインデント
-    private let indentStep: CGFloat = 36   // 階層ごとのインデント幅
+    private let indentStep: CGFloat = 28   // 階層ごとのインデント幅（緑帯と統一）
 
-    // 階層ごとのインデント色
+    // 階層ごとのインデント色（紫→オレンジ→緑…ループ）
     private func depthColor(_ depth: Int) -> Color {
         let colors: [Color] = [
-            .purple.opacity(0.10),   // depth 0: 紫
-            .blue.opacity(0.08),     // depth 1: 青
-            .orange.opacity(0.08),   // depth 2: オレンジ
-            .pink.opacity(0.08),     // depth 3: ピンク
+            .purple.opacity(0.10),    // 子階層1: 紫
+            .orange.opacity(0.10),    // 子階層2: オレンジ
+            .green.opacity(0.12),     // 子階層3: 緑（ルートと同じ）
         ]
         return colors[depth % colors.count]
     }
@@ -361,7 +387,8 @@ struct TodoListView: View {
                         .frame(width: 30, height: 30)
                 }
                 .buttonStyle(.plain)
-            } else {
+            } else if depth < maxDepth {
+                // 子がない＆まだ階層追加可能 → 展開ボタン
                 Button {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         if isExpanded {
@@ -419,10 +446,25 @@ struct TodoListView: View {
             Image(systemName: "plus.circle.fill")
                 .font(.system(size: 22))
                 .foregroundStyle(.secondary.opacity(0.25))
+                .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
         .padding(.leading, indentLeading(depth) + 14)
         .padding(.vertical, 4)
         .frame(maxWidth: .infinity, alignment: .leading)
+        // 階層ごとの色付きインデントバー（todoRowと共通）
+        .background(alignment: .leading) {
+            HStack(spacing: 0) {
+                Rectangle()
+                    .fill(Color.green.opacity(0.12))
+                    .frame(width: indentBase + 16)
+                ForEach(0..<depth, id: \.self) { d in
+                    Rectangle()
+                        .fill(depthColor(d))
+                        .frame(width: indentStep)
+                }
+            }
+        }
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
@@ -524,7 +566,7 @@ struct TodoListView: View {
         let item = TodoItem(title: "", listID: todoList.id, parentID: parentID, sortOrder: maxOrder + 1)
         item.tags = [getOrCreateTodoTag()]
         modelContext.insert(item)
-        // save()しない → 空のまま永続化されない
+        // save()はsubmitEdit側で行う（ここでsave()すると@Query再フェッチで前の編集が消える）
 
         if let parentID = parentID {
             expandedItems.insert(parentID)

@@ -281,6 +281,17 @@ struct TodoListView: View {
     private let indentBase: CGFloat = 12   // ルートのインデント
     private let indentStep: CGFloat = 36   // 階層ごとのインデント幅
 
+    // 階層ごとのインデント色
+    private func depthColor(_ depth: Int) -> Color {
+        let colors: [Color] = [
+            .purple.opacity(0.10),   // depth 0: 紫
+            .blue.opacity(0.08),     // depth 1: 青
+            .orange.opacity(0.08),   // depth 2: オレンジ
+            .pink.opacity(0.08),     // depth 3: ピンク
+        ]
+        return colors[depth % colors.count]
+    }
+
     private func indentLeading(_ depth: Int) -> CGFloat {
         indentBase + CGFloat(depth) * indentStep
     }
@@ -371,11 +382,20 @@ struct TodoListView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 0)
         .padding(.leading, indentLeading(depth))
-        // インデント部分のパステルグリーン背景
+        // 階層ごとの色付きインデントバー
         .background(alignment: .leading) {
-            Rectangle()
-                .fill(Color.green.opacity(0.06))
-                .frame(width: indentLeading(depth) + 16)  // listRowInsetsのleading分を加算
+            HStack(spacing: 0) {
+                // ルートレベルのインデント（常に緑）
+                Rectangle()
+                    .fill(Color.green.opacity(0.12))
+                    .frame(width: indentBase + 16)  // listRowInsetsのleading分を加算
+                // 各階層のインデント帯
+                ForEach(0..<depth, id: \.self) { d in
+                    Rectangle()
+                        .fill(depthColor(d))
+                        .frame(width: indentStep)
+                }
+            }
         }
         // 下の区切り線
         .background(alignment: .bottom) {
@@ -383,33 +403,6 @@ struct TodoListView: View {
                 .fill(Color.secondary.opacity(0.15))
                 .frame(height: 0.5)
                 .padding(.leading, indentLeading(depth) + 12)
-        }
-        // ツリーライン（子項目のみ）
-        .overlay(alignment: .leading) {
-            if depth > 0 {
-                let lineX = indentLeading(depth) - indentStep / 2 + 16  // listRowInsetsのleading分を加算
-                // 縦線（上から行の中央まで）+ 横線（行の中央へ）
-                Canvas { context, size in
-                    let midY = size.height / 2
-                    var path = Path()
-                    // 縦線: 上端から行中央まで（最後の子なら途中で止める）
-                    path.move(to: CGPoint(x: lineX, y: 0))
-                    path.addLine(to: CGPoint(x: lineX, y: midY))
-                    // 横線: 左の縦線からカードの左端まで
-                    path.move(to: CGPoint(x: lineX, y: midY))
-                    path.addLine(to: CGPoint(x: lineX + indentStep / 2 - 4, y: midY))
-                    context.stroke(path, with: .color(.secondary.opacity(0.2)), lineWidth: 1.5)
-
-                    // 最後の子でなければ、縦線を下端まで延長
-                    if !isLastChild {
-                        var extPath = Path()
-                        extPath.move(to: CGPoint(x: lineX, y: midY))
-                        extPath.addLine(to: CGPoint(x: lineX, y: size.height))
-                        context.stroke(extPath, with: .color(.secondary.opacity(0.2)), lineWidth: 1.5)
-                    }
-                }
-                .allowsHitTesting(false)
-            }
         }
         // List行スタイル除去
         .listRowSeparator(.hidden)

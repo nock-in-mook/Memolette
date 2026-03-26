@@ -28,6 +28,10 @@ struct TodoListView: View {
     @State private var expandedItems: Set<UUID> = []
     // 最大階層数（depth 0〜5 = 6階層、色帯2周分）
     private let maxDepth = 5
+    // 全展開ダイアログ
+    @State private var showExpandDialog = false
+    // 全チェッククリアダイアログ
+    @State private var showResetDialog = false
 
     // 編集中の項目
     @State private var editingItemID: UUID?
@@ -135,27 +139,30 @@ struct TodoListView: View {
                             }
                         }
                         .fontWeight(.semibold)
-                    } else {
-                        // 全展開/全収納トグル
-                        let hasAnyChildren = allItems.contains(where: { hasChildren($0.id) })
+                    } else if allItems.contains(where: { hasChildren($0.id) }) {
+                        // 全展開/全収納トグル（子項目がある場合のみ表示）
                         Button {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                if isAllExpanded {
+                            if isAllExpanded {
+                                withAnimation(.easeInOut(duration: 0.2)) {
                                     expandedItems.removeAll()
                                     memoOpenItems.removeAll()
                                     commitMemo()
+                                }
+                            } else {
+                                let hasAnyMemo = allItems.contains { ($0.memo ?? "").isEmpty == false }
+                                if hasAnyMemo {
+                                    showExpandDialog = true
                                 } else {
-                                    expandedItems = Set(allItems.filter { hasChildren($0.id) }.map(\.id))
-                                    // メモがある項目も展開
-                                    memoOpenItems = Set(allItems.filter { ($0.memo ?? "").isEmpty == false }.map(\.id))
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        expandedItems = Set(allItems.filter { hasChildren($0.id) }.map(\.id))
+                                    }
                                 }
                             }
                         } label: {
                             Text(isAllExpanded ? "全収納" : "全展開")
                                 .font(.system(size: 14, weight: .medium))
-                                .foregroundStyle(hasAnyChildren ? .blue : .secondary.opacity(0.3))
+                                .foregroundStyle(.blue)
                         }
-                        .disabled(!hasAnyChildren)
                     }
                 }
                 ToolbarItem(placement: .principal) {
@@ -182,6 +189,125 @@ struct TodoListView: View {
             commitMemo()
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }
+        // 全展開ダイアログ（カスタムリッチUI）
+        .overlay {
+            if showExpandDialog {
+                ZStack {
+                    // 半透明背景
+                    Color.black.opacity(0.3)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                showExpandDialog = false
+                            }
+                        }
+                    // ダイアログ本体
+                    VStack(spacing: 16) {
+                        Text("メモを含む項目があります")
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .padding(.top, 4)
+
+                        VStack(spacing: 10) {
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    expandedItems = Set(allItems.filter { hasChildren($0.id) }.map(\.id))
+                                    showExpandDialog = false
+                                }
+                            } label: {
+                                Text("リストのみ展開")
+                                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                                    .background(Color.blue.opacity(0.1))
+                                    .foregroundStyle(.blue)
+                                    .cornerRadius(8)
+                            }
+
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    expandedItems = Set(allItems.filter { hasChildren($0.id) }.map(\.id))
+                                    memoOpenItems = Set(allItems.filter { ($0.memo ?? "").isEmpty == false }.map(\.id))
+                                    showExpandDialog = false
+                                }
+                            } label: {
+                                Text("メモも全展開")
+                                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                                    .background(Color.purple.opacity(0.1))
+                                    .foregroundStyle(.purple)
+                                    .cornerRadius(8)
+                            }
+                        }
+                    }
+                    .padding(20)
+                    .background(.regularMaterial)
+                    .cornerRadius(16)
+                    .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
+                    .padding(.horizontal, 40)
+                }
+                .transition(.opacity)
+            }
+        }
+        // 全チェッククリアダイアログ
+        .overlay {
+            if showResetDialog {
+                ZStack {
+                    Color.black.opacity(0.3)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                showResetDialog = false
+                            }
+                        }
+
+                    VStack(spacing: 16) {
+                        Text("チェックをリセット")
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .padding(.top, 4)
+
+                        Text("\(doneCount)件の完了チェックを外します")
+                            .font(.system(size: 13, design: .rounded))
+                            .foregroundStyle(.secondary)
+
+                        VStack(spacing: 10) {
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    resetAllChecks()
+                                    showResetDialog = false
+                                }
+                            } label: {
+                                Text("リセットする")
+                                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                                    .background(Color.red.opacity(0.1))
+                                    .foregroundStyle(.red)
+                                    .cornerRadius(8)
+                            }
+
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.15)) {
+                                    showResetDialog = false
+                                }
+                            } label: {
+                                Text("キャンセル")
+                                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .padding(20)
+                    .background(.regularMaterial)
+                    .cornerRadius(16)
+                    .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
+                    .padding(.horizontal, 40)
+                }
+                .transition(.opacity)
+            }
+        }
     }
 
     // MARK: - リッチヘッダー
@@ -205,33 +331,48 @@ struct TodoListView: View {
 
             Spacer()
 
-            // 円グラフ（ドーナツ型）
+            // 円グラフ（ドーナツ型）+ タップでリセット
             if totalCount > 0 {
-                ZStack {
-                    // 背景リング
-                    Circle()
-                        .stroke(Color.secondary.opacity(0.15), lineWidth: 4)
+                VStack(spacing: 3) {
+                    ZStack {
+                        // 背景リング
+                        Circle()
+                            .stroke(Color.secondary.opacity(0.15), lineWidth: 4)
 
-                    // 進捗リング
-                    Circle()
-                        .trim(from: 0, to: progress)
-                        .stroke(
-                            progress >= 1.0 ? Color.green : Color.blue,
-                            style: StrokeStyle(lineWidth: 4, lineCap: .round)
-                        )
-                        .rotationEffect(.degrees(-90))
-                        .animation(.easeInOut(duration: 0.3), value: progress)
+                        // 進捗リング
+                        Circle()
+                            .trim(from: 0, to: progress)
+                            .stroke(
+                                progress >= 1.0 ? Color.green : Color.blue,
+                                style: StrokeStyle(lineWidth: 4, lineCap: .round)
+                            )
+                            .rotationEffect(.degrees(-90))
+                            .animation(.easeInOut(duration: 0.3), value: progress)
 
-                    // パーセント表示
-                    VStack(spacing: -1) {
-                        Text("\(Int(progress * 100))")
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
-                        Text("%")
-                            .font(.system(size: 7, weight: .medium, design: .rounded))
+                        // パーセント表示
+                        VStack(spacing: -1) {
+                            Text("\(Int(progress * 100))")
+                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                            Text("%")
+                                .font(.system(size: 7, weight: .medium, design: .rounded))
+                        }
+                        .foregroundStyle(progress >= 1.0 ? .green : .primary)
                     }
-                    .foregroundStyle(progress >= 1.0 ? .green : .primary)
+                    .frame(width: 36, height: 36)
+                    .contentShape(Circle())
+                    .onTapGesture {
+                        if doneCount > 0 {
+                            showResetDialog = true
+                        }
+                    }
+
+                    // ヒント（完了が1件以上ある場合のみ）
+                    if doneCount > 0 {
+                        Text("リセット")
+                            .font(.system(size: 9, weight: .medium, design: .rounded))
+                            .foregroundStyle(.secondary.opacity(0.4))
+                    }
                 }
-                .frame(width: 36, height: 36)
             }
         }
         .padding(.horizontal, 20)
@@ -577,6 +718,15 @@ struct TodoListView: View {
         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
     }
 
+    // MARK: - 全チェッククリア
+    private func resetAllChecks() {
+        for item in allItems where item.isDone {
+            item.isDone = false
+            item.updatedAt = Date()
+        }
+        try? modelContext.save()
+    }
+
     // MARK: - 項目を削除（子も再帰的に削除）
     private func deleteItem(_ item: TodoItem) {
         // 子項目を再帰的に削除
@@ -635,9 +785,15 @@ struct TodoListView: View {
         }
         guard let target = targetItem else { return }
         let trimmed = memoEditingText.trimmingCharacters(in: .whitespacesAndNewlines)
-        target.memo = trimmed.isEmpty ? nil : trimmed
-        target.updatedAt = Date()
-        try? modelContext.save()
+        if trimmed.isEmpty {
+            // 空メモは保存しない、展開も閉じる
+            target.memo = nil
+            memoOpenItems.remove(target.id)
+        } else {
+            target.memo = trimmed
+            target.updatedAt = Date()
+            try? modelContext.save()
+        }
         memoEditingItemID = nil
         memoEditingText = ""
     }

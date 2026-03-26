@@ -123,10 +123,15 @@ struct TodoListsView: View {
         }
     }
 
-    // MARK: - リスト一覧
+    // MARK: - リスト一覧（2列グリッド）
+    private let gridColumns = [
+        GridItem(.flexible(), spacing: 8),
+        GridItem(.flexible(), spacing: 8),
+    ]
+
     private var listView: some View {
         ScrollView {
-            LazyVStack(spacing: 8) {
+            LazyVGrid(columns: gridColumns, spacing: 8) {
                 ForEach(todoLists) { list in
                     listCard(list)
                 }
@@ -136,35 +141,62 @@ struct TodoListsView: View {
         }
     }
 
-    // MARK: - リストカード
+    // MARK: - リストカード（縦型・プレビュー付き）
     @ViewBuilder
     private func listCard(_ list: TodoList) -> some View {
+        let rootItems = fetchRootItems(for: list)
+
         Button {
             selectedList = list
         } label: {
-            HStack(spacing: 12) {
-                Image(systemName: "bookmark.fill")
-                    .font(.system(size: 20))
-                    .foregroundStyle(.orange)
+            VStack(alignment: .leading, spacing: 6) {
+                // ヘッダー（アイコン＋タイトル＋サマリ）
+                HStack(spacing: 8) {
+                    Image(systemName: "bookmark.fill")
+                        .font(.system(size: 16))
+                        .foregroundStyle(.orange)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(list.title)
-                        .font(.system(size: 16, weight: .medium, design: .rounded))
-                        .foregroundStyle(.primary)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(list.title)
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
 
-                    Text(itemSummary(for: list))
-                        .font(.system(size: 13, design: .rounded))
-                        .foregroundStyle(.secondary)
+                        Text(itemSummary(for: list))
+                            .font(.system(size: 11, design: .rounded))
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
                 }
 
-                Spacer()
+                // ルート項目プレビュー（子項目は表示しない）
+                if !rootItems.isEmpty {
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(rootItems.prefix(5)) { item in
+                            HStack(spacing: 4) {
+                                Image(systemName: item.isDone ? "checkmark.square.fill" : "square")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(item.isDone ? .green : .secondary.opacity(0.35))
 
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.secondary.opacity(0.4))
+                                Text(item.title)
+                                    .font(.system(size: 11, weight: .regular, design: .rounded))
+                                    .foregroundStyle(item.isDone ? .secondary : .primary)
+                                    .strikethrough(item.isDone, color: .secondary)
+                                    .lineLimit(1)
+                            }
+                        }
+                        if rootItems.count > 5 {
+                            Text("…ほか\(rootItems.count - 5)件")
+                                .font(.system(size: 10, design: .rounded))
+                                .foregroundStyle(.secondary.opacity(0.5))
+                        }
+                    }
+                    .padding(.leading, 4)
+                }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 10)
                     .fill(.white)
@@ -179,6 +211,16 @@ struct TodoListsView: View {
                 Label("削除", systemImage: "trash")
             }
         }
+    }
+
+    // ルート項目のみ取得（sortOrder順）
+    private func fetchRootItems(for list: TodoList) -> [TodoItem] {
+        let listID = list.id
+        let descriptor = FetchDescriptor<TodoItem>(
+            predicate: #Predicate { $0.listID == listID && $0.parentID == nil },
+            sortBy: [SortDescriptor(\.sortOrder)]
+        )
+        return (try? modelContext.fetch(descriptor)) ?? []
     }
 
     // MARK: - リスト内の項目サマリ

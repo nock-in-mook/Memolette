@@ -35,6 +35,12 @@ struct TodoListView: View {
     @State private var isAddingNewItems = false  // 連続追加モード中か
     @FocusState private var isEditingFocused: Bool
 
+    // メモ表示・編集
+    @State private var memoOpenItems: Set<UUID> = []      // メモ展開中（閲覧モード）
+    @State private var memoEditingItemID: UUID?            // メモ編集中
+    @State private var memoEditingText: String = ""
+    @FocusState private var isMemoFocused: Bool
+
 
 
     // 進捗情報
@@ -136,8 +142,12 @@ struct TodoListView: View {
                             withAnimation(.easeInOut(duration: 0.2)) {
                                 if isAllExpanded {
                                     expandedItems.removeAll()
+                                    memoOpenItems.removeAll()
+                                    commitMemo()
                                 } else {
                                     expandedItems = Set(allItems.filter { hasChildren($0.id) }.map(\.id))
+                                    // メモがある項目も展開
+                                    memoOpenItems = Set(allItems.filter { ($0.memo ?? "").isEmpty == false }.map(\.id))
                                 }
                             }
                         } label: {
@@ -168,6 +178,8 @@ struct TodoListView: View {
                let item = allItems.first(where: { $0.id == editID }) {
                 commitEdit(item: item)
             }
+            // メモ編集中なら保存（閲覧モードに戻るだけ、閉じない）
+            commitMemo()
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }
     }
@@ -330,6 +342,13 @@ struct TodoListView: View {
         let isEditing = editingItemID == item.id
 
         // メインコンテンツ（帯スタイル）
+        HStack(spacing: 0) { // 外側HStack（インデント用）
+        // インデント領域（タップを吸収して何もしない）
+        Color.white.opacity(0.001)
+            .frame(width: indentLeading(depth))
+            .contentShape(Rectangle())
+            .onTapGesture { /* タップを吸収 */ }
+        VStack(spacing: 0) {
         HStack(spacing: 8) {
             // チェックボックス（四角・大きめ太め）
             Button {
@@ -370,6 +389,43 @@ struct TodoListView: View {
                     }
             }
 
+            // メモアイコン
+            Button {
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    let hasMemo = !(item.memo ?? "").isEmpty
+                    if memoEditingItemID == item.id {
+                        // 編集中→保存して閲覧モードに
+                        commitMemo(item: item)
+                        if hasMemo || !memoEditingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            memoOpenItems.insert(item.id)
+                        }
+                    } else if memoOpenItems.contains(item.id) {
+                        // 閲覧中→閉じる
+                        commitMemo()
+                        memoOpenItems.remove(item.id)
+                    } else if hasMemo {
+                        // メモあり→閲覧モードで開く
+                        commitMemo()
+                        memoOpenItems.insert(item.id)
+                    } else {
+                        // メモなし→新規作成、即編集モード
+                        commitMemo()
+                        memoOpenItems.insert(item.id)
+                        memoEditingItemID = item.id
+                        memoEditingText = ""
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                            isMemoFocused = true
+                        }
+                    }
+                }
+            } label: {
+                Image(systemName: "note.text")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle((item.memo ?? "").isEmpty ? Color.secondary.opacity(0.2) : Color.orange.opacity(0.7))
+                    .frame(width: 28, height: 28)
+            }
+            .buttonStyle(.plain)
+
             // 展開/折りたたみ矢印
             if hasKids {
                 Button {
@@ -406,9 +462,60 @@ struct TodoListView: View {
                 .buttonStyle(.plain)
             }
         }
+
+        // インラインメモ欄
+        if memoOpenItems.contains(item.id) {
+            VStack(alignment: .leading, spacing: 4) {
+                if memoEditingItemID == item.id {
+                    // 編集モード
+                    TextField("メモを入力", text: $memoEditingText, axis: .vertical)
+                        .font(.system(size: 13, weight: .regular, design: .rounded))
+                        .foregroundStyle(Color.purple.opacity(0.6))
+                        .lineLimit(1...10)
+                        .focused($isMemoFocused)
+                } else {
+                    // 閲覧モード（タップで編集へ）
+                    Text((item.memo ?? "").isEmpty ? "メモを入力" : item.memo!)
+                        .font(.system(size: 13, weight: .regular, design: .rounded))
+                        .foregroundStyle((item.memo ?? "").isEmpty ? Color.secondary.opacity(0.4) : Color.purple.opacity(0.6))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            memoEditingItemID = item.id
+                            memoEditingText = item.memo ?? ""
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                isMemoFocused = true
+                            }
+                        }
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .background(Color.purple.opacity(0.04))
+            .cornerRadius(6)
+            .padding(.horizontal, 4)
+            .padding(.bottom, 4)
+        } else if let memo = item.memo, !memo.isEmpty {
+            // 閉じ状態：「メモ:本文」紫字で1行プレビュー
+            Text("メモ: \(memo)")
+                .font(.system(size: 12, weight: .regular, design: .rounded))
+                .foregroundStyle(.purple.opacity(0.5))
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 4)
+                .padding(.bottom, 2)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        commitMemo()
+                        memoOpenItems.insert(item.id)
+                    }
+                }
+        }
+        } // VStack
         .padding(.horizontal, 12)
         .padding(.vertical, 0)
-        .padding(.leading, indentLeading(depth))
+        } // 外側HStack（インデント用）
         // 階層ごとの色付きインデントバー
         .background(alignment: .leading) {
             HStack(spacing: 0) {
@@ -513,6 +620,26 @@ struct TodoListView: View {
         isAddingNewItems = false
         editingItemID = item.id
         editingText = item.title
+    }
+
+    // MARK: - メモ保存
+    private func commitMemo(item: TodoItem? = nil) {
+        // 指定アイテム or 現在編集中のアイテムのメモを保存
+        let targetItem: TodoItem?
+        if let item = item {
+            targetItem = item
+        } else if let editID = memoEditingItemID {
+            targetItem = allItems.first { $0.id == editID }
+        } else {
+            return
+        }
+        guard let target = targetItem else { return }
+        let trimmed = memoEditingText.trimmingCharacters(in: .whitespacesAndNewlines)
+        target.memo = trimmed.isEmpty ? nil : trimmed
+        target.updatedAt = Date()
+        try? modelContext.save()
+        memoEditingItemID = nil
+        memoEditingText = ""
     }
 
     // MARK: - Enter押下時（連続追加 or 通常確定）

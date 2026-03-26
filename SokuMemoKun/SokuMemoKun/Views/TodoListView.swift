@@ -311,7 +311,7 @@ struct TodoListView: View {
             // タイトル（通常表示 or インライン編集）
             if isEditing {
                 TextField("項目を入力", text: $editingText)
-                    .font(.system(size: 16, weight: .regular, design: .rounded))
+                    .font(.system(size: 15, weight: .medium, design: .rounded))
                     .focused($isEditingFocused)
                     .onSubmit {
                         submitEdit(item: item)
@@ -321,7 +321,7 @@ struct TodoListView: View {
                     }
             } else {
                 Text(item.title)
-                    .font(.system(size: 16, weight: .regular, design: .rounded))
+                    .font(.system(size: 15, weight: .medium, design: .rounded))
                     .strikethrough(item.isDone, color: .secondary)
                     .foregroundStyle(item.isDone ? .secondary : .primary)
                     .animation(.easeInOut(duration: 0.2), value: item.isDone)

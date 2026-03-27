@@ -228,7 +228,7 @@ struct TodoListsView: View {
                         .foregroundStyle(.orange)
 
                     Text(list.title)
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
                         .foregroundStyle(.primary)
                         .lineLimit(1)
 
@@ -282,7 +282,7 @@ struct TodoListsView: View {
                                     .foregroundStyle(item.isDone ? .green : .secondary.opacity(0.35))
 
                                 Text(item.title)
-                                    .font(.system(size: 11, weight: .regular, design: .rounded))
+                                    .font(.system(size: 13, weight: .regular, design: .rounded))
                                     .foregroundStyle(item.isDone ? .secondary : .primary)
                                     .strikethrough(item.isDone, color: .secondary)
                                     .lineLimit(1)

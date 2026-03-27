@@ -737,10 +737,10 @@ struct TodoListView: View {
         HStack(spacing: 8) {
             // チェックボックス（タップ領域をアイコンに限定）
             Image(systemName: item.isDone ? "checkmark.square.fill" : "square")
-                .font(.system(size: 28, weight: .medium))
+                .font(.system(size: 34, weight: .medium))
                 .foregroundStyle(item.isDone ? .green : .secondary.opacity(0.35))
                 .animation(.easeInOut(duration: 0.2), value: item.isDone)
-                .frame(width: 28, height: 28)
+                .frame(width: 34, height: 34)
                 .contentShape(Rectangle())
                 .onTapGesture {
                     guard !isAnythingEditing else { return }
@@ -752,7 +752,7 @@ struct TodoListView: View {
             // タイトル（通常表示 or インライン編集）
             if isEditing {
                 TextField("項目を入力", text: $editingText)
-                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .font(.system(size: 18, weight: .medium, design: .rounded))
                     .focused($isEditingFocused)
                     .onSubmit {
                         submitEdit(item: item)
@@ -762,7 +762,7 @@ struct TodoListView: View {
                     }
             } else {
                 Text(item.title)
-                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .font(.system(size: 18, weight: .medium, design: .rounded))
                     .strikethrough(item.isDone, color: .secondary)
                     .foregroundStyle(item.isDone ? .secondary : .primary)
                     .animation(.easeInOut(duration: 0.2), value: item.isDone)
@@ -805,9 +805,9 @@ struct TodoListView: View {
             } label: {
                 Image(systemName: (item.memo ?? "").isEmpty ? "doc" : "doc.fill")
                     .rotationEffect(.degrees(90))
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 16, weight: .medium))
                     .foregroundStyle(isAnythingEditing ? Color.secondary.opacity(0.2) : ((item.memo ?? "").isEmpty ? Color.secondary.opacity(0.2) : Color.purple.opacity(0.5)))
-                    .frame(width: 28, height: 28)
+                    .frame(width: 36, height: 36)
             }
             .buttonStyle(.plain)
             .disabled(isAnythingEditing)
@@ -824,9 +824,9 @@ struct TodoListView: View {
                     }
                 } label: {
                     Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(isAnythingEditing ? Color.secondary.opacity(0.2) : (isExpanded ? Color.orange : Color.blue))
-                        .frame(width: 30, height: 30)
+                        .frame(width: 40, height: 40)
                 }
                 .buttonStyle(.plain)
                 .disabled(isAnythingEditing)
@@ -842,15 +842,15 @@ struct TodoListView: View {
                     }
                 } label: {
                     Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(isAnythingEditing ? Color.secondary.opacity(0.2) : (isExpanded ? Color.orange : Color.secondary.opacity(0.2)))
-                        .frame(width: 30, height: 30)
+                        .frame(width: 40, height: 40)
                 }
                 .buttonStyle(.plain)
                 .disabled(isAnythingEditing)
             } else {
                 // 最深階層：展開ボタンなし、同じ幅のスペース確保
-                Color.clear.frame(width: 30, height: 30)
+                Color.clear.frame(width: 40, height: 40)
             }
         }
 
@@ -961,7 +961,7 @@ struct TodoListView: View {
         }
         } // VStack
         .padding(.horizontal, 12)
-        .padding(.vertical, 0)
+        .padding(.vertical, 6)
         } // 外側HStack（インデント用）
         // 階層ごとの色付きインデントバー
         .background(alignment: .leading) {
@@ -978,16 +978,10 @@ struct TodoListView: View {
                 }
             }
         }
-        // 全階層の縦線（帯の中央、編集中は非表示）
+        // 子階層以降の縦線（帯の中央、編集中は非表示）
         .overlay(alignment: .leading) {
-            if editingItemID == nil {
+            if depth > 0 && editingItemID == nil {
                 ZStack(alignment: .leading) {
-                    // ルート階層の緑縦線（緑帯の中央）
-                    Rectangle()
-                        .fill(Color.green.opacity(0.5))
-                        .frame(width: 1.5)
-                        .padding(.leading, (indentBase + 12) / 2 - 0.75)
-                    // 子階層以降の縦線
                     ForEach(0..<depth, id: \.self) { d in
                         Rectangle()
                             .fill(depthAccentColor(d + 1))
@@ -1086,39 +1080,21 @@ struct TodoListView: View {
             .listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
         } else {
-            // ルート追加（L字罫線＋緑＋ボタン）
+            // ルート追加（チェックボックスの中心に緑＋ボタン）
             let isDisabled = editingItemID != nil || memoEditingItemID != nil
-            let rootLineColor: Color = isDisabled ? .green.opacity(0.15) : .green.opacity(0.5)
             Button {
                 addEmptyItemAndEdit(parentID: nil)
             } label: {
                 Image(systemName: "plus.circle.fill")
-                    .font(.system(size: 15))
-                    .foregroundStyle(rootLineColor)
+                    .font(.system(size: 22))
+                    .foregroundStyle(isDisabled ? .green.opacity(0.15) : .green.opacity(0.5))
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .buttonStyle(.plain)
             .disabled(isDisabled)
-            .padding(.trailing, 12)
-            .padding(.vertical, 2)
-            .padding(.leading, (indentBase + 12) / 2 - 0.75 + 14)
-            // L字罫線
-            .overlay(alignment: .topLeading) {
-                let lineX: CGFloat = (indentBase + 12) / 2 - 0.75
-                LShapeCorner(color: rootLineColor)
-                    .frame(width: 14, height: 12)
-                    .padding(.leading, lineX)
-            }
-            // 縦線（上半分）
-            .overlay(alignment: .topLeading) {
-                let lineX: CGFloat = (indentBase + 12) / 2 - 0.75
-                GeometryReader { geo in
-                    Rectangle()
-                        .fill(rootLineColor)
-                        .frame(width: 1.5, height: geo.size.height * 0.5 - 12)
-                        .padding(.leading, lineX)
-                }
-            }
+            .padding(.vertical, 4)
+            // チェックボックスの中心に合わせる: indentLeading(0) + 16(listRowInsets内) + 34/2 - 22/2
+            .padding(.leading, indentLeading(0) + 16 + 6)
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))

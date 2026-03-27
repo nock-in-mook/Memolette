@@ -36,7 +36,6 @@ struct TodoListView: View {
     // 編集中の項目
     @State private var editingItemID: UUID?
     @State private var editingText: String = ""
-    @State private var isAddingNewItems = false  // 連続追加モード中か
     @FocusState private var isEditingFocused: Bool
 
     // メモ表示・編集
@@ -90,21 +89,6 @@ struct TodoListView: View {
                                 }
                             }
                             .onMove(perform: moveFlatRows)
-                            // ヒント
-                            if allItems.count > 0 {
-                                HStack(spacing: 5) {
-                                    Image(systemName: "hand.tap")
-                                        .font(.system(size: 12))
-                                    Text("タップで編集 ・ 長押しで並び替え ・ 左スワイプで削除")
-                                        .font(.system(size: 13))
-                                }
-                                .foregroundStyle(.secondary.opacity(0.4))
-                                .frame(maxWidth: .infinity, alignment: .center)
-                                .padding(.top, 4)
-                                .listRowSeparator(.hidden)
-                                .listRowBackground(Color.clear)
-                                .listRowInsets(EdgeInsets())
-                            }
                         }
                         .listStyle(.plain)
                         .scrollContentBackground(.hidden)
@@ -120,6 +104,19 @@ struct TodoListView: View {
                             }
                         }
                     }
+                }
+
+                // ヒント（編集中は非表示）
+                if allItems.count > 0 && editingItemID == nil && memoEditingItemID == nil {
+                    HStack(spacing: 5) {
+                        Image(systemName: "hand.tap")
+                            .font(.system(size: 12))
+                        Text("タップで編集 ・ 長押しで並び替え ・ 左スワイプで削除")
+                            .font(.system(size: 13))
+                    }
+                    .foregroundStyle(.secondary.opacity(0.4))
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 8)
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -423,8 +420,10 @@ struct TodoListView: View {
             appendRows(for: item, depth: 0, isLast: i == roots.count - 1, into: &rows)
         }
 
-        // ルートレベルの追加ボタン
-        rows.append(FlatRow(id: "add-root", kind: .addButton(parentID: nil), depth: 0, isLastChild: true))
+        // ルートレベルの追加ボタン（編集中は非表示）
+        if editingItemID == nil {
+            rows.append(FlatRow(id: "add-root", kind: .addButton(parentID: nil), depth: 0, isLastChild: true))
+        }
         return rows
     }
 
@@ -439,8 +438,8 @@ struct TodoListView: View {
             for (i, child) in kids.enumerated() {
                 appendRows(for: child, depth: depth + 1, isLast: i == kids.count - 1, into: &rows)
             }
-            // 子の追加ボタン（最大階層では表示しない）
-            if depth + 1 <= maxDepth {
+            // 子の追加ボタン（最大階層では表示しない、編集中も非表示）
+            if depth + 1 <= maxDepth && editingItemID == nil {
                 rows.append(FlatRow(id: "add-\(item.id.uuidString)", kind: .addButton(parentID: item.id), depth: depth + 1, isLastChild: true))
             }
         }
@@ -481,6 +480,7 @@ struct TodoListView: View {
         let isExpanded = expandedItems.contains(item.id)
         let hasKids = hasChildren(item.id)
         let isEditing = editingItemID == item.id
+        let isAnythingEditing = editingItemID != nil || memoEditingItemID != nil
 
         // メインコンテンツ（帯スタイル）
         HStack(spacing: 0) { // 外側HStack（インデント用）
@@ -562,10 +562,11 @@ struct TodoListView: View {
             } label: {
                 Image(systemName: "note.text")
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle((item.memo ?? "").isEmpty ? Color.secondary.opacity(0.2) : Color.orange.opacity(0.7))
+                    .foregroundStyle(isAnythingEditing ? Color.secondary.opacity(0.2) : ((item.memo ?? "").isEmpty ? Color.secondary.opacity(0.2) : Color.orange.opacity(0.7)))
                     .frame(width: 28, height: 28)
             }
             .buttonStyle(.plain)
+            .disabled(isAnythingEditing)
 
             // 展開/折りたたみ矢印
             if hasKids {
@@ -578,12 +579,13 @@ struct TodoListView: View {
                         }
                     }
                 } label: {
-                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.secondary.opacity(0.5))
+                        .foregroundStyle(isAnythingEditing ? Color.secondary.opacity(0.2) : (isExpanded ? Color.orange : Color.blue))
                         .frame(width: 30, height: 30)
                 }
                 .buttonStyle(.plain)
+                .disabled(isAnythingEditing)
             } else if depth < maxDepth {
                 // 子がない＆まだ階層追加可能 → 展開ボタン
                 Button {
@@ -595,12 +597,13 @@ struct TodoListView: View {
                         }
                     }
                 } label: {
-                    Image(systemName: "chevron.right")
+                    Image(systemName: "chevron.down")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(.secondary.opacity(0.2))
                         .frame(width: 30, height: 30)
                 }
                 .buttonStyle(.plain)
+                .disabled(isAnythingEditing)
             }
         }
 
@@ -688,34 +691,68 @@ struct TodoListView: View {
     // MARK: - 追加ボタン
     @ViewBuilder
     private func addItemRow(parentID: UUID?, depth: Int, rowID: String) -> some View {
-        Button {
-            addEmptyItemAndEdit(parentID: parentID)
-        } label: {
-            Image(systemName: "plus.circle.fill")
-                .font(.system(size: 22))
-                .foregroundStyle(.secondary.opacity(0.25))
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .padding(.leading, indentLeading(depth) + 14)
-        .padding(.vertical, 4)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        // 階層ごとの色付きインデントバー（todoRowと共通）
-        .background(alignment: .leading) {
-            HStack(spacing: 0) {
-                Rectangle()
-                    .fill(Color.green.opacity(0.12))
-                    .frame(width: indentBase + 16)
-                ForEach(0..<depth, id: \.self) { d in
+        if let parentID = parentID,
+           let parent = allItems.first(where: { $0.id == parentID }) {
+            // 子タスク追加（点線枠スタイル）
+            let isDisabled = editingItemID != nil || memoEditingItemID != nil
+            Button {
+                addEmptyItemAndEdit(parentID: parentID)
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 12, weight: .medium))
+                    Text("\"\(parent.title)\"  の子タスクを追加")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .lineLimit(1)
+                }
+                .foregroundStyle(.secondary.opacity(isDisabled ? 0.15 : 0.4))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4]))
+                        .foregroundStyle(.secondary.opacity(isDisabled ? 0.08 : 0.2))
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(isDisabled)
+            .padding(.trailing, 12)
+            .padding(.vertical, 2)
+            .padding(.leading, indentLeading(depth) + 16)
+            // 親階層の帯を継続表示（自分の階層は除く）
+            .background(alignment: .leading) {
+                HStack(spacing: 0) {
                     Rectangle()
-                        .fill(depthColor(d))
-                        .frame(width: indentStep)
+                        .fill(Color.green.opacity(0.12))
+                        .frame(width: indentBase + 16)
+                    ForEach(0..<max(0, depth - 1), id: \.self) { d in
+                        Rectangle()
+                            .fill(depthColor(d))
+                            .frame(width: indentStep)
+                    }
                 }
             }
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+        } else {
+            // ルート追加（プラスボタン）
+            Button {
+                addEmptyItemAndEdit(parentID: nil)
+            } label: {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 22))
+                    .foregroundStyle(.secondary.opacity(0.25))
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.vertical, 4)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
         }
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color.clear)
-        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
     }
 
     // MARK: - 全チェッククリア
@@ -761,13 +798,11 @@ struct TodoListView: View {
 
     // MARK: - インライン編集開始（既存項目をタップ）
     private func startEditing(item: TodoItem) {
-        // 連続追加モード中に別の項目をタップ → 空の新規項目を片付ける
-        if isAddingNewItems, let editID = editingItemID,
-           let editItem = allItems.first(where: { $0.id == editID }),
-           editItem.title.isEmpty {
-            deleteItem(editItem)
+        // 編集中の項目があれば先に確定
+        if let editID = editingItemID,
+           let editItem = allItems.first(where: { $0.id == editID }) {
+            commitEdit(item: editItem)
         }
-        isAddingNewItems = false
         editingItemID = item.id
         editingText = item.title
     }
@@ -798,47 +833,24 @@ struct TodoListView: View {
         memoEditingText = ""
     }
 
-    // MARK: - Enter押下時（連続追加 or 通常確定）
+    // MARK: - Enter押下時
     private func submitEdit(item: TodoItem) {
-        let trimmed = editingText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let parentID = item.parentID
-
-        if isAddingNewItems {
-            if trimmed.isEmpty {
-                // 空Enter → 空行を削除して連続追加終了
-                deleteItem(item)
-                editingItemID = nil
-                editingText = ""
-                isAddingNewItems = false
-            } else {
-                // 確定して次の空行へ
-                item.title = trimmed
-                item.updatedAt = Date()
-                try? modelContext.save()
-                editingItemID = nil
-                editingText = ""
-                addEmptyItemAndEdit(parentID: parentID)
-            }
-        } else {
-            // 既存項目の編集確定
-            commitEdit(item: item)
-        }
+        commitEdit(item: item)
     }
 
-    // MARK: - 編集確定（タップで離脱時）
+    // MARK: - 編集確定
     private func commitEdit(item: TodoItem) {
         let trimmed = editingText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if isAddingNewItems && trimmed.isEmpty {
-            // 連続追加中に空のまま離脱 → 空項目を削除
+        if trimmed.isEmpty {
+            // 空タイトル → 削除
             deleteItem(item)
-        } else if !trimmed.isEmpty {
+        } else {
             item.title = trimmed
             item.updatedAt = Date()
             try? modelContext.save()
         }
         editingItemID = nil
         editingText = ""
-        isAddingNewItems = false
     }
 
     // MARK: - 空の項目を作成して即編集開始（saveはしない＝確定まで永続化しない）
@@ -855,7 +867,6 @@ struct TodoListView: View {
             expandedItems.insert(parentID)
         }
 
-        isAddingNewItems = true
         editingItemID = item.id
         editingText = ""
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {

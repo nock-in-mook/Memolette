@@ -286,10 +286,10 @@ struct QuickSortFilterView: View {
                     Text("\(count)件")
                         .font(.system(size: 13))
                         .foregroundStyle(.secondary)
-                } else if icon == "tag.fill" && !filterByTag {
-                    Image(systemName: "chevron.down")
+                } else if icon == "tag.fill" {
+                    Image(systemName: filterByTag ? "chevron.down" : "chevron.right")
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(.secondary.opacity(0.5))
+                        .foregroundStyle(filterByTag ? .orange : .secondary.opacity(0.5))
                 }
 
                 Image(systemName: isOn.wrappedValue ? "checkmark.circle.fill" : "circle")

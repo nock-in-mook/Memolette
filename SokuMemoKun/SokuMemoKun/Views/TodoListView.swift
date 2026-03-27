@@ -32,6 +32,8 @@ struct TodoListView: View {
     @State private var showExpandDialog = false
     // 全チェッククリアダイアログ
     @State private var showResetDialog = false
+    // 全タスク削除ダイアログ
+    @State private var showClearAllDialog = false
 
     // 編集中の項目
     @State private var editingItemID: UUID?
@@ -46,9 +48,10 @@ struct TodoListView: View {
 
 
 
-    // 進捗情報
-    private var totalCount: Int { allItems.count }
-    private var doneCount: Int { allItems.filter(\.isDone).count }
+    // 進捗情報（ルート項目のみ）
+    private var rootItems_: [TodoItem] { allItems.filter { $0.parentID == nil } }
+    private var totalCount: Int { rootItems_.count }
+    private var doneCount: Int { rootItems_.filter(\.isDone).count }
     private var progress: Double {
         totalCount == 0 ? 0 : Double(doneCount) / Double(totalCount)
     }
@@ -186,6 +189,33 @@ struct TodoListView: View {
             commitMemo()
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }
+        // 全タスク削除フロートボタン（下端中央）
+        .overlay(alignment: .bottom) {
+            if allItems.count > 0 && editingItemID == nil && memoEditingItemID == nil {
+                Button {
+                    showClearAllDialog = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "list.bullet")
+                            .font(.system(size: 12, weight: .medium))
+                        Text("削除")
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                    }
+                    .foregroundStyle(.red.opacity(0.6))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 7)
+                    .background(
+                        Capsule()
+                            .fill(.ultraThinMaterial)
+                    )
+                    .overlay(
+                        Capsule()
+                            .strokeBorder(Color.red.opacity(0.15), lineWidth: 0.5)
+                    )
+                }
+                .padding(.bottom, 8)
+            }
+        }
         // 全展開ダイアログ（カスタムリッチUI）
         .overlay {
             if showExpandDialog {
@@ -305,6 +335,62 @@ struct TodoListView: View {
                 .transition(.opacity)
             }
         }
+        // 全タスク削除ダイアログ
+        .overlay {
+            if showClearAllDialog {
+                ZStack {
+                    Color.black.opacity(0.3)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                showClearAllDialog = false
+                            }
+                        }
+                    VStack(spacing: 16) {
+                        Text("全タスクを削除")
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .padding(.top, 4)
+                        Text("\(allItems.count)件のタスクを全て削除します\nリスト自体は残ります")
+                            .font(.system(size: 13, design: .rounded))
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                        VStack(spacing: 10) {
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    clearAllItems()
+                                    showClearAllDialog = false
+                                }
+                            } label: {
+                                Text("全て削除する")
+                                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                                    .background(Color.red.opacity(0.1))
+                                    .foregroundStyle(.red)
+                                    .cornerRadius(8)
+                            }
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.15)) {
+                                    showClearAllDialog = false
+                                }
+                            } label: {
+                                Text("キャンセル")
+                                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .padding(20)
+                    .background(.regularMaterial)
+                    .cornerRadius(16)
+                    .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
+                    .padding(.horizontal, 40)
+                }
+                .transition(.opacity)
+            }
+        }
     }
 
     // MARK: - リッチヘッダー
@@ -325,6 +411,15 @@ struct TodoListView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            .contextMenu {
+                if allItems.count > 0 {
+                    Button(role: .destructive) {
+                        showClearAllDialog = true
+                    } label: {
+                        Label("全タスクを削除", systemImage: "trash")
+                    }
+                }
+            }
 
             Spacer()
 
@@ -337,14 +432,26 @@ struct TodoListView: View {
                             .stroke(Color.secondary.opacity(0.15), lineWidth: 4)
 
                         // 進捗リング
-                        Circle()
-                            .trim(from: 0, to: progress)
-                            .stroke(
-                                progress >= 1.0 ? Color.green : Color.blue,
-                                style: StrokeStyle(lineWidth: 4, lineCap: .round)
-                            )
-                            .rotationEffect(.degrees(-90))
-                            .animation(.easeInOut(duration: 0.3), value: progress)
+                        if progress >= 1.0 {
+                            // 全完了：レインボー
+                            Circle()
+                                .stroke(
+                                    AngularGradient(
+                                        colors: [.red, .orange, .yellow, .green, .blue, .purple, .red],
+                                        center: .center
+                                    ),
+                                    style: StrokeStyle(lineWidth: 4, lineCap: .round)
+                                )
+                        } else {
+                            Circle()
+                                .trim(from: 0, to: progress)
+                                .stroke(
+                                    Color.blue,
+                                    style: StrokeStyle(lineWidth: 4, lineCap: .round)
+                                )
+                                .rotationEffect(.degrees(-90))
+                                .animation(.easeInOut(duration: 0.3), value: progress)
+                        }
 
                         // パーセント表示
                         VStack(spacing: -1) {
@@ -579,7 +686,7 @@ struct TodoListView: View {
                         }
                     }
                 } label: {
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(isAnythingEditing ? Color.secondary.opacity(0.2) : (isExpanded ? Color.orange : Color.blue))
                         .frame(width: 30, height: 30)
@@ -597,13 +704,16 @@ struct TodoListView: View {
                         }
                     }
                 } label: {
-                    Image(systemName: "chevron.down")
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.secondary.opacity(0.2))
+                        .foregroundStyle(isAnythingEditing ? Color.secondary.opacity(0.2) : (isExpanded ? Color.orange : Color.secondary.opacity(0.2)))
                         .frame(width: 30, height: 30)
                 }
                 .buttonStyle(.plain)
                 .disabled(isAnythingEditing)
+            } else {
+                // 最深階層：展開ボタンなし、同じ幅のスペース確保
+                Color.clear.frame(width: 30, height: 30)
             }
         }
 
@@ -753,6 +863,16 @@ struct TodoListView: View {
             .listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
         }
+    }
+
+    // MARK: - 全タスク削除（リスト自体は残す）
+    private func clearAllItems() {
+        for item in allItems {
+            modelContext.delete(item)
+        }
+        try? modelContext.save()
+        expandedItems.removeAll()
+        memoOpenItems.removeAll()
     }
 
     // MARK: - 全チェッククリア

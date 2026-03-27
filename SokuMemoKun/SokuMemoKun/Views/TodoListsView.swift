@@ -7,6 +7,15 @@ struct TodoListsView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \TodoList.updatedAt, order: .reverse) private var todoLists: [TodoList]
 
+    // ソート済みリスト（固定→通常、manualSortOrder→更新日）
+    private var sortedLists: [TodoList] {
+        todoLists.sorted { a, b in
+            if a.isPinned != b.isPinned { return a.isPinned }
+            if a.manualSortOrder != b.manualSortOrder { return a.manualSortOrder < b.manualSortOrder }
+            return a.updatedAt > b.updatedAt
+        }
+    }
+
     // 新規リスト作成ダイアログ
     @State private var showNewListDialog = false
     @State private var newListTitle = ""
@@ -14,6 +23,10 @@ struct TodoListsView: View {
 
     // 選択中のリスト（編集画面へ遷移）
     @State private var selectedList: TodoList?
+
+    // 削除確認ダイアログ
+    @State private var pendingDeleteList: TodoList?
+    @State private var showDeleteConfirm = false
 
     // TODOタブの緑色
     private let todoTabColor = Color(red: 0.55, green: 0.82, blue: 0.55)
@@ -87,6 +100,60 @@ struct TodoListsView: View {
             if showNewListDialog {
                 newListDialogOverlay
             }
+
+            // 削除確認ダイアログ
+            if showDeleteConfirm, let list = pendingDeleteList {
+                ZStack {
+                    Color.black.opacity(0.3)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            withAnimation { showDeleteConfirm = false }
+                        }
+                    VStack(spacing: 16) {
+                        Text("「\(list.title)」を削除します")
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .padding(.top, 4)
+                        Text("リスト内の全タスクも削除されます")
+                            .font(.system(size: 13, design: .rounded))
+                            .foregroundStyle(.secondary)
+                        VStack(spacing: 10) {
+                            Button {
+                                withAnimation {
+                                    deleteList(list)
+                                    pendingDeleteList = nil
+                                    showDeleteConfirm = false
+                                }
+                            } label: {
+                                Text("削除する")
+                                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                                    .background(Color.red.opacity(0.1))
+                                    .foregroundStyle(.red)
+                                    .cornerRadius(8)
+                            }
+                            Button {
+                                withAnimation {
+                                    pendingDeleteList = nil
+                                    showDeleteConfirm = false
+                                }
+                            } label: {
+                                Text("キャンセル")
+                                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .padding(20)
+                    .background(.regularMaterial)
+                    .cornerRadius(16)
+                    .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
+                    .padding(.horizontal, 40)
+                }
+                .transition(.opacity)
+            }
         }
     }
 
@@ -129,13 +196,13 @@ struct TodoListsView: View {
             HStack(alignment: .top, spacing: 8) {
                 // 左列（偶数インデックス）
                 LazyVStack(spacing: 8) {
-                    ForEach(Array(todoLists.enumerated()).filter { $0.offset % 2 == 0 }, id: \.element.id) { _, list in
+                    ForEach(Array(sortedLists.enumerated()).filter { $0.offset % 2 == 0 }, id: \.element.id) { _, list in
                         listCard(list)
                     }
                 }
                 // 右列（奇数インデックス）
                 LazyVStack(spacing: 8) {
-                    ForEach(Array(todoLists.enumerated()).filter { $0.offset % 2 == 1 }, id: \.element.id) { _, list in
+                    ForEach(Array(sortedLists.enumerated()).filter { $0.offset % 2 == 1 }, id: \.element.id) { _, list in
                         listCard(list)
                     }
                 }
@@ -154,24 +221,55 @@ struct TodoListsView: View {
             selectedList = list
         } label: {
             VStack(alignment: .leading, spacing: 6) {
-                // ヘッダー（アイコン＋タイトル＋サマリ）
-                HStack(spacing: 8) {
+                // ヘッダー（アイコン＋タイトル＋ドーナツ）
+                HStack(spacing: 6) {
                     Image(systemName: "bookmark.fill")
-                        .font(.system(size: 16))
+                        .font(.system(size: 14))
                         .foregroundStyle(.orange)
 
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(list.title)
-                            .font(.system(size: 14, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.primary)
-                            .lineLimit(1)
+                    Text(list.title)
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
 
-                        Text(itemSummary(for: list))
-                            .font(.system(size: 11, design: .rounded))
-                            .foregroundStyle(.secondary)
+                    Spacer(minLength: 4)
+
+                    // ミニドーナツ
+                    let summary = fetchSummary(for: list)
+                    if summary.total > 0 {
+                        let prog = Double(summary.done) / Double(summary.total)
+                        ZStack {
+                            Circle()
+                                .stroke(Color.secondary.opacity(0.15), lineWidth: 2.5)
+                            if prog >= 1.0 {
+                                // 全完了：レインボー
+                                Circle()
+                                    .stroke(
+                                        AngularGradient(
+                                            colors: [.red, .orange, .yellow, .green, .blue, .purple, .red],
+                                            center: .center
+                                        ),
+                                        style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
+                                    )
+                            } else {
+                                Circle()
+                                    .trim(from: 0, to: prog)
+                                    .stroke(
+                                        Color.blue,
+                                        style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
+                                    )
+                                    .rotationEffect(.degrees(-90))
+                            }
+                            HStack(spacing: 0) {
+                                Text("\(Int(prog * 100))")
+                                    .font(.system(size: 7, weight: .bold, design: .rounded))
+                                Text("%")
+                                    .font(.system(size: 5, weight: .medium, design: .rounded))
+                            }
+                            .foregroundStyle(prog >= 1.0 ? .green : .primary)
+                        }
+                        .frame(width: 24, height: 24)
                     }
-
-                    Spacer()
                 }
 
                 // ルート項目プレビュー（子項目は表示しない）
@@ -190,13 +288,25 @@ struct TodoListsView: View {
                                     .lineLimit(1)
                             }
                         }
-                        if rootItems.count > 5 {
-                            Text("…ほか\(rootItems.count - 5)件")
-                                .font(.system(size: 10, design: .rounded))
+                    }
+                    .padding(.leading, 4)
+                }
+
+                // 右下に件数表示
+                let summary2 = fetchSummary(for: list)
+                if summary2.total > 0 {
+                    HStack {
+                        Spacer()
+                        if summary2.done == summary2.total {
+                            Text("全完了")
+                                .font(.system(size: 9, weight: .medium, design: .rounded))
+                                .foregroundStyle(.secondary.opacity(0.5))
+                        } else {
+                            Text("\(summary2.done)/\(summary2.total) 完了")
+                                .font(.system(size: 9, weight: .medium, design: .rounded))
                                 .foregroundStyle(.secondary.opacity(0.5))
                         }
                     }
-                    .padding(.leading, 4)
                 }
             }
             .padding(12)
@@ -208,13 +318,64 @@ struct TodoListsView: View {
             )
         }
         .buttonStyle(.plain)
-        .contextMenu {
-            Button(role: .destructive) {
-                deleteList(list)
-            } label: {
-                Label("削除", systemImage: "trash")
+        .overlay(alignment: .topLeading) {
+            if list.isPinned {
+                Image(systemName: "pin.fill")
+                    .font(.system(size: 9))
+                    .foregroundStyle(.orange)
+                    .offset(x: 4, y: 4)
             }
         }
+        .overlay(alignment: .bottomLeading) {
+            if list.isLocked {
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 9))
+                    .foregroundStyle(.red.opacity(0.6))
+                    .offset(x: 4, y: -4)
+            }
+        }
+        .contextMenu {
+            Button {
+                moveListToTop(list)
+            } label: {
+                Label("トップに移動", systemImage: "arrow.up.to.line")
+            }
+            Button {
+                list.isPinned.toggle()
+                try? modelContext.save()
+            } label: {
+                Label(list.isPinned ? "固定を解除" : "トップに常時固定", systemImage: list.isPinned ? "pin.slash" : "pin")
+            }
+            Button {
+                list.isLocked.toggle()
+                try? modelContext.save()
+            } label: {
+                Label(list.isLocked ? "ロックを解除" : "削除防止ロック", systemImage: list.isLocked ? "lock.open" : "lock")
+            }
+            if list.isLocked {
+                Button(role: .destructive) {} label: {
+                    Label("削除ロック中", systemImage: "lock.fill")
+                }
+                .disabled(true)
+            } else {
+                Button(role: .destructive) {
+                    pendingDeleteList = list
+                    showDeleteConfirm = true
+                } label: {
+                    Label("削除", systemImage: "trash")
+                }
+            }
+        }
+    }
+
+    // 達成サマリ取得（ルート項目のみ）
+    private func fetchSummary(for list: TodoList) -> (total: Int, done: Int) {
+        let listID = list.id
+        let descriptor = FetchDescriptor<TodoItem>(
+            predicate: #Predicate { $0.listID == listID && $0.parentID == nil }
+        )
+        let items = (try? modelContext.fetch(descriptor)) ?? []
+        return (items.count, items.filter(\.isDone).count)
     }
 
     // ルート項目のみ取得（sortOrder順）
@@ -363,4 +524,13 @@ struct TodoListsView: View {
         modelContext.delete(list)
         try? modelContext.save()
     }
+
+    // MARK: - トップに移動
+    private func moveListToTop(_ list: TodoList) {
+        let minOrder = todoLists.map(\.manualSortOrder).min() ?? 0
+        list.manualSortOrder = minOrder - 1
+        list.updatedAt = Date()
+        try? modelContext.save()
+    }
+
 }

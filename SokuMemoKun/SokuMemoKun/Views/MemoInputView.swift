@@ -300,7 +300,7 @@ struct MemoInputView: View {
                                         ? .clear
                                         : .label,
                                     // 編集モード（GutteredTextView）と同じインセットで位置を揃える
-                                    insets: UIEdgeInsets(top: 16, left: 6, bottom: 0, right: 4),
+                                    insets: UIEdgeInsets(top: 28, left: 6, bottom: 0, right: 4),
                                     lineFragmentPadding: 5,
                                     onTapAtOffset: { offset in
                                         contentTapOffset = viewModel.inputText.isEmpty ? nil : offset
@@ -320,10 +320,16 @@ struct MemoInputView: View {
                         }
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            // ScrollViewの空白部分タップ（テキスト外）→ 末尾カーソル
-                            contentTapOffset = nil
-                            isEditing = true
-                            isTextEditorFocused = true
+                            if isEditing {
+                                // 編集中に空白タップ → 確定して編集を抜ける
+                                isTextEditorFocused = false
+                                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                            } else {
+                                // 閲覧中に空白タップ → 編集モードに入る
+                                contentTapOffset = nil
+                                isEditing = true
+                                isTextEditorFocused = true
+                            }
                         }
                     }
 
@@ -333,7 +339,7 @@ struct MemoInputView: View {
                             .foregroundStyle(.gray.opacity(0.5))
                             .padding(.leading, showLineNumbers ? 44 : 14)
                             .padding(.trailing, 8)
-                            .padding(.top, 16)
+                            .padding(.top, 28)
                             .padding(.bottom, 24)
                             .allowsHitTesting(false)
                     }

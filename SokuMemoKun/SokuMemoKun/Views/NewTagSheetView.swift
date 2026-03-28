@@ -127,7 +127,7 @@ struct NewTagSheetView: View {
                     Button("キャンセル") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("追加") {
+                    Button("確定") {
                         saveTag()
                     }
                     .disabled(trimmedName.isEmpty || isDuplicate)

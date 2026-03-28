@@ -1237,6 +1237,7 @@ struct TabbedMemoListView: View {
                             }
                             .buttonStyle(.plain)
 
+                            if !isFrequentTab {
                             Button {
                                 selectMode = .moveToTop
                                 selectedMemoIDs.removeAll()
@@ -1256,6 +1257,7 @@ struct TabbedMemoListView: View {
                                     )
                             }
                             .buttonStyle(.plain)
+                            }
 
                             Spacer()
 
@@ -1809,15 +1811,17 @@ struct TabbedMemoListView: View {
         }
         .contextMenu {
             if !isSelectMode {
-                Button {
-                    moveToTop(memo)
-                } label: {
-                    Label("トップに移動", systemImage: "arrow.up.to.line")
-                }
-                Button {
-                    memo.isPinned.toggle()
-                } label: {
-                    Label(memo.isPinned ? "固定を解除" : "トップに常時固定", systemImage: memo.isPinned ? "pin.slash" : "pin")
+                if !isFrequentTab {
+                    Button {
+                        moveToTop(memo)
+                    } label: {
+                        Label("トップに移動", systemImage: "arrow.up.to.line")
+                    }
+                    Button {
+                        memo.isPinned.toggle()
+                    } label: {
+                        Label(memo.isPinned ? "固定を解除" : "トップに常時固定", systemImage: memo.isPinned ? "pin.slash" : "pin")
+                    }
                 }
                 Button {
                     UIPasteboard.general.string = memo.content

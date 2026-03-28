@@ -296,14 +296,7 @@ struct MainView: View {
                         }
                     }
                 }
-                // キーボード上部に「完了」ボタン
-                ToolbarItemGroup(placement: .keyboard) {
-                    Spacer()
-                    Button("完了") {
-                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                    }
-                    .font(.system(size: 15, weight: .semibold))
-                }
+
             }
             // 保存トースト
             .overlay(alignment: .top) {

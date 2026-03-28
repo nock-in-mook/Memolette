@@ -122,6 +122,7 @@ struct TodoListView: View {
                         .scrollContentBackground(.hidden)
                         .scrollDismissesKeyboard(.interactively)
                         .environment(\.defaultMinListRowHeight, 1)
+                        .animation(nil, value: allItems.count)
                         .onChange(of: editingItemID) { oldID, newID in
                             if let id = newID {
                                 scrollToItem(id, proxy: proxy)

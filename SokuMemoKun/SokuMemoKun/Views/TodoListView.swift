@@ -1045,19 +1045,12 @@ struct TodoListView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         } // 外側HStack（インデント用）
-        // 階層ごとの色付きインデントバー
-        .background(alignment: .leading) {
-            HStack(spacing: 0) {
-                // ルートレベルのインデント（常に緑）
-                Rectangle()
-                    .fill(Color.green.opacity(0.12))
-                    .frame(width: indentBase + 12)  // listRowInsetsのleading分を加算（チェックボックスにかぶらないよう調整）
-                // 各階層のインデント帯
-                ForEach(0..<depth, id: \.self) { d in
-                    Rectangle()
-                        .fill(depthColor(d))
-                        .frame(width: indentStep)
-                }
+        // 行全体を階層の色で塗りつぶし
+        .background {
+            if depth == 0 {
+                Color.green.opacity(0.08)
+            } else {
+                depthColor(depth - 1).opacity(0.8)
             }
         }
         // 子階層以降の縦線（帯の中央、編集中は非表示）
@@ -1131,17 +1124,12 @@ struct TodoListView: View {
                         }
                     }
             }
-            // 親階層の帯を継続表示（自分の階層は除く）
-            .background(alignment: .leading) {
-                HStack(spacing: 0) {
-                    Rectangle()
-                        .fill(Color.green.opacity(0.12))
-                        .frame(width: indentBase + 12)
-                    ForEach(0..<max(0, depth - 1), id: \.self) { d in
-                        Rectangle()
-                            .fill(depthColor(d))
-                            .frame(width: indentStep)
-                    }
+            // 行全体を親階層の色で塗りつぶし
+            .background {
+                if depth <= 1 {
+                    Color.green.opacity(0.08)
+                } else {
+                    depthColor(depth - 2).opacity(0.8)
                 }
             }
             // シンプルモード: 上位祖先の縦線（自分の階層のL字より上の階層）

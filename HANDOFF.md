@@ -1,48 +1,41 @@
 # 引き継ぎメモ
 
 ## 現在の状況
-- **main** ブランチで作業中（feature/todo-listはmainにマージ済み）
-- セッション051でToDo・ルーレット・入力欄のUI微調整を多数実施
+- **main** ブランチで作業中
+- セッション052で爆速モードの大改修を実施
 
-### セッション051の主な変更点
+### セッション052の主な変更点
 
-#### ToDo画面
-- ＋ボタン行の背景色を正しい階層色に修正
-- メモタップを短文/長文問わず統一（展開→編集の2段階）
-- メモ編集確定後に省略表示に戻す
-- リスト初期表示時にツリー全展開（メモは省略のまま）
-- 空リストの案内を＋ボタン横のガイドテキスト「最初の項目を追加しましょう」に変更
-- 子項目ガイド「子項目を追加できます」表示（リスト内に子項目が1つもない時のみ）
-- ＋ボタンとチェックボックスの中心位置を自動揃え（ルート・子両方）
-- チェックボックスのアニメーション廃止（即チェック）
-- プレースホルダーを「項目名を入力」に変更
+#### 爆速モード — 閲覧/編集ビュー統一
+- 閲覧モード（TappableReadOnlyText+ScrollView）と編集モード（LineNumberTextEditor）のビュー切替を廃止
+- 常にLineNumberTextEditorを使用し、`isEditable`で閲覧/編集を切替
+- **スクロール位置が閲覧→編集で保持される**ようになった
+- GutteredTextViewに非編集時タップハンドラ追加（UITextViewから直接文字オフセット取得→カーソル配置）
 
-#### ルーレット（メモ編集画面）
-- 収納時: パネル色グレー統一・テキスト非表示・針非表示
-- 展開時: カラフルパネル・赤い針（従来通り）
-- タブ: 三角マーク削除・テキスト「タグ」のみ・幅38pt
-- インナーシャドウを薄く
-- タグなしパネルの色は0.92のまま
+#### 爆速モード — カードUI改善
+- カード幅+40pt（左右20ptずつ拡大）
+- 本文編集ボタン押下時の自動カード拡大を廃止（カーソルが末尾に出るだけ）
+- テキスト上端位置統一（GutteredTextView top: 20→16pt、TappableReadOnlyTextと一致）
 
-#### 入力欄
-- テキスト表示上端を28→20ptに引き上げ
-- プレースホルダー位置をカーソル位置に合わせて右にずらし
-- 入力欄の高さをルーレット下端基準の固定値(328pt)に変更（機種非依存）
-- 最大化ボタン: 23pt・右下寄せ（trailing/bottom各3pt）
-- MainView最大化ボタンサイズ修正（16pt/27pt）
+#### 爆速モード — キーボード対応
+- カードサイズはキーボード表示で変えない方式に変更
+- GutteredTextView自身がキーボードとの重なりを計算し、contentInset.bottomで自動調整
+- カーソル位置がキーボード下に隠れない
 
-#### 爆速モード
-- カルーセルのフリックページ送りを有効化（isScrollDisabled: false）
+#### 最大化ボタン統一
+- MemoInputView・QuickSortCellView共通: 21x21、font 10pt、trailing 3pt/bottom 3pt
+- アイコンを`arrow.up.backward.and.arrow.down.forward`系に統一
 
 ## 次のアクション（優先順）
-1. **爆速モードの改修続き**（フリック対応の続き、UI改善等）
-2. **並び替え問題の大改修**（ドラッグ並び替えが階層を超えて壊れる問題の根本対策）
-3. **キーボード表示時のスクロール改善**
-4. **ToDoリストごとにアイコンと色を選べる機能**
-5. **フォルダタブでTODOタグ選択時にTodoItemsを一覧表示**
-6. **タグ（バッグ）への紐付けUI**
-7. カラーブラインドモード
-8. アプリアイコン
+1. **実機ビルドの問題解決**（CodeSign / Google Driveのxattr問題）
+2. **爆速モードの改修続き**（フリック対応の続き、UI改善等）
+3. **並び替え問題の大改修**（ドラッグ並び替えが階層を超えて壊れる問題の根本対策）
+4. **キーボード表示時のスクロール改善**
+5. **ToDoリストごとにアイコンと色を選べる機能**
+6. **フォルダタブでTODOタグ選択時にTodoItemsを一覧表示**
+7. **タグ（バッグ）への紐付けUI**
+8. カラーブラインドモード
+9. アプリアイコン
 
 ## 主要ファイル（ToDo関連）
 - **TodoItem.swift**: ToDoデータモデル（listID, parentID, isDone, memo, tags等）
@@ -57,7 +50,7 @@
 - **CarouselView.swift**: UICollectionViewベースのカルーセル
 - **TagDialView.swift**: ルーレット
 - **MemoInputView.swift**: メモ入力画面（トレー方式ルーレット）
-- **LineNumberTextEditor.swift**: 行番号付きエディタ（initialCursorOffset対応）
+- **LineNumberTextEditor.swift**: 行番号付きエディタ（isEditable/onTapWhileReadOnly対応）
 
 ## 環境
 - **Mac②（新）**: MacBook Air — Xcode 26.3, シミュレータ iPhone 17 Pro (iOS 26.3)
@@ -74,3 +67,4 @@
 - **キーボードとダイアログ**: ダイアログはNavigationStack外のZStackに配置（押し潰れ防止）
 - **LazyVStack + DragGesture は使わない**: ScrollViewのスクロールが死ぬ。Listを使うこと
 - **チェックボックス**: Image+onTapGestureで28x28に限定（Buttonだとタップ判定が広がる）
+- **Google Drive上のxattr問題**: ビルド前に`xattr -cr .`が必要（resource fork等のデトリタス）

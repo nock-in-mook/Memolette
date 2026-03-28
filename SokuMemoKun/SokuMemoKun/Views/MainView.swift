@@ -84,11 +84,25 @@ struct MainView: View {
                                 hasDiff: viewModel.inputText != originalContent || viewModel.titleText != originalTitle,
                                 onConfirm: { confirmMemo() }
                             )
-                            .frame(height: isInputExpanded ? geo.size.height * 0.92 : geo.size.height * 0.48 - 30)
+                            .frame(height: isInputExpanded ? geo.size.height * 0.85 : geo.size.height * 0.48 - 30)
 
                             // Specialメニュー用スペース（入力欄とフォルダの間）
                             // 並び替えモード中は非表示（全体を上に詰める）
-                            if !isInputExpanded && !isTabReorderMode {
+                            if isInputExpanded {
+                                // 最大化時: フォルダを普段の位置に戻すボタン
+                                Button {
+                                    withAnimation(.spring(response: 0.35)) {
+                                        isInputExpanded = false
+                                    }
+                                } label: {
+                                    Image(systemName: "chevron.compact.down")
+                                        .font(.system(size: 18, weight: .semibold))
+                                        .foregroundStyle(.secondary.opacity(0.5))
+                                        .frame(maxWidth: .infinity)
+                                        .frame(height: 30)
+                                }
+                                .buttonStyle(.plain)
+                            } else if !isTabReorderMode {
                                 HStack(spacing: 0) {
                                     // 爆速メモ整理ボタン
                                     Button {

@@ -266,7 +266,9 @@ struct MemoInputView: View {
             headerRow
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    if isTextEditorFocused {
+                    if isTextEditorFocused || isEditing {
+                        isTextEditorFocused = false
+                        isEditing = false
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                     }
                 }
@@ -323,6 +325,7 @@ struct MemoInputView: View {
                             if isEditing {
                                 // 編集中に空白タップ → 確定して編集を抜ける
                                 isTextEditorFocused = false
+                                isEditing = false
                                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                             } else {
                                 // 閲覧中に空白タップ → 編集モードに入る

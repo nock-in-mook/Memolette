@@ -134,10 +134,10 @@ struct MainView: View {
                                         }
                                     } label: {
                                         Image(systemName: "chevron.compact.up")
-                                            .font(.system(size: 18, weight: .semibold))
+                                            .font(.system(size: 16, weight: .semibold))
                                             .foregroundStyle(.secondary.opacity(0.5))
                                             .frame(maxWidth: .infinity)
-                                            .frame(height: 30)
+                                            .frame(height: 27)
                                     }
                                     .buttonStyle(.plain)
 

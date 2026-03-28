@@ -109,7 +109,7 @@ class GutteredTextView: UIView {
 
         textView.font = .systemFont(ofSize: fontSize)
         textView.backgroundColor = .clear
-        textView.textContainerInset = UIEdgeInsets(top: 28, left: 6, bottom: 0, right: 4)
+        textView.textContainerInset = UIEdgeInsets(top: 20, left: 6, bottom: 0, right: 4)
         textView.contentInset.bottom = 40
         textView.alwaysBounceVertical = true
 

@@ -301,7 +301,7 @@ struct MemoInputView: View {
                                         ? .clear
                                         : .label,
                                     // 編集モード（GutteredTextView）と同じインセットで位置を揃える
-                                    insets: UIEdgeInsets(top: 28, left: 6, bottom: 0, right: 4),
+                                    insets: UIEdgeInsets(top: 20, left: 6, bottom: 0, right: 4),
                                     lineFragmentPadding: 5,
                                     onTapAtOffset: { offset in
                                         contentTapOffset = viewModel.inputText.isEmpty ? nil : offset
@@ -316,7 +316,6 @@ struct MemoInputView: View {
                                 .padding(.leading, showLineNumbers ? 0 : 10)
                                 .padding(.trailing, 4)
                             }
-                            // top: insets内の16ptがあるのでSwiftUI側は0
                             .padding(.bottom, 40)
                         }
                         .contentShape(Rectangle())
@@ -340,7 +339,7 @@ struct MemoInputView: View {
                             .foregroundStyle(.gray.opacity(0.5))
                             .padding(.leading, showLineNumbers ? 48 : 18)
                             .padding(.trailing, 8)
-                            .padding(.top, 28)
+                            .padding(.top, 20)
                             .padding(.bottom, 24)
                             .allowsHitTesting(false)
                     }
@@ -367,16 +366,16 @@ struct MemoInputView: View {
                         }
                     } label: {
                         Image(systemName: isExpanded ? "arrow.down.forward.and.arrow.up.backward" : "arrow.up.backward.and.arrow.down.forward")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(.white)
-                            .frame(width: 28, height: 28)
+                            .frame(width: 23, height: 23)
                             .background(
                                 Circle().fill(Color.blue.opacity(0.6))
                             )
                             .shadow(color: .black.opacity(0.2), radius: 2, x: -1, y: 1)
                     }
-                    .padding(.trailing, 8)
-                    .padding(.bottom, 8)
+                    .padding(.trailing, 3)
+                    .padding(.bottom, 3)
                 }
             }
             .overlay(alignment: .bottomLeading) {
@@ -806,7 +805,7 @@ struct MemoInputView: View {
     private let trayCornerRadius: CGFloat = 10
 
     // タブ寸法
-    private let tabWidth: CGFloat = 56      // タブの横幅（「◀ タグ」テキスト分）
+    private let tabWidth: CGFloat = 38      // タブの横幅（「タグ」テキスト分）
     private let tabHeight: CGFloat = 22     // タブの高さ（最初のデザインと同じ細さ）
     private let tabRadius: CGFloat = 6      // タブの左側角丸
 
@@ -971,13 +970,12 @@ struct MemoInputView: View {
                     // 完全収納時: 矢印だけ
                     Text("◀").font(.system(size: 12))
                 } else {
-                    Text(showParentDial ? "▶" : "◀").font(.system(size: 12))
                     Text(showParentDial ? "しまう" : "タグ").font(.system(size: 13, weight: .bold, design: .rounded))
                 }
             }
             .foregroundStyle(.white)
             .frame(width: trayHidden ? hiddenPeekAmount : tabWidth, height: tabHeight, alignment: .leading)
-            .padding(.leading, trayHidden ? 4 : 6)
+            .padding(.leading, trayHidden ? 4 : 3)
             .contentShape(Rectangle())
             .onTapGesture {
                 withAnimation(.spring(response: 0.3)) {

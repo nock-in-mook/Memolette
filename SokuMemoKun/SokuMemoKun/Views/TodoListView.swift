@@ -1044,12 +1044,15 @@ struct TodoListView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         } // 外側HStack（インデント用）
-        // 行全体を階層の色で塗りつぶし
-        .background {
-            if depth == 0 {
-                Color.green.opacity(0.08)
-            } else {
-                depthColor(depth - 1).opacity(0.8)
+        // チェックボックスより右を階層色で塗りつぶし（インデント部分は白）
+        .background(alignment: .trailing) {
+            let fillColor: Color = depth == 0
+                ? Color.green.opacity(0.08)
+                : depthColor(depth - 1).opacity(0.8)
+            GeometryReader { geo in
+                fillColor
+                    .frame(width: geo.size.width - indentLeading(depth))
+                    .frame(maxWidth: .infinity, alignment: .trailing)
             }
         }
         // 子階層以降の縦線（帯の中央、編集中は非表示）
@@ -1123,12 +1126,15 @@ struct TodoListView: View {
                         }
                     }
             }
-            // 行全体をこの階層の色で塗りつぶし（子と同じ色）
-            .background {
-                if depth == 0 {
-                    Color.green.opacity(0.08)
-                } else {
-                    depthColor(depth - 1).opacity(0.8)
+            // チェックボックスより右をこの階層の色で塗りつぶし
+            .background(alignment: .trailing) {
+                let fillColor: Color = depth == 0
+                    ? Color.green.opacity(0.08)
+                    : depthColor(depth - 1).opacity(0.8)
+                GeometryReader { geo in
+                    fillColor
+                        .frame(width: geo.size.width - indentLeading(depth))
+                        .frame(maxWidth: .infinity, alignment: .trailing)
                 }
             }
             // シンプルモード: 上位祖先の縦線（自分の階層のL字より上の階層）

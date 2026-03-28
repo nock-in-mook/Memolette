@@ -19,7 +19,7 @@ private struct LShapeCorner: View {
                 control: CGPoint(x: startX, y: midY)
             )
             path.addLine(to: CGPoint(x: endX, y: midY))
-            context.stroke(path, with: .color(color), lineWidth: 2)
+            context.stroke(path, with: .color(color), lineWidth: 1.5)
         }
     }
 }
@@ -1044,14 +1044,18 @@ struct TodoListView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         } // 外側HStack（インデント用）
-        // チェックボックスより右を階層色で塗りつぶし（インデント部分は白）
+        // 縦線の位置から右を階層色で塗りつぶし
         .background(alignment: .trailing) {
             let fillColor: Color = depth == 0
                 ? Color.green.opacity(0.08)
                 : depthColor(depth - 1).opacity(0.8)
+            // 塗りの左端 = 縦線の位置（depth 0 は行全体）
+            let paintLeft: CGFloat = depth == 0
+                ? 0
+                : 16 + CGFloat(depth - 1) * indentStep + indentStep / 2
             GeometryReader { geo in
                 fillColor
-                    .frame(width: geo.size.width - indentLeading(depth))
+                    .frame(width: geo.size.width - paintLeft)
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
         }
@@ -1126,14 +1130,17 @@ struct TodoListView: View {
                         }
                     }
             }
-            // チェックボックスより右をこの階層の色で塗りつぶし
+            // 縦線の位置から右をこの階層の色で塗りつぶし
             .background(alignment: .trailing) {
                 let fillColor: Color = depth == 0
                     ? Color.green.opacity(0.08)
                     : depthColor(depth - 1).opacity(0.8)
+                let paintLeft: CGFloat = depth == 0
+                    ? 0
+                    : 16 + CGFloat(depth - 1) * indentStep + indentStep / 2
                 GeometryReader { geo in
                     fillColor
-                        .frame(width: geo.size.width - indentLeading(depth))
+                        .frame(width: geo.size.width - paintLeft)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
             }

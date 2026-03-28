@@ -266,9 +266,8 @@ struct MemoInputView: View {
             headerRow
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    if isTextEditorFocused || isEditing {
+                    if isTextEditorFocused {
                         isTextEditorFocused = false
-                        isEditing = false
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                     }
                 }
@@ -322,12 +321,11 @@ struct MemoInputView: View {
                         }
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            if isEditing {
-                                // 編集中に空白タップ → 確定して編集を抜ける
+                            if isTextEditorFocused {
+                                // 編集中に空白タップ → フォーカスだけ外す（スクロール位置保持）
                                 isTextEditorFocused = false
-                                isEditing = false
                                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                            } else {
+                            } else if !isEditing {
                                 // 閲覧中に空白タップ → 編集モードに入る
                                 contentTapOffset = nil
                                 isEditing = true
@@ -517,17 +515,7 @@ struct MemoInputView: View {
             if newValue { isEditing = true; isTextEditorFocused = true; focusInput = false }
         }
         .onChange(of: isTextEditorFocused) { _, focused in
-            // フォーカス喪失時に閲覧モードに戻る（既存メモ表示時のみ）
-            if !focused && !viewModel.inputText.isEmpty {
-                isEditing = false
-            }
-        }
-        // キーボード非表示時に編集を確定（外部タップ対応）
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
-            if isEditing {
-                isTextEditorFocused = false
-                isEditing = false
-            }
+            // フォーカス喪失→カーソルが消えるだけ（Viewは切り替えない、スクロール位置保持）
         }
         .onChange(of: showParentDial) { _, isShowing in
             // ルーレット展開時はテキストのフォーカスを外す

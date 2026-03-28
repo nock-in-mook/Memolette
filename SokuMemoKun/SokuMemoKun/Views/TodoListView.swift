@@ -872,7 +872,7 @@ struct TodoListView: View {
                             .focused($isMemoFocused)
                     }
                 } else {
-                    // 閲覧モード（付箋アイコン＋テキスト、タップで編集へ）
+                    // 閲覧モード（付箋アイコン＋テキスト＋ゴミ箱、タップで編集へ）
                     HStack(alignment: .top, spacing: 4) {
                         Image(systemName: "doc")
                             .rotationEffect(.degrees(90))
@@ -883,6 +883,23 @@ struct TodoListView: View {
                             .font(.system(size: 13, weight: .regular, design: .rounded))
                             .foregroundStyle((item.memo ?? "").isEmpty ? Color.secondary.opacity(0.4) : Color.purple.opacity(0.6))
                             .frame(maxWidth: .infinity, alignment: .leading)
+                        // メモ削除ボタン（メモがある時のみ）
+                        if !(item.memo ?? "").isEmpty {
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.15)) {
+                                    item.memo = nil
+                                    item.updatedAt = Date()
+                                    memoOpenItems.remove(item.id)
+                                    try? modelContext.save()
+                                }
+                            } label: {
+                                Image(systemName: "trash")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(Color.secondary.opacity(0.3))
+                                    .padding(4)
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
                     .contentShape(Rectangle())
                     .onTapGesture {

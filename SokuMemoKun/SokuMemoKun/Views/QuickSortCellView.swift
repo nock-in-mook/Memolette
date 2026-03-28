@@ -65,21 +65,19 @@ struct QuickSortCellView: View {
     @State private var showExpandButton = false
 
 
+
     var body: some View {
         GeometryReader { geo in
-            let cardW = geo.size.width * 0.80
+            let cardW = geo.size.width * 0.80 + 40  // 左右20ptずつ広く
             // ルーレット表示中は本文拡大しない（共存禁止）
             // キーボード表示中はカードがキーボードに被らないよう制限
             let normalH = geo.size.height * 0.35
-            let editH = geo.size.height * 0.55
             let expandedH = geo.size.height * 0.80
-            // isExpanded最優先、ルーレット中は通常サイズ、タップ編集はnormalH維持
-            let baseCardH = showDialArea ? normalH
-                           : isExpanded ? expandedH
-                           : isContentEditing ? (editFromTap ? normalH : editH)
-                           : normalH
-            let maxCardH = keyboardHeight > 0 ? geo.size.height - keyboardHeight - 20 : geo.size.height * 0.80
-            let cardH = min(baseCardH, maxCardH)
+            // isExpanded最優先、ルーレット中は通常サイズ、編集モードでも自動拡大しない
+            // カードサイズはキーボードで変えない（GutteredTextView内でcontentInset調整）
+            let cardH = showDialArea ? normalH
+                       : isExpanded ? expandedH
+                       : normalH
 
             VStack(spacing: 0) {
                     Spacer(minLength: 12)
@@ -88,10 +86,8 @@ struct QuickSortCellView: View {
                     memoCard
                         .frame(width: cardW, height: cardH)
                         .frame(maxWidth: .infinity)
-                        .animation(.easeInOut(duration: 0.25), value: isContentEditing)
                         .animation(.easeInOut(duration: 0.25), value: isExpanded)
                         .animation(.easeInOut(duration: 0.25), value: showDialArea)
-                        .animation(.easeInOut(duration: 0.25), value: keyboardHeight)
 
                     Spacer(minLength: 10)
 
@@ -420,123 +416,44 @@ struct QuickSortCellView: View {
                         )
                         .animation(.easeInOut(duration: 0.2), value: editMode)
 
-                    // 本文（インライン編集）
-                    if isContentEditing {
-                        ZStack(alignment: .bottomTrailing) {
+                    // 本文（常にLineNumberTextEditorを使用 — スクロール位置を保持）
+                    ZStack(alignment: .bottomTrailing) {
+                        if isContentEditing || !memo.content.isEmpty {
                             LineNumberTextEditor(
                                 text: $editingContent,
                                 isFocused: $isContentFocused,
                                 showLineNumbers: false,
                                 fontSize: 15,
-                                initialCursorOffset: contentTapOffset
+                                initialCursorOffset: contentTapOffset,
+                                isEditable: isContentEditing,
+                                onTapWhileReadOnly: { offset, textView in
+                                    commitTitle()
+                                    isTitleFocused = false
+                                    editFromTap = true
+                                    // UITextViewに直接カーソル位置をセット（スクロール位置保持）
+                                    let safe = min(offset, (textView.text ?? "").count)
+                                    textView.selectedRange = NSRange(location: safe, length: 0)
+                                    isContentEditing = true
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                        isContentFocused = true
+                                    }
+                                }
                             )
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
                             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-
-                            // 拡大/縮小ボタン（閲覧・編集共通）
-                            if !isExpanded {
-                                Button {
-                                    withAnimation(.easeInOut(duration: 0.25)) { isExpanded = true }
-                                } label: {
-                                    Image(systemName: "arrow.up.left.and.arrow.down.right")
-                                        .font(.system(size: 13, weight: .medium))
-                                        .foregroundStyle(.white)
-                                        .frame(width: 30, height: 30)
-                                        .background(Circle().fill(Color.blue.opacity(0.7)))
-                                }
-                                .buttonStyle(.plain)
-                                .padding(8)
-                                .transition(.scale.combined(with: .opacity))
-                            } else {
-                                Button {
-                                    withAnimation(.easeInOut(duration: 0.25)) { isExpanded = false }
-                                } label: {
-                                    Image(systemName: "arrow.down.right.and.arrow.up.left")
-                                        .font(.system(size: 13, weight: .medium))
-                                        .foregroundStyle(.white)
-                                        .frame(width: 30, height: 30)
-                                        .background(Circle().fill(Color.blue.opacity(0.7)))
-                                }
-                                .buttonStyle(.plain)
-                                .padding(8)
-                                .transition(.scale.combined(with: .opacity))
-                            }
-                        }
-                    } else {
-                        ZStack(alignment: .bottomTrailing) {
-                            ScrollView {
-                                TappableReadOnlyText(
-                                    text: memo.content.isEmpty ? "（本文なし）" : memo.content,
-                                    font: .systemFont(ofSize: 15),
-                                    textColor: memo.content.isEmpty
-                                        ? UIColor.secondaryLabel.withAlphaComponent(0.4)
-                                        : UIColor.label,
-                                    // 編集モード（GutteredTextView）と同じインセットで位置を揃える
-                                    insets: UIEdgeInsets(top: 16, left: 6, bottom: 0, right: 4),
-                                    lineFragmentPadding: 5,
-                                    onTapAtOffset: { offset in
-                                        commitTitle()
-                                        isTitleFocused = false
-                                        editingContent = memo.content
-                                        // 空テキスト時はオフセット不要
-                                        contentTapOffset = memo.content.isEmpty ? nil : offset
-                                        editFromTap = true  // カード自動拡大を抑制
-                                        isContentEditing = true
-                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                            isContentFocused = true
-                                        }
-                                    }
-                                )
-                                .frame(maxWidth: .infinity, alignment: .topLeading)
-                                // 編集モードと同じSwiftUIパディング
+                        } else {
+                            // 本文なし（プレースホルダー）
+                            Text("（本文なし）")
+                                .font(.system(size: 15))
+                                .foregroundStyle(.secondary.opacity(0.4))
                                 .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                            }
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .simultaneousGesture(
-                                DragGesture(minimumDistance: 5)
-                                    .onChanged { _ in
-                                        if !showExpandButton && !memo.content.isEmpty {
-                                            withAnimation(.easeOut(duration: 0.2)) { showExpandButton = true }
-                                        }
-                                    }
-                            )
-
-                            // 拡大ボタン
-                            if showExpandButton && !isExpanded {
-                                Button {
-                                    if showDialArea { withAnimation(.easeInOut(duration: 0.25)) { showDialArea = false } }
-                                    if editMode == .tag { editMode = .none }
-                                    withAnimation(.easeInOut(duration: 0.25)) { isExpanded = true }
-                                    showExpandButton = false
-                                } label: {
-                                    Image(systemName: "arrow.up.left.and.arrow.down.right")
-                                        .font(.system(size: 13, weight: .medium))
-                                        .foregroundStyle(.white)
-                                        .frame(width: 30, height: 30)
-                                        .background(Circle().fill(Color.blue.opacity(0.7)))
-                                }
-                                .buttonStyle(.plain)
-                                .padding(8)
-                                .transition(.scale.combined(with: .opacity))
-                            }
-
-                            if isExpanded {
-                                Button {
-                                    withAnimation(.easeInOut(duration: 0.25)) { isExpanded = false }
-                                } label: {
-                                    Image(systemName: "arrow.down.right.and.arrow.up.left")
-                                        .font(.system(size: 13, weight: .medium))
-                                        .foregroundStyle(.white)
-                                        .frame(width: 30, height: 30)
-                                        .background(Circle().fill(Color.blue.opacity(0.7)))
-                                }
-                                .buttonStyle(.plain)
-                                .padding(8)
-                                .transition(.scale.combined(with: .opacity))
-                            }
+                                .padding(.top, 20)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                         }
+
+                        // 拡大/縮小ボタン
+                        expandCollapseButton
                     }
 
                     // タグフッター
@@ -604,6 +521,30 @@ struct QuickSortCellView: View {
                 }
             }
         }
+    }
+
+    // MARK: - 拡大/縮小ボタン（MemoInputViewと同じスタイル）
+
+    private func expandButtonLabel(expanded: Bool) -> some View {
+        Image(systemName: expanded ? "arrow.down.forward.and.arrow.up.backward" : "arrow.up.backward.and.arrow.down.forward")
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(.white)
+            .frame(width: 25, height: 25)
+            .background(Circle().fill(Color.blue.opacity(0.6)))
+            .shadow(color: .black.opacity(0.2), radius: 2, x: -1, y: 1)
+            .padding(.trailing, 4)
+            .padding(.bottom, 8)
+    }
+
+    @ViewBuilder
+    private var expandCollapseButton: some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.25)) { isExpanded.toggle() }
+        } label: {
+            expandButtonLabel(expanded: isExpanded)
+        }
+        .buttonStyle(.plain)
+        .transition(.scale.combined(with: .opacity))
     }
 
     // MARK: - タグバッジ

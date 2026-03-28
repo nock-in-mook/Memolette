@@ -9,6 +9,10 @@ struct LineNumberTextEditor: UIViewRepresentable {
     var fontSize: CGFloat = 17
     /// 初回フォーカス時のカーソル位置（nil = 末尾）
     var initialCursorOffset: Int? = nil
+    /// 編集可能かどうか（falseだとスクロールのみ可能）
+    var isEditable: Bool = true
+    /// 非編集時のタップコールバック（文字オフセットを返す。UITextViewも渡す）
+    var onTapWhileReadOnly: ((Int, UITextView) -> Void)? = nil
 
     func makeCoordinator() -> Coordinator {
         let c = Coordinator(self)
@@ -31,16 +35,20 @@ struct LineNumberTextEditor: UIViewRepresentable {
             view.refreshLineNumbers()
         }
         view.showGutter = showLineNumbers
+        view.textView.isEditable = isEditable
+        view.textView.isSelectable = isEditable
+        // 非編集時のタップコールバックを更新
+        view.onTapWhileReadOnly = isEditable ? nil : onTapWhileReadOnly
 
         // フォーカス管理
         if isFocused && !view.textView.isFirstResponder {
             DispatchQueue.main.async {
                 view.textView.becomeFirstResponder()
-                // カーソル位置を設定（初回のみ）
+                // カーソル位置を設定
                 if let offset = context.coordinator.pendingCursorOffset {
                     let safe = min(offset, (view.textView.text ?? "").count)
                     view.textView.selectedRange = NSRange(location: safe, length: 0)
-                    // カーソル位置が見えるようスクロール
+                    // カーソルが画面外なら見える位置までスクロール
                     if let pos = view.textView.position(from: view.textView.beginningOfDocument, offset: safe),
                        let range = view.textView.textRange(from: pos, to: pos) {
                         let rect = view.textView.firstRect(for: range)
@@ -56,7 +64,7 @@ struct LineNumberTextEditor: UIViewRepresentable {
 
     class Coordinator: NSObject, UITextViewDelegate {
         let parent: LineNumberTextEditor
-        /// 初回フォーカス時に適用するカーソル位置
+        /// フォーカス時に適用するカーソル位置
         var pendingCursorOffset: Int?
         init(_ p: LineNumberTextEditor) { parent = p }
 
@@ -94,6 +102,9 @@ class GutteredTextView: UIView {
     private let gutterScroll = UIScrollView()
     private let gutterWidth: CGFloat = 36
 
+    /// 非編集時のタップコールバック（文字オフセットとUITextViewを返す）
+    var onTapWhileReadOnly: ((Int, UITextView) -> Void)?
+
     var showGutter: Bool = false {
         didSet {
             guard showGutter != oldValue else { return }
@@ -109,7 +120,7 @@ class GutteredTextView: UIView {
 
         textView.font = .systemFont(ofSize: fontSize)
         textView.backgroundColor = .clear
-        textView.textContainerInset = UIEdgeInsets(top: 20, left: 6, bottom: 0, right: 4)
+        textView.textContainerInset = UIEdgeInsets(top: 16, left: 6, bottom: 0, right: 4)
         textView.contentInset.bottom = 40
         textView.alwaysBounceVertical = true
 
@@ -122,6 +133,45 @@ class GutteredTextView: UIView {
         addSubview(gutterScroll)
         addSubview(textView)
         backgroundColor = .clear
+
+        // 非編集時のタップ検出用
+        let tap = UITapGestureRecognizer(target: self, action: #selector(handleReadOnlyTap))
+        tap.cancelsTouchesInView = false
+        addGestureRecognizer(tap)
+
+        // キーボード表示/非表示でcontentInset.bottomを自動調整
+        NotificationCenter.default.addObserver(self, selector: #selector(adjustForKeyboard), name: UIResponder.keyboardWillChangeFrameNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(adjustForKeyboard), name: UIResponder.keyboardWillHideNotification, object: nil)
+    }
+
+    @objc private func adjustForKeyboard(_ notification: Notification) {
+        let baseBottom: CGFloat = 40
+        guard let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else {
+            textView.contentInset.bottom = baseBottom
+            return
+        }
+        // textViewのスクリーン座標での下端
+        let tvBottom = textView.convert(textView.bounds, to: nil).maxY
+        // キーボードのスクリーン座標での上端
+        let kbTop = frame.origin.y
+        // 重なり分だけインセットを追加
+        let overlap = max(0, tvBottom - kbTop)
+        textView.contentInset.bottom = baseBottom + overlap
+        textView.verticalScrollIndicatorInsets.bottom = overlap
+    }
+
+    @objc private func handleReadOnlyTap(_ gesture: UITapGestureRecognizer) {
+        guard !textView.isEditable, let callback = onTapWhileReadOnly else { return }
+        let point = gesture.location(in: textView)
+        let lm = textView.layoutManager
+        let tc = textView.textContainer
+        let adjusted = CGPoint(
+            x: point.x - textView.textContainerInset.left,
+            y: point.y - textView.textContainerInset.top
+        )
+        let index = lm.characterIndex(for: adjusted, in: tc, fractionOfDistanceBetweenInsertionPoints: nil)
+        let textLength = (textView.text ?? "").count
+        callback(min(index, textLength), textView)
     }
 
     required init?(coder: NSCoder) { fatalError() }

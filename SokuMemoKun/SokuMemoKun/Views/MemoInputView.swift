@@ -623,6 +623,7 @@ struct MemoInputView: View {
                 tagDisplay
                     .onTapGesture {
                         withAnimation(.spring(response: 0.3)) {
+                            trayHidden = false
                             showParentDial = true
                         }
                     }

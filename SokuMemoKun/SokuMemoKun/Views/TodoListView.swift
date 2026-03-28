@@ -773,8 +773,8 @@ struct TodoListView: View {
     }
 
     private func indentLeading(_ depth: Int) -> CGFloat {
-        if depth == 0 { return 0 }
-        return indentBase + CGFloat(depth) * indentStep
+        // depth 0 はインデントなし、以降は均等にindentStepずつ
+        return CGFloat(depth) * indentStep
     }
 
     // MARK: - ToDo行
@@ -1060,7 +1060,7 @@ struct TodoListView: View {
                         Rectangle()
                             .fill(depthAccentColor(d + 1))
                             .frame(width: 1.5)
-                            .padding(.leading, indentBase + 12 + CGFloat(d) * indentStep + indentStep / 2 - 0.75)
+                            .padding(.leading, 16 + CGFloat(d) * indentStep + indentStep / 2 - 0.75)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -1104,17 +1104,17 @@ struct TodoListView: View {
                     .padding(.trailing, 12)
                     .padding(.vertical, 2)
                     // ＋ボタンの左位置: 帯中央 + L字の横幅分
-                    .padding(.leading, indentBase + 12 + CGFloat(depth - 1) * indentStep + indentStep / 2 - 0.75 + 14)
+                    .padding(.leading, 16 + CGFloat(depth - 1) * indentStep + indentStep / 2 - 0.75 + 14)
                     // L字罫線：角丸＋横線のみCanvasで描画（縦線との重なり防止）
                     .overlay(alignment: .topLeading) {
-                        let lineX: CGFloat = indentBase + 12 + CGFloat(depth - 1) * indentStep + indentStep / 2 - 0.75
+                        let lineX: CGFloat = 16 + CGFloat(depth - 1) * indentStep + indentStep / 2 - 0.75
                         LShapeCorner(color: lineColor)
                             .frame(width: 14, height: 12)
                             .padding(.leading, lineX)
                     }
                     // 縦線（上半分のみ、Rectangleで子行の縦線と統一）
                     .overlay(alignment: .topLeading) {
-                        let lineX: CGFloat = indentBase + 12 + CGFloat(depth - 1) * indentStep + indentStep / 2 - 0.75
+                        let lineX: CGFloat = 16 + CGFloat(depth - 1) * indentStep + indentStep / 2 - 0.75
                         GeometryReader { geo in
                             Rectangle()
                                 .fill(lineColor)
@@ -1139,7 +1139,7 @@ struct TodoListView: View {
                             Rectangle()
                                 .fill(depthAccentColor(d + 1))
                                 .frame(width: 1.5)
-                                .padding(.leading, indentBase + 12 + CGFloat(d) * indentStep + indentStep / 2 - 0.75)
+                                .padding(.leading, 16 + CGFloat(d) * indentStep + indentStep / 2 - 0.75)
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)

@@ -89,11 +89,7 @@ struct TodoListView: View {
                 Divider()
                     .padding(.horizontal, 16)
 
-                if allItems.isEmpty {
-                    // 空状態
-                    emptyStateView
-                } else {
-                    // ToDoリスト（Listベース: スワイプ・スクロール・リオーダー全対応）
+                // ToDoリスト（Listベース: スワイプ・スクロール・リオーダー全対応）
                     ScrollViewReader { proxy in
                         List {
                             ForEach(flatRows) { row in
@@ -165,7 +161,6 @@ struct TodoListView: View {
                             }
                         }
                     }
-                }
 
                 // ヒント（編集中は非表示）
                 if allItems.count > 0 && editingItemID == nil && memoEditingItemID == nil {
@@ -229,6 +224,8 @@ struct TodoListView: View {
         }
         .onAppear {
             cleanupEmptyItems()
+            // 初期表示時にツリーを全展開（メモは省略のまま）
+            expandedItems = Set(allItems.filter { hasChildren($0.id) }.map(\.id))
         }
         .onTapGesture {
             // 枠外タップで編集終了+キーボード閉じる
@@ -808,7 +805,7 @@ struct TodoListView: View {
             Image(systemName: item.isDone ? "checkmark.square.fill" : "square")
                 .font(.system(size: 34, weight: .medium))
                 .foregroundStyle(item.isDone ? .green : .secondary.opacity(0.35))
-                .animation(.easeInOut(duration: 0.2), value: item.isDone)
+                .animation(nil, value: item.isDone)
                 .frame(width: 34, height: 34)
                 .contentShape(Rectangle())
                 .onTapGesture {
@@ -820,7 +817,7 @@ struct TodoListView: View {
 
             // タイトル（通常表示 or インライン編集）
             if isEditing {
-                TextField("項目を入力", text: $editingText)
+                TextField("項目名を入力", text: $editingText)
                     .font(.system(size: 18, weight: .medium, design: .rounded))
                     .focused($isEditingFocused)
                     .onSubmit {
@@ -834,7 +831,7 @@ struct TodoListView: View {
                     .font(.system(size: 18, weight: .medium, design: .rounded))
                     .strikethrough(item.isDone, color: .secondary)
                     .foregroundStyle(item.isDone ? .secondary : .primary)
-                    .animation(.easeInOut(duration: 0.2), value: item.isDone)
+                    .animation(nil, value: item.isDone)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
                     .onTapGesture {
@@ -1027,19 +1024,9 @@ struct TodoListView: View {
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                         return
                     }
-                    if isTruncated {
-                        // 切り詰められている → 閲覧モードで全文表示
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            memoOpenItems.insert(item.id)
-                        }
-                    } else {
-                        // 全文表示済み → 直接編集モードへ
+                    // 常に閲覧モードで全文展開＋ゴミ箱表示（短文でも統一）
+                    withAnimation(.easeInOut(duration: 0.15)) {
                         memoOpenItems.insert(item.id)
-                        memoEditingItemID = item.id
-                        memoEditingText = item.memo ?? ""
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                            isMemoFocused = true
-                        }
                     }
                 }
         }
@@ -1102,17 +1089,25 @@ struct TodoListView: View {
                     Button {
                         addEmptyItemAndEdit(parentID: parentID)
                     } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 15))
-                            .foregroundStyle(lineColor)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                        HStack(spacing: 6) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 15))
+                                .foregroundStyle(lineColor)
+                            // リスト内に子項目が1つもない時のみガイドテキスト（depth 1 = 紫のみ）
+                            if depth == 1 && !allItems.contains(where: { $0.parentID != nil }) {
+                                Text("子項目を追加できます")
+                                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                                    .foregroundStyle(lineColor)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .buttonStyle(.plain)
                     .disabled(isDisabled)
                     .padding(.trailing, 12)
                     .padding(.vertical, 2)
-                    // ＋ボタンの左位置: 帯中央 + L字の横幅分
-                    .padding(.leading, 16 + CGFloat(depth - 1) * indentStep + indentStep / 2 - 0.75 + 14)
+                    // チェックボックス中心に合わせる: indentLeading(depth) + 12(padding) + 17(34/2) - 7.5(15/2) = depth*28 + 21.5
+                    .padding(.leading, CGFloat(depth) * indentStep + 21.5)
                     // L字罫線：角丸＋横線のみCanvasで描画（縦線との重なり防止）
                     .overlay(alignment: .topLeading) {
                         let lineX: CGFloat = 16 + CGFloat(depth - 1) * indentStep + indentStep / 2 - 0.75
@@ -1133,9 +1128,7 @@ struct TodoListView: View {
             }
             // 縦線の位置から右をこの階層の色で塗りつぶし
             .background(alignment: .trailing) {
-                let fillColor: Color = depth == 0
-                    ? Color.green.opacity(0.08)
-                    : depthColor(depth - 1).opacity(0.8)
+                let fillColor: Color = depthColor(depth).opacity(0.8)
                 let paintLeft: CGFloat = depth == 0
                     ? 0
                     : 16 + CGFloat(depth - 1) * indentStep + indentStep / 2
@@ -1165,19 +1158,27 @@ struct TodoListView: View {
         } else {
             // ルート追加（チェックボックスの中心に緑＋ボタン）
             let isDisabled = editingItemID != nil || memoEditingItemID != nil
-            Button {
-                addEmptyItemAndEdit(parentID: nil)
-            } label: {
-                Image(systemName: "plus.circle.fill")
-                    .font(.system(size: 22))
-                    .foregroundStyle(isDisabled ? .green.opacity(0.15) : .green.opacity(0.5))
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            // チェックボックスと同じレイアウト構造で自動センター合わせ
+            HStack(spacing: 8) {
+                Button {
+                    addEmptyItemAndEdit(parentID: nil)
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 22))
+                        .foregroundStyle(isDisabled ? .green.opacity(0.15) : .green.opacity(0.5))
+                }
+                .buttonStyle(.plain)
+                .disabled(isDisabled)
+                .frame(width: 34, height: 34) // チェックボックスと同じフレーム
+                // 項目が0件の時だけガイドテキスト表示
+                if allItems.isEmpty {
+                    Text("最初の項目を追加しましょう")
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundStyle(.green.opacity(0.6))
+                }
             }
-            .buttonStyle(.plain)
-            .disabled(isDisabled)
+            .padding(.horizontal, 12) // 通常行と同じpadding
             .padding(.vertical, 4)
-            // チェックボックスの中心に合わせる: indentLeading(0) + 16(listRowInsets内) + 34/2 - 22/2
-            .padding(.leading, indentLeading(0) + 16 + 6)
             .listRowSeparator(.hidden)
             .listRowBackground(Color(uiColor: .systemBackground))
             .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
@@ -1326,6 +1327,8 @@ struct TodoListView: View {
             target.memo = trimmed
             target.updatedAt = Date()
             try? modelContext.save()
+            // 編集確定後は省略表示に戻す
+            memoOpenItems.remove(target.id)
         }
         memoEditingItemID = nil
         memoEditingText = ""

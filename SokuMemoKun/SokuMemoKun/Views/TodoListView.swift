@@ -58,6 +58,9 @@ struct TodoListView: View {
     // 全タスク削除ダイアログ（2段階）
     @State private var showClearAllDialog = false
     @State private var showClearAllConfirm = false
+    // メモ削除確認ダイアログ
+    @State private var showMemoDeleteDialog = false
+    @State private var memoDeleteTargetID: UUID?
 
     // 編集中の項目
     @State private var editingItemID: UUID?
@@ -499,6 +502,70 @@ struct TodoListView: View {
                 }
                 .transition(.opacity)
             }
+
+            // メモ削除確認ダイアログ
+            if showMemoDeleteDialog {
+                ZStack {
+                    Color.black.opacity(0.3)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                showMemoDeleteDialog = false
+                            }
+                        }
+
+                    VStack(spacing: 16) {
+                        Text("メモを削除")
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .padding(.top, 4)
+
+                        Text("このメモを削除しますか？")
+                            .font(.system(size: 13, design: .rounded))
+                            .foregroundStyle(.secondary)
+
+                        VStack(spacing: 10) {
+                            Button {
+                                if let targetID = memoDeleteTargetID,
+                                   let item = allItems.first(where: { $0.id == targetID }) {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        item.memo = nil
+                                        item.updatedAt = Date()
+                                        memoOpenItems.remove(item.id)
+                                        try? modelContext.save()
+                                        showMemoDeleteDialog = false
+                                    }
+                                }
+                            } label: {
+                                Text("削除する")
+                                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                                    .background(Color.red.opacity(0.1))
+                                    .foregroundStyle(.red)
+                                    .cornerRadius(8)
+                            }
+
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.15)) {
+                                    showMemoDeleteDialog = false
+                                }
+                            } label: {
+                                Text("キャンセル")
+                                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .padding(20)
+                    .background(.regularMaterial)
+                    .cornerRadius(16)
+                    .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
+                    .padding(.horizontal, 40)
+                }
+                .transition(.opacity)
+            }
         }
     }
 
@@ -886,11 +953,9 @@ struct TodoListView: View {
                         // メモ削除ボタン（メモがある時のみ）
                         if !(item.memo ?? "").isEmpty {
                             Button {
+                                memoDeleteTargetID = item.id
                                 withAnimation(.easeInOut(duration: 0.15)) {
-                                    item.memo = nil
-                                    item.updatedAt = Date()
-                                    memoOpenItems.remove(item.id)
-                                    try? modelContext.save()
+                                    showMemoDeleteDialog = true
                                 }
                             } label: {
                                 Image(systemName: "trash")

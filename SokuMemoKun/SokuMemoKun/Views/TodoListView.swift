@@ -1148,19 +1148,40 @@ struct TodoListView: View {
 
     // MARK: - ドラッグ並び替え（List .onMove）
     private func moveFlatRows(from source: IndexSet, to destination: Int) {
-        // flatRowsからアイテム行だけ抽出（同階層のみ移動可能）
         var rows = flatRows
+
+        // 移動元のアイテムを特定
+        guard let sourceIndex = source.first,
+              case .item(let movedItem) = rows[sourceIndex].kind else { return }
+
+        // 移動先が同じ親の範囲内か確認
+        let movedParentID = movedItem.parentID
+
+        // 移動先のアイテムの親を確認（移動先が範囲外なら無視）
+        let destIndex = destination > sourceIndex ? destination - 1 : destination
+        let clampedDest = min(max(destIndex, 0), rows.count - 1)
+        if clampedDest < rows.count {
+            switch rows[clampedDest].kind {
+            case .item(let destItem):
+                // 移動先が違う親なら無視
+                if destItem.parentID != movedParentID { return }
+            case .addButton:
+                // ＋ボタン行への移動は許可（同じ親の末尾）
+                break
+            }
+        }
+
+        // flatRows上で移動
         rows.move(fromOffsets: source, toOffset: destination)
 
-        // 移動されたアイテムの親を特定して、同階層のsortOrderを振り直す
-        // ルートレベルのアイテムだけ抽出して順序更新
-        let rootItems = rows.compactMap { row -> TodoItem? in
-            if case .item(let item) = row.kind, item.parentID == nil {
+        // 同じ親の兄弟だけ抽出してsortOrderを振り直す
+        let siblings = rows.compactMap { row -> TodoItem? in
+            if case .item(let item) = row.kind, item.parentID == movedParentID {
                 return item
             }
             return nil
         }
-        for (i, item) in rootItems.enumerated() {
+        for (i, item) in siblings.enumerated() {
             item.sortOrder = i
             item.updatedAt = Date()
         }

@@ -522,6 +522,13 @@ struct MemoInputView: View {
                 isEditing = false
             }
         }
+        // キーボード非表示時に編集を確定（外部タップ対応）
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            if isEditing {
+                isTextEditorFocused = false
+                isEditing = false
+            }
+        }
         .onChange(of: showParentDial) { _, isShowing in
             // ルーレット展開時はテキストのフォーカスを外す
             if isShowing {

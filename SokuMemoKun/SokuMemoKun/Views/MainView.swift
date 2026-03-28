@@ -95,7 +95,7 @@ struct MainView: View {
                                         isInputExpanded = false
                                     }
                                 } label: {
-                                    Image(systemName: "chevron.compact.down")
+                                    Image(systemName: "chevron.compact.up")
                                         .font(.system(size: 18, weight: .semibold))
                                         .foregroundStyle(.secondary.opacity(0.5))
                                         .frame(maxWidth: .infinity)
@@ -140,8 +140,8 @@ struct MainView: View {
                                     }
                                     .buttonStyle(.plain)
 
-                                    // 右のスペーサー（左右バランス用）
-                                    Color.clear.frame(width: 44, height: 30)
+                                    // 右のスペーサー（左右バランス用: 左に爆速44+ToDo44=88pt）
+                                    Color.clear.frame(width: 88, height: 30)
                                 }
                             }
                         } else {
@@ -170,6 +170,10 @@ struct MainView: View {
                 }
             }
             .ignoresSafeArea(.keyboard)
+            .onTapGesture {
+                // 画面のどこをタップしてもキーボードを閉じる
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
             .onChange(of: viewModel.inputText) { _, _ in triggerSuggest() }
             .onChange(of: viewModel.titleText) { _, _ in triggerSuggest() }
             .onChange(of: viewModel.selectedTagID) { _, newVal in

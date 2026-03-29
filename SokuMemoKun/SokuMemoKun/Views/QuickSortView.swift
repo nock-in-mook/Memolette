@@ -165,7 +165,10 @@ struct QuickSortView: View {
         }
         .ignoresSafeArea(.keyboard)
         .onChange(of: scrolledMemoID) { _, _ in
-            cellEditMode = .none
+            // ルーレット表示中はページ送りしてもタグモードを維持（連続タグ付け）
+            if cellEditMode != .tag {
+                cellEditMode = .none
+            }
         }
         .overlay(alignment: .bottomTrailing) {
             if isKeyboardVisible {

@@ -75,31 +75,40 @@ struct QuickSortCellView: View {
             let expandedH = geo.size.height * 0.80
             // isExpanded最優先、ルーレット中は通常サイズ、編集モードでも自動拡大しない
             // カードサイズはキーボードで変えない（GutteredTextView内でcontentInset調整）
-            let cardH = showDialArea ? normalH
+            let dialH = geo.size.height * 0.30
+            let cardH = showDialArea ? dialH
                        : isExpanded ? expandedH
                        : normalH
 
             VStack(spacing: 0) {
-                    Spacer(minLength: 12)
-
-                    // ── メモカード（タイトル+本文+タグフッター）──
-                    memoCard
-                        .frame(width: cardW, height: cardH)
-                        .frame(maxWidth: .infinity)
-                        .animation(.easeInOut(duration: 0.25), value: isExpanded)
-                        .animation(.easeInOut(duration: 0.25), value: showDialArea)
-
-                    Spacer(minLength: 10)
-
-                    // ── ルーレット（タグ編集時のみ表示）──
                     if showDialArea {
-                        dialArea
-                            .frame(height: QuickSortCellView.dialAreaHeight, alignment: .top)
-                            .clipped()
-                            .transition(.move(edge: .trailing).combined(with: .opacity))
-                    }
+                        Spacer(minLength: 4)
 
-                    Spacer(minLength: 0)
+                        memoCard
+                            .frame(width: cardW, height: cardH)
+                            .frame(maxWidth: .infinity)
+                            .animation(.easeInOut(duration: 0.25), value: isExpanded)
+                            .animation(.easeInOut(duration: 0.25), value: showDialArea)
+
+                        Spacer(minLength: 10).frame(maxHeight: 20)
+
+                        dialArea
+                            .fixedSize(horizontal: true, vertical: false)
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                            .transition(.move(edge: .trailing).combined(with: .opacity))
+
+                        Spacer(minLength: 0)
+                    } else {
+                        Spacer(minLength: 12)
+
+                        memoCard
+                            .frame(width: cardW, height: cardH)
+                            .frame(maxWidth: .infinity)
+                            .animation(.easeInOut(duration: 0.25), value: isExpanded)
+                            .animation(.easeInOut(duration: 0.25), value: showDialArea)
+
+                        Spacer(minLength: 0)
+                    }
             }
             // 全体の背景タップで編集解除
             .background(
@@ -112,6 +121,8 @@ struct QuickSortCellView: View {
             initFromMemo()
             editingTitle = memo.title
             editingContent = memo.content
+            // タグモード中にページ送りした場合、ルーレットを復元
+            if editMode == .tag { showDialArea = true }
         }
         .onChange(of: memo.tags.map(\.id)) { _, _ in initFromMemo() }
         .onChange(of: memo.id) { _, _ in
@@ -539,7 +550,15 @@ struct QuickSortCellView: View {
     @ViewBuilder
     private var expandCollapseButton: some View {
         Button {
-            withAnimation(.easeInOut(duration: 0.25)) { isExpanded.toggle() }
+            if showDialArea {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    showDialArea = false
+                    editMode = .none
+                    isExpanded = true
+                }
+            } else {
+                withAnimation(.easeInOut(duration: 0.25)) { isExpanded.toggle() }
+            }
         } label: {
             expandButtonLabel(expanded: isExpanded)
         }
@@ -611,57 +630,123 @@ struct QuickSortCellView: View {
             childTags.map { ($0.id.uuidString, $0.name, tagColor(for: $0.colorIndex)) }
     }
 
+    // トレー定数（MemoInputViewと同じ）
+    private let dialFixedHeight: CGFloat = 211
+    private let trayColor = Color.gray
+    private let trayCornerRadius: CGFloat = 10
+    private let tabWidth: CGFloat = 38
+    private let tabHeight: CGFloat = 22
+    private let tabRadius: CGFloat = 6
+
     private var dialArea: some View {
-        VStack(spacing: 0) {
-            // ラベル（親タグ・子タグ）
-            ZStack(alignment: .trailing) {
-                Text("親タグ")
-                    .font(.system(size: 10, weight: .medium, design: .rounded))
-                    .foregroundStyle(.secondary.opacity(0.5))
-                    .padding(.trailing, 165)
-                Text("子タグ")
-                    .font(.system(size: 10, weight: .medium, design: .rounded))
-                    .foregroundStyle(.secondary.opacity(0.5))
-                    .padding(.trailing, 50)
+        // MemoInputViewのopenTrayと同じ構造（常に全開状態で表示）
+        VStack(spacing: 4) {
+            HStack(spacing: 0) {
+                TagDialView(
+                    parentOptions: parentOptions,
+                    parentSelectedID: $selectedParentTagID,
+                    childOptions: childOptions,
+                    childSelectedID: $selectedChildTagID,
+                    showChild: $showChildDial,
+                    isOpen: true,
+                    childExternalDragY: $childExternalDragY,
+                    onLongPress: nil
+                )
+                .background {
+                    DialEdgeArcShape(radius: 350, dialHeight: 211)
+                        .fill(Color.white)
+                        .shadow(color: .black.opacity(0.5), radius: 3, x: -2, y: 0)
+                        .allowsHitTesting(false)
+                }
+                .offset(x: -27, y: -10)
+                // 「しまう」ボタン（MemoInputViewと同じ）
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.5))
+                    .frame(maxHeight: .infinity)
+                    .frame(width: 36)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            showDialArea = false
+                            editMode = .none
+                        }
+                    }
             }
-            .frame(maxWidth: .infinity, alignment: .trailing)
-            .frame(height: 14)
+            .frame(height: dialFixedHeight)
 
-            // ルーレット本体
-            TagDialView(
-                parentOptions: parentOptions,
-                parentSelectedID: $selectedParentTagID,
-                childOptions: childOptions,
-                childSelectedID: $selectedChildTagID,
-                showChild: $showChildDial,
-                isOpen: true,
-                childExternalDragY: $childExternalDragY,
-                onLongPress: nil
-            )
-            .frame(height: 211)
-
-            // 追加ボタン
-            HStack(spacing: 12) {
-                Spacer()
+            ZStack(alignment: .trailing) {
                 Button {
                     onNewTagSheet(false, nil)
                 } label: {
                     Label("親タグ追加", systemImage: "plus.circle.fill")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.secondary.opacity(0.6))
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.8))
                 }
-                Button {
-                    if selectedParentTagID != nil {
-                        onNewTagSheet(true, selectedParentTagID)
+                .padding(.trailing, 196)
+                if showChildDial {
+                    Button {
+                        if selectedParentTagID != nil {
+                            onNewTagSheet(true, selectedParentTagID)
+                        }
+                    } label: {
+                        Label("子タグ追加", systemImage: "plus.circle")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(.white.opacity(0.7))
                     }
-                } label: {
-                    Label("子タグ追加", systemImage: "plus.circle")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.secondary.opacity(selectedParentTagID == nil ? 0.25 : 0.5))
+                    .padding(.trailing, 86)
                 }
             }
-            .padding(.trailing, 8)
-            .offset(y: -8)
+            .frame(maxWidth: .infinity, alignment: .trailing)
+            .padding(.vertical, 4)
+            .offset(y: -13)
+        }
+        .padding(.top, tabHeight + 10)
+        .padding(.bottom, 6)
+        .padding(.leading, tabWidth + 12)
+        .padding(.trailing, 12)
+        .background(
+            TrayWithTabShape(
+                tabWidth: tabWidth,
+                tabHeight: tabHeight,
+                tabRadius: tabRadius,
+                bodyRadius: trayCornerRadius,
+                bodyPeek: 0
+            )
+            .fill(trayColor)
+            .shadow(color: .black.opacity(0.2), radius: 3, x: -2, y: 0)
+        )
+        // ルーレットラベル
+        .overlay(alignment: .topTrailing) {
+            ZStack(alignment: .trailing) {
+                Text("親タグ")
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.6))
+                    .frame(height: tabHeight)
+                    .padding(.trailing, 236)
+                if showChildDial {
+                    Text("子タグ")
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.6))
+                        .frame(height: tabHeight)
+                        .padding(.trailing, 119)
+                }
+            }
+        }
+        // タブ「しまう」ラベル
+        .overlay(alignment: .topLeading) {
+            Text("しまう")
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+                .frame(width: tabWidth, height: tabHeight, alignment: .leading)
+                .padding(.leading, 3)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        showDialArea = false
+                        editMode = .none
+                    }
+                }
         }
     }
 }

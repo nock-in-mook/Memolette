@@ -50,6 +50,7 @@ struct TapPressableView<Label: View>: View {
 
     var body: some View {
         label()
+            .compositingGroup()
             .offset(y: isPressed ? shadowHeight : 0)
             .shadow(
                 color: isPressed ? .clear : shadowColor,

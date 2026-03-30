@@ -167,7 +167,11 @@ struct QuickSortCellView: View {
             else { flashTag = false; flashTitle = false }
         }
         // 外部からの編集モード変更に応答
-        .onChange(of: editMode) { _, newMode in
+        .onChange(of: editMode) { oldMode, newMode in
+            // タグモードから直接noneに切り替わった = タグ編集ボタンで閉じた
+            if oldMode == .tag && newMode == .none {
+                withAnimation(.easeInOut(duration: 0.25)) { showDialArea = false }
+            }
             applyEditMode(newMode)
         }
         .overlay {

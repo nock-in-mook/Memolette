@@ -279,14 +279,14 @@ struct QuickSortView: View {
                         Spacer()
                     }
 
-                    // 右端: 整理をおわる
+                    // 右端: 整理を終了
                     HStack {
                         Spacer()
                         Button {
                             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                             withAnimation(.easeOut(duration: 0.25)) { showFinishConfirm = true }
                         } label: {
-                            Text("整理をおわる")
+                            Text("整理を終了")
                                 .font(.system(size: 13, weight: .bold, design: .rounded))
                                 .foregroundStyle(.orange)
                                 .padding(.horizontal, 12)
@@ -352,63 +352,78 @@ struct QuickSortView: View {
 
             // 3ボタン（弧に沿って配置）
             ZStack {
-                // 本文編集（中央固定）— すりガラス風
-                TapPressableView(shadowHeight: 5, shadowColor: .black.opacity(0.2)) {
+                // 本文編集（中央固定）— マット塗り
+                TapPressableView(shadowHeight: 4, shadowColor: .black.opacity(0.15)) {
                     cellEditMode = (cellEditMode == .content) ? .none : .content
                 } label: {
-                    Text("本文編集")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                    HStack(spacing: 3) {
+                        Image(systemName: "square.and.pencil")
+                        Text("本文")
+                    }
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
                         .foregroundStyle(.primary)
-                        .padding(.horizontal, 18)
-                        .padding(.top, 6).padding(.bottom, 8)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 7).padding(.bottom, 8)
                         .background(
                             ZStack {
-                                ArcCapsule().fill(.ultraThinMaterial)
-                                ArcCapsule().fill(Color(white: 0.85).opacity(0.1))
+                                ArcCapsule().fill(Color(uiColor: .systemBackground))
+                                ArcCapsule().fill(Color(white: 0.85).opacity(0.2))
+                                ArcCapsule().fill(Color(white: 0.5).opacity(0.03))
                             }
                         )
+                        .overlay(ArcCapsule().stroke(Color.gray.opacity(0.3), lineWidth: 1))
                 }
                 .offset(y: -17)
 
-                // タイトル編集（左）— すりガラス風
-                TapPressableView(shadowHeight: 5, shadowColor: .orange.opacity(0.3)) {
+                // タイトル編集（左）— マット塗り
+                TapPressableView(shadowHeight: 4, shadowColor: .black.opacity(0.15)) {
                     cellEditMode = (cellEditMode == .title) ? .none : .title
                 } label: {
-                    Text("タイトル編集")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                    HStack(spacing: 3) {
+                        Image(systemName: "square.and.pencil")
+                        Text("タイトル")
+                    }
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
                         .foregroundStyle(.primary)
-                        .frame(width: 90)
-                        .padding(.top, 6).padding(.bottom, 8)
+                        .frame(width: 100)
+                        .padding(.top, 7).padding(.bottom, 8)
                         .background(
                             ZStack {
-                                ArcCapsule().fill(.ultraThinMaterial)
-                                ArcCapsule().fill(Color.orange.opacity(0.1))
+                                ArcCapsule().fill(Color(uiColor: .systemBackground))
+                                ArcCapsule().fill(Color.orange.opacity(0.2))
+                                ArcCapsule().fill(Color(white: 0.5).opacity(0.03))
                             }
                         )
+                        .overlay(ArcCapsule().stroke(Color.gray.opacity(0.3), lineWidth: 1))
                 }
                 .rotationEffect(.degrees(-13))
                 .offset(x: -128, y: -2)
 
-                // タグ編集（右）— すりガラス風
-                TapPressableView(shadowHeight: 5, shadowColor: .cyan.opacity(0.3)) {
+                // タグ編集（右）— マット塗り
+                TapPressableView(shadowHeight: 4, shadowColor: .black.opacity(0.15)) {
                     cellEditMode = (cellEditMode == .tag) ? .none : .tag
                 } label: {
-                    Text("タグ編集")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                    HStack(spacing: 3) {
+                        Image(systemName: "square.and.pencil")
+                        Text("タグ")
+                    }
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
                         .foregroundStyle(.primary)
                         .frame(width: 90)
-                        .padding(.top, 6).padding(.bottom, 8)
+                        .padding(.top, 7).padding(.bottom, 8)
                         .background(
                             ZStack {
-                                ArcCapsule().fill(.ultraThinMaterial)
-                                ArcCapsule().fill(Color.cyan.opacity(0.1))
+                                ArcCapsule().fill(Color(uiColor: .systemBackground))
+                                ArcCapsule().fill(Color.cyan.opacity(0.2))
+                                ArcCapsule().fill(Color(white: 0.5).opacity(0.03))
                             }
                         )
+                        .overlay(ArcCapsule().stroke(Color.gray.opacity(0.3), lineWidth: 1))
                 }
                 .rotationEffect(.degrees(13))
                 .offset(x: 128, y: -2)
             }
-            .padding(.top, -22)
+            .padding(.top, -27)
         }
     }
 
@@ -420,30 +435,34 @@ struct QuickSortView: View {
         let isLastPage = currentIndexInActive == activeMemos.count - 1
 
         return ZStack {
-            // 左端: 前へ
+            // 左端: 前へ（マット塗り三角形）
             HStack {
-                Button {
+                TapPressableView(shadowHeight: 4, shadowColor: .black.opacity(0.15)) {
                     if canGoPrev {
                         scrolledMemoID = activeMemos[currentIndexInActive - 1].id
                     }
                 } label: {
-                    HStack(spacing: 6) {
+                    ZStack {
                         Triangle()
-                            .fill(Color.blue.opacity(0.7))
-                            .frame(width: 14, height: 20)
+                            .fill(Color(uiColor: .systemBackground))
+                            .frame(width: 40, height: 40)
                             .rotationEffect(.degrees(-90))
-                        Text("前へ")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(.blue)
+                        Triangle()
+                            .fill(canGoPrev ? Color.blue : Color.blue.opacity(0.15))
+                            .frame(width: 40, height: 40)
+                            .rotationEffect(.degrees(-90))
+                        Triangle()
+                            .fill(Color(white: 0.5).opacity(0.03))
+                            .frame(width: 40, height: 40)
+                            .rotationEffect(.degrees(-90))
                     }
                 }
                 .disabled(!canGoPrev)
-                .buttonStyle(.plain)
                 Spacer()
             }
 
-            // 中央: 削除（少し下）
-            Button {
+            // 中央: 削除（マット塗り丸ボタン）
+            TapPressableView(shadowHeight: 4, shadowColor: .black.opacity(0.15)) {
                 if currentMemo?.isLocked == true {
                     withAnimation(.easeOut(duration: 0.2)) { showLockConfirm = true }
                     return
@@ -453,13 +472,21 @@ struct QuickSortView: View {
             } label: {
                 VStack(spacing: 2) {
                     Image(systemName: "trash")
-                        .font(.system(size: 26, weight: .medium))
+                        .font(.system(size: 20, weight: .medium))
                     Text("削除")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.system(size: 10, weight: .medium))
                 }
-                .foregroundStyle(currentMemo?.isLocked == true ? Color.secondary.opacity(0.3) : Color.red.opacity(0.6))
+                .foregroundStyle(currentMemo?.isLocked == true ? Color.secondary.opacity(0.3) : Color.red)
+                .frame(width: 50, height: 50)
+                .background(
+                    ZStack {
+                        Circle().fill(Color(uiColor: .systemBackground))
+                        Circle().fill(Color(white: 0.85).opacity(0.2))
+                        Circle().fill(Color(white: 0.5).opacity(0.03))
+                    }
+                )
+                .overlay(Circle().stroke(Color.gray.opacity(0.3), lineWidth: 1))
             }
-            .buttonStyle(.plain)
             .offset(y: 20)
 
             // 右端: 次へ / 完了
@@ -482,22 +509,27 @@ struct QuickSortView: View {
                         .background(Capsule().fill(Color.orange))
                     }
                 } else {
-                    Button {
+                    TapPressableView(shadowHeight: 4, shadowColor: .black.opacity(0.15)) {
                         if canGoNext {
                             scrolledMemoID = activeMemos[currentIndexInActive + 1].id
                         }
                     } label: {
-                        HStack(spacing: 6) {
-                            Text("次へ")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(.blue)
+                        ZStack {
                             Triangle()
-                                .fill(Color.blue.opacity(0.7))
-                                .frame(width: 14, height: 20)
+                                .fill(Color(uiColor: .systemBackground))
+                                .frame(width: 40, height: 40)
+                                .rotationEffect(.degrees(90))
+                            Triangle()
+                                .fill(canGoNext ? Color.blue : Color.blue.opacity(0.15))
+                                .frame(width: 40, height: 40)
+                                .rotationEffect(.degrees(90))
+                            Triangle()
+                                .fill(Color(white: 0.5).opacity(0.03))
+                                .frame(width: 40, height: 40)
                                 .rotationEffect(.degrees(90))
                         }
                     }
-                    .buttonStyle(.plain)
+                    .disabled(!canGoNext)
                 }
             }
 
@@ -672,7 +704,7 @@ struct QuickSortView: View {
                         .font(.system(size: 32))
                         .foregroundStyle(.orange)
 
-                    Text("整理を終了")
+                    Text("保存せず終了")
                         .font(.system(size: 17, weight: .bold, design: .rounded))
 
                     Text("変更は保存されません。\nよろしいですか？")
@@ -680,7 +712,7 @@ struct QuickSortView: View {
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
 
-                    Text("保存するには「整理をおわる」か\n完走してください。")
+                    Text("保存するには「整理を終了」するか\n完走してください。")
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary.opacity(0.7))
                         .multilineTextAlignment(.center)
@@ -709,7 +741,7 @@ struct QuickSortView: View {
                 Button {
                     withAnimation(.easeOut(duration: 0.2)) { showExitConfirm = false }
                 } label: {
-                    Text("戻る")
+                    Text("キャンセル")
                         .font(.system(size: 16, weight: .medium))
                         .foregroundStyle(.blue)
                         .frame(maxWidth: .infinity)
@@ -744,7 +776,7 @@ struct QuickSortView: View {
                                            startPoint: .topLeading, endPoint: .bottomTrailing)
                         )
 
-                    Text("整理をおわる")
+                    Text("整理を終了")
                         .font(.system(size: 17, weight: .bold, design: .rounded))
 
                     Text("ここまでの変更を保存して、\n結果画面を表示します。")

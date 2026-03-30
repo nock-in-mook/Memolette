@@ -39,11 +39,6 @@
 		QSORT0000000000000002 /* QuickSortView.swift in Sources */ = {isa = PBXBuildFile; fileRef = QSORT0000000000000001 /* QuickSortView.swift */; };
 		QSORT0000000000000004 /* QuickSortFilterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = QSORT0000000000000003 /* QuickSortFilterView.swift */; };
 		QSORT0000000000000006 /* QuickSortResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = QSORT0000000000000005 /* QuickSortResultView.swift */; };
-		TAGSUG0000000000000002 /* TagFrequency.swift in Sources */ = {isa = PBXBuildFile; fileRef = TAGSUG0000000000000001 /* TagFrequency.swift */; };
-		TAGSUG0000000000000004 /* TagCooccurrence.swift in Sources */ = {isa = PBXBuildFile; fileRef = TAGSUG0000000000000003 /* TagCooccurrence.swift */; };
-		TAGSUG0000000000000006 /* TagSuggestDismissal.swift in Sources */ = {isa = PBXBuildFile; fileRef = TAGSUG0000000000000005 /* TagSuggestDismissal.swift */; };
-		TAGSUG0000000000000008 /* TagSuggestEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = TAGSUG0000000000000007 /* TagSuggestEngine.swift */; };
-		TAGSUG000000000000000A /* TagSuggestDictionary.json in Resources */ = {isa = PBXBuildFile; fileRef = TAGSUG0000000000000009 /* TagSuggestDictionary.json */; };
 		TAPTXT0000000000000002 /* TappableReadOnlyText.swift in Sources */ = {isa = PBXBuildFile; fileRef = TAPTXT0000000000000001 /* TappableReadOnlyText.swift */; };
 		FONTLAB0000000000000002 /* FontLabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FONTLAB0000000000000001 /* FontLabView.swift */; };
 		TODO00000000000000002 /* TodoItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = TODO00000000000000001 /* TodoItem.swift */; };
@@ -94,11 +89,6 @@
 		QSORT0000000000000001 /* QuickSortView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickSortView.swift; sourceTree = "<group>"; };
 		QSORT0000000000000003 /* QuickSortFilterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickSortFilterView.swift; sourceTree = "<group>"; };
 		QSORT0000000000000005 /* QuickSortResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickSortResultView.swift; sourceTree = "<group>"; };
-		TAGSUG0000000000000001 /* TagFrequency.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagFrequency.swift; sourceTree = "<group>"; };
-		TAGSUG0000000000000003 /* TagCooccurrence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagCooccurrence.swift; sourceTree = "<group>"; };
-		TAGSUG0000000000000005 /* TagSuggestDismissal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagSuggestDismissal.swift; sourceTree = "<group>"; };
-		TAGSUG0000000000000007 /* TagSuggestEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TagSuggestEngine.swift; path = SokuMemoKun/Services/TagSuggestEngine.swift; sourceTree = SOURCE_ROOT; };
-		TAGSUG0000000000000009 /* TagSuggestDictionary.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = TagSuggestDictionary.json; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -132,8 +122,6 @@
 				C1000000000000000000A3 /* Models */,
 				C1000000000000000000A4 /* Views */,
 				C1000000000000000000A5 /* ViewModels */,
-				TAGSUG00000000000000G1 /* Services */,
-				TAGSUG0000000000000009 /* TagSuggestDictionary.json */,
 			);
 			path = SokuMemoKun;
 			sourceTree = "<group>";
@@ -143,9 +131,6 @@
 			children = (
 				A10000000000000000001B /* Memo.swift */,
 				A10000000000000000001C /* Tag.swift */,
-				TAGSUG0000000000000001 /* TagFrequency.swift */,
-				TAGSUG0000000000000003 /* TagCooccurrence.swift */,
-				TAGSUG0000000000000005 /* TagSuggestDismissal.swift */,
 				TODO00000000000000001 /* TodoItem.swift */,
 				TODOL0000000000000001 /* TodoList.swift */,
 			);
@@ -201,14 +186,6 @@
 				A1000000000000000000AF /* SokuMemoKun.app */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		TAGSUG00000000000000G1 /* Services */ = {
-			isa = PBXGroup;
-			children = (
-				TAGSUG0000000000000007 /* TagSuggestEngine.swift */,
-			);
-			path = Services;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -271,7 +248,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				B1000000000000000000AE /* Assets.xcassets in Resources */,
-				TAGSUG000000000000000A /* TagSuggestDictionary.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -308,10 +284,6 @@
 				C0L0RLAB000000000002 /* ColorLabView.swift in Sources */,
 				7FF1C40E480B40878DCE9C7E /* ButtonLabView.swift in Sources */,
 				8311BCCD72654DF8941F0720 /* TextStyleLabView.swift in Sources */,
-				TAGSUG0000000000000002 /* TagFrequency.swift in Sources */,
-				TAGSUG0000000000000004 /* TagCooccurrence.swift in Sources */,
-				TAGSUG0000000000000006 /* TagSuggestDismissal.swift in Sources */,
-				TAGSUG0000000000000008 /* TagSuggestEngine.swift in Sources */,
 				LNTXT00000000000000002 /* LineNumberTextEditor.swift in Sources */,
 
 				TAPTXT0000000000000002 /* TappableReadOnlyText.swift in Sources */,

@@ -7,7 +7,7 @@ struct NewTagSheetView: View {
     var parentTagID: UUID? = nil
     // 追加完了時に新タグIDを返すコールバック
     var onTagCreated: ((UUID) -> Void)? = nil
-    // 初期値（サジェストから色指定で飛んできた場合に使用）
+    // 初期値（外部から名前・色を指定して開く場合に使用）
     var initialName: String = ""
     var initialColorIndex: Int = 1
 

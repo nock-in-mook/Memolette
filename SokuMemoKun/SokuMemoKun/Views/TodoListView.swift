@@ -1387,24 +1387,23 @@ struct TodoListView: View {
         } else {
             // ルート追加（チェックボックスの中心に緑＋ボタン）
             // チェックボックスと同じレイアウト構造で自動センター合わせ
-            HStack(spacing: 8) {
-                Button {
-                    commitCurrentEditIfNeeded()
-                    addEmptyItemAndEdit(parentID: nil)
-                } label: {
+            Button {
+                commitCurrentEditIfNeeded()
+                addEmptyItemAndEdit(parentID: nil)
+            } label: {
+                HStack(spacing: 8) {
                     Image(systemName: "plus.circle.fill")
                         .font(.system(size: 22))
                         .foregroundStyle(.green.opacity(0.5))
-                }
-                .buttonStyle(.plain)
-                .frame(width: 34, height: 34) // チェックボックスと同じフレーム
-                // 項目が0件の時だけガイドテキスト表示
-                if allItems.isEmpty {
-                    Text("最初の項目を追加しましょう")
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
-                        .foregroundStyle(.green.opacity(0.6))
+                        .frame(width: 34, height: 34)
+                    if allItems.isEmpty {
+                        Text("最初の項目を追加しましょう")
+                            .font(.system(size: 14, weight: .medium, design: .rounded))
+                            .foregroundStyle(.green.opacity(0.6))
+                    }
                 }
             }
+            .buttonStyle(.plain)
             .padding(.horizontal, 12) // 通常行と同じpadding
             .padding(.vertical, 4)
             .listRowSeparator(.hidden)

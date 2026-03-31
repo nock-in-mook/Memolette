@@ -122,12 +122,12 @@ struct TodoListView: View {
                         }
                         .listStyle(.plain)
                         .scrollContentBackground(.hidden)
-                        .scrollDismissesKeyboard(.interactively)
+                        .scrollDismissesKeyboard(.never)
                         .environment(\.defaultMinListRowHeight, 1)
                         .animation(nil, value: allItems.count)
-                        // メモ編集中は「完了」バーの高さ分だけ下に余白
+                        // 編集中は「完了」バーの高さ分だけ下に余白
                         .safeAreaInset(edge: .bottom) {
-                            if memoEditingItemID != nil {
+                            if editingItemID != nil || memoEditingItemID != nil {
                                 Color.clear.frame(height: 44)
                             }
                         }
@@ -246,11 +246,15 @@ struct TodoListView: View {
                 }
             }
         }
-        // メモ編集中: キーボード直上に「完了」バー
-        if memoEditingItemID != nil {
+        // 編集中: キーボード直上に「完了」バー
+        if editingItemID != nil || memoEditingItemID != nil {
             HStack {
                 Spacer()
                 Button {
+                    if let editID = editingItemID,
+                       let item = allItems.first(where: { $0.id == editID }) {
+                        commitEdit(item: item)
+                    }
                     commitMemo()
                     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 } label: {
@@ -1406,14 +1410,18 @@ struct TodoListView: View {
             editingText = ""
         } else {
             // テキストあり → 確定して次の行を自動生成
+            // 1. キーボード維持フラグON（隠しTextFieldがフォーカスを取る）
             isChainEditing = true
             item.title = trimmed
             item.updatedAt = Date()
             try? modelContext.save()
-            // editingItemIDをnilにせず、直接次のアイテムへ切り替え
-            addEmptyItemAndEdit(parentID: item.parentID)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                isChainEditing = false
+            // 2. 次のUIサイクルで新アイテム作成（キーボード維持中に）
+            DispatchQueue.main.async {
+                addEmptyItemAndEdit(parentID: item.parentID)
+                // 3. 新TextFieldにフォーカスが移ったらフラグ解除
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    isChainEditing = false
+                }
             }
         }
     }
@@ -1514,3 +1522,4 @@ struct TodoListView: View {
         }
     }
 }
+

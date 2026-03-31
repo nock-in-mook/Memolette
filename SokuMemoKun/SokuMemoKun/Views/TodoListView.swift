@@ -992,9 +992,11 @@ struct TodoListView: View {
                     .contentShape(Rectangle())
                     .onTapGesture {
                         if selectedItems.contains(item.id) {
-                            selectedItems.remove(item.id)
+                            // 外す: 自分+子孫全部
+                            removeFromSelection(item.id)
                         } else {
-                            selectedItems.insert(item.id)
+                            // 入れる: 自分+子孫全部
+                            addToSelection(item.id)
                         }
                     }
             } else {
@@ -1426,6 +1428,21 @@ struct TodoListView: View {
         }
         selectedItems.removeAll()
         isSelectMode = false
+    }
+
+    // MARK: - 選択の追加/削除（子孫も再帰的に）
+    private func addToSelection(_ id: UUID) {
+        selectedItems.insert(id)
+        for child in allItems where child.parentID == id {
+            addToSelection(child.id)
+        }
+    }
+
+    private func removeFromSelection(_ id: UUID) {
+        selectedItems.remove(id)
+        for child in allItems where child.parentID == id {
+            removeFromSelection(child.id)
+        }
     }
 
     // MARK: - 全項目削除（リスト自体は残す）

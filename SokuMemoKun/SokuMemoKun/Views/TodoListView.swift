@@ -111,13 +111,15 @@ struct TodoListView: View {
                                 case .item(let item):
                                     todoRow(item: item, depth: row.depth, isLastChild: row.isLastChild)
                                         .id(item.id)
-                                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                            Button(role: .destructive) {
-                                                withAnimation {
-                                                    deleteItem(item)
+                                        .swipeActions(edge: .trailing, allowsFullSwipe: !isSelectMode) {
+                                            if !isSelectMode {
+                                                Button(role: .destructive) {
+                                                    withAnimation {
+                                                        deleteItem(item)
+                                                    }
+                                                } label: {
+                                                    Label("削除", systemImage: "trash")
                                                 }
-                                            } label: {
-                                                Label("削除", systemImage: "trash")
                                             }
                                         }
                                 case .addButton(let parentID):
@@ -876,8 +878,10 @@ struct TodoListView: View {
             appendRows(for: item, depth: 0, isLast: i == roots.count - 1, into: &rows)
         }
 
-        // ルートレベルの追加ボタン
-        rows.append(FlatRow(id: "add-root", kind: .addButton(parentID: nil), depth: 0, isLastChild: true))
+        // ルートレベルの追加ボタン（選択モード中は非表示）
+        if !isSelectMode {
+            rows.append(FlatRow(id: "add-root", kind: .addButton(parentID: nil), depth: 0, isLastChild: true))
+        }
 
         // 編集中はスクロールバッファ（キーボード閉じ時の引き戻し防止）
         if editingItemID != nil || memoEditingItemID != nil {
@@ -897,8 +901,8 @@ struct TodoListView: View {
             for (i, child) in kids.enumerated() {
                 appendRows(for: child, depth: depth + 1, isLast: i == kids.count - 1, into: &rows)
             }
-            // 子の追加ボタン（最大階層では表示しない、編集中も表示）
-            if depth + 1 <= maxDepth {
+            // 子の追加ボタン（最大階層では表示しない、選択モード中は非表示）
+            if depth + 1 <= maxDepth && !isSelectMode {
                 rows.append(FlatRow(id: "add-\(item.id.uuidString)", kind: .addButton(parentID: item.id), depth: depth + 1, isLastChild: true))
             }
         }
@@ -1017,7 +1021,22 @@ struct TodoListView: View {
             }
 
             // タイトル（通常表示 or インライン編集）
-            if isEditing {
+            if isSelectMode {
+                // 選択モード: タップで選択トグル
+                Text(item.title)
+                    .font(.system(size: 18, weight: .medium, design: .rounded))
+                    .strikethrough(item.isDone, color: .secondary)
+                    .foregroundStyle(item.isDone ? .secondary : .primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        if selectedItems.contains(item.id) {
+                            removeFromSelection(item.id)
+                        } else {
+                            addToSelection(item.id)
+                        }
+                    }
+            } else if isEditing {
                 TextField("項目名を入力", text: $editingText)
                     .font(.system(size: 18, weight: .medium, design: .rounded))
                     .focused($isEditingFocused)
@@ -1040,6 +1059,7 @@ struct TodoListView: View {
                     }
             }
 
+            if !isSelectMode {
             // メモアイコン
             Button {
                 // アイテム編集中からのタップ → 確定してメモ展開
@@ -1087,6 +1107,7 @@ struct TodoListView: View {
             }
             .buttonStyle(.plain)
             .disabled(memoEditingItemID != nil)
+            } // if !isSelectMode（メモボタンここまで）
 
             // 展開/折りたたみ矢印
             if hasKids {

@@ -120,8 +120,11 @@ struct TodoListView: View {
                         .environment(\.defaultMinListRowHeight, 1)
                         .animation(nil, value: allItems.count)
                         .onChange(of: editingItemID) { oldID, newID in
-                            if let id = newID {
-                                scrollToItem(id, proxy: proxy)
+                            if let id = newID,
+                               let item = allItems.first(where: { $0.id == id }) {
+                                // 編集開始: 入力行の下の＋ボタンが見えるようにスクロール
+                                let addRowID = item.parentID.map { "add-\($0.uuidString)" } ?? "add-root"
+                                scrollToRow(addRowID, proxy: proxy)
                             } else if let oldID = oldID,
                                       let item = allItems.first(where: { $0.id == oldID }) {
                                 // 編集完了後、最後の項目だった場合のみ＋ボタンにスクロール
@@ -144,8 +147,10 @@ struct TodoListView: View {
                             }
                         }
                         .onChange(of: isEditingFocused) { _, focused in
-                            if focused, let id = editingItemID {
-                                scrollToItem(id, proxy: proxy)
+                            if focused, let id = editingItemID,
+                               let item = allItems.first(where: { $0.id == id }) {
+                                let addRowID = item.parentID.map { "add-\($0.uuidString)" } ?? "add-root"
+                                scrollToRow(addRowID, proxy: proxy)
                             } else if !focused, let editID = editingItemID,
                                       let item = allItems.first(where: { $0.id == editID }) {
                                 // フォーカスが外れたら完了と同じ扱い
@@ -695,10 +700,8 @@ struct TodoListView: View {
             appendRows(for: item, depth: 0, isLast: i == roots.count - 1, into: &rows)
         }
 
-        // ルートレベルの追加ボタン（編集中は非表示）
-        if editingItemID == nil {
-            rows.append(FlatRow(id: "add-root", kind: .addButton(parentID: nil), depth: 0, isLastChild: true))
-        }
+        // ルートレベルの追加ボタン（編集中も表示）
+        rows.append(FlatRow(id: "add-root", kind: .addButton(parentID: nil), depth: 0, isLastChild: true))
         return rows
     }
 
@@ -713,8 +716,8 @@ struct TodoListView: View {
             for (i, child) in kids.enumerated() {
                 appendRows(for: child, depth: depth + 1, isLast: i == kids.count - 1, into: &rows)
             }
-            // 子の追加ボタン（最大階層では表示しない、編集中も非表示）
-            if depth + 1 <= maxDepth && editingItemID == nil {
+            // 子の追加ボタン（最大階層では表示しない、編集中も表示）
+            if depth + 1 <= maxDepth {
                 rows.append(FlatRow(id: "add-\(item.id.uuidString)", kind: .addButton(parentID: item.id), depth: depth + 1, isLastChild: true))
             }
         }
@@ -1080,13 +1083,15 @@ struct TodoListView: View {
         if let parentID = parentID,
            let parent = allItems.first(where: { $0.id == parentID }) {
             // 子タスク追加
-            let isDisabled = editingItemID != nil || memoEditingItemID != nil
+            let isMemoEditing = memoEditingItemID != nil
             let accentColor = depthAccentColor(depth)
 
-            // L字罫線＋色付き＋ボタン
-            let lineColor = isDisabled ? accentColor.opacity(0.3) : accentColor
+            // L字罫線＋色付き＋ボタン（メモ編集中のみ薄く）
+            let lineColor = isMemoEditing ? accentColor.opacity(0.3) : accentColor
             Group {
                     Button {
+                        // 編集中なら先に確定してから追加
+                        commitCurrentEditIfNeeded()
                         addEmptyItemAndEdit(parentID: parentID)
                     } label: {
                         HStack(spacing: 6) {
@@ -1103,7 +1108,7 @@ struct TodoListView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .buttonStyle(.plain)
-                    .disabled(isDisabled)
+                    .disabled(isMemoEditing)
                     .padding(.trailing, 12)
                     .padding(.vertical, 2)
                     // チェックボックス中心に合わせる: indentLeading(depth) + 12(padding) + 17(34/2) - 7.5(15/2) = depth*28 + 21.5
@@ -1157,18 +1162,19 @@ struct TodoListView: View {
             .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
         } else {
             // ルート追加（チェックボックスの中心に緑＋ボタン）
-            let isDisabled = editingItemID != nil || memoEditingItemID != nil
+            let isMemoEditing_ = memoEditingItemID != nil
             // チェックボックスと同じレイアウト構造で自動センター合わせ
             HStack(spacing: 8) {
                 Button {
+                    commitCurrentEditIfNeeded()
                     addEmptyItemAndEdit(parentID: nil)
                 } label: {
                     Image(systemName: "plus.circle.fill")
                         .font(.system(size: 22))
-                        .foregroundStyle(isDisabled ? .green.opacity(0.15) : .green.opacity(0.5))
+                        .foregroundStyle(isMemoEditing_ ? .green.opacity(0.15) : .green.opacity(0.5))
                 }
                 .buttonStyle(.plain)
-                .disabled(isDisabled)
+                .disabled(isMemoEditing_)
                 .frame(width: 34, height: 34) // チェックボックスと同じフレーム
                 // 項目が0件の時だけガイドテキスト表示
                 if allItems.isEmpty {
@@ -1196,6 +1202,20 @@ struct TodoListView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
             withAnimation(.easeInOut(duration: 0.15)) {
                 proxy.scrollTo(id, anchor: .bottom)
+            }
+        }
+    }
+
+    // 文字列IDでスクロール（+ボタン行など）
+    private func scrollToRow(_ rowID: String, proxy: ScrollViewProxy) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                proxy.scrollTo(rowID, anchor: .bottom)
+            }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                proxy.scrollTo(rowID, anchor: .bottom)
             }
         }
     }
@@ -1334,12 +1354,27 @@ struct TodoListView: View {
         memoEditingText = ""
     }
 
-    // MARK: - Enter押下時
+    // MARK: - Enter押下時（連続入力: 確定→同じ親に次のアイテム作成）
     private func submitEdit(item: TodoItem) {
-        commitEdit(item: item)
+        let trimmed = editingText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            // 空のままEnter → 削除して編集終了（連続入力の抜け口）
+            deleteItem(item)
+            editingItemID = nil
+            editingText = ""
+        } else {
+            // テキストあり → 確定して次の行を自動生成
+            item.title = trimmed
+            item.updatedAt = Date()
+            try? modelContext.save()
+            editingItemID = nil
+            editingText = ""
+            // 同じ親の下に新しい空アイテムを作って即編集
+            addEmptyItemAndEdit(parentID: item.parentID)
+        }
     }
 
-    // MARK: - 編集確定
+    // MARK: - 編集確定（フォーカス外れ時など、連続入力しない）
     private func commitEdit(item: TodoItem) {
         let trimmed = editingText.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty {
@@ -1352,6 +1387,15 @@ struct TodoListView: View {
         }
         editingItemID = nil
         editingText = ""
+    }
+
+    // MARK: - 現在の編集を確定（+ボタンタップ時に使う）
+    private func commitCurrentEditIfNeeded() {
+        if let editID = editingItemID,
+           let item = allItems.first(where: { $0.id == editID }) {
+            commitEdit(item: item)
+        }
+        commitMemo()
     }
 
     // MARK: - 空の項目を作成して即編集開始（saveはしない＝確定まで永続化しない）

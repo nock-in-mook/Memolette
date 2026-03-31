@@ -62,6 +62,8 @@ struct TodoListView: View {
     @State private var editingItemID: UUID?
     @State private var editingText: String = ""
     @FocusState private var isEditingFocused: Bool
+    // 連続入力中フラグ（onChangeのcommitEdit競合防止）
+    @State private var isChainEditing = false
 
     // メモ表示・編集
     @State private var memoOpenItems: Set<UUID> = []      // メモ展開中（閲覧モード）
@@ -135,9 +137,9 @@ struct TodoListView: View {
                                 // 編集開始: 入力行の下の＋ボタンが見えるようにスクロール
                                 let addRowID = item.parentID.map { "add-\($0.uuidString)" } ?? "add-root"
                                 scrollToRow(addRowID, proxy: proxy)
-                            } else if let oldID = oldID,
+                            } else if !isChainEditing, let oldID = oldID,
                                       let item = allItems.first(where: { $0.id == oldID }) {
-                                // 編集完了後、最後の項目だった場合のみ＋ボタンにスクロール
+                                // 編集完了後、最後の項目だった場合のみ＋ボタンにスクロール（連続入力中は除く）
                                 let siblings = allItems
                                     .filter { $0.parentID == item.parentID && $0.listID == item.listID }
                                     .sorted { $0.sortOrder < $1.sortOrder }
@@ -167,9 +169,10 @@ struct TodoListView: View {
                                let item = allItems.first(where: { $0.id == id }) {
                                 let addRowID = item.parentID.map { "add-\($0.uuidString)" } ?? "add-root"
                                 scrollToRow(addRowID, proxy: proxy)
-                            } else if !focused, let editID = editingItemID,
+                            } else if !focused && !isChainEditing,
+                                      let editID = editingItemID,
                                       let item = allItems.first(where: { $0.id == editID }) {
-                                // フォーカスが外れたら完了と同じ扱い
+                                // フォーカスが外れたら完了と同じ扱い（連続入力中は除く）
                                 commitEdit(item: item)
                             }
                         }
@@ -1403,13 +1406,15 @@ struct TodoListView: View {
             editingText = ""
         } else {
             // テキストあり → 確定して次の行を自動生成
+            isChainEditing = true
             item.title = trimmed
             item.updatedAt = Date()
             try? modelContext.save()
-            editingItemID = nil
-            editingText = ""
-            // 同じ親の下に新しい空アイテムを作って即編集
+            // editingItemIDをnilにせず、直接次のアイテムへ切り替え
             addEmptyItemAndEdit(parentID: item.parentID)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                isChainEditing = false
+            }
         }
     }
 

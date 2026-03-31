@@ -52,9 +52,14 @@ struct TodoListView: View {
     @State private var showExpandDialog = false
     // 全チェッククリアダイアログ
     @State private var showResetDialog = false
-    // 全タスク削除ダイアログ（2段階）
+    // 削除メニューダイアログ（選択削除 or 全件削除）
+    @State private var showDeleteMenu = false
+    // 全項目削除ダイアログ（2段階）
     @State private var showClearAllDialog = false
     @State private var showClearAllConfirm = false
+    // 選択削除モード
+    @State private var isSelectMode = false
+    @State private var selectedItems: Set<UUID> = []
     // メモ削除確認ダイアログ
     @State private var showMemoDeleteDialog = false
     @State private var memoDeleteTargetID: UUID?
@@ -298,31 +303,69 @@ struct TodoListView: View {
             commitMemo()
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }
-        // 全タスク削除フロートボタン（下端中央）
+        // 削除フロートボタン（下端中央）
         .overlay(alignment: .bottom) {
             if allItems.count > 0 && editingItemID == nil && memoEditingItemID == nil {
-                Button {
-                    showClearAllDialog = true
-                } label: {
-                    HStack(spacing: 5) {
-                        Image(systemName: "list.bullet")
-                            .font(.system(size: 14, weight: .medium))
-                        Text("削除")
-                            .font(.system(size: 14, weight: .medium, design: .rounded))
+                if isSelectMode {
+                    // 選択モード中: 削除実行 + キャンセル
+                    HStack(spacing: 12) {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                isSelectMode = false
+                                selectedItems.removeAll()
+                            }
+                        } label: {
+                            Text("キャンセル")
+                                .font(.system(size: 14, weight: .medium, design: .rounded))
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 18)
+                                .padding(.vertical, 9)
+                                .background(Capsule().fill(.ultraThinMaterial))
+                        }
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                deleteSelectedItems()
+                            }
+                        } label: {
+                            HStack(spacing: 5) {
+                                Image(systemName: "trash")
+                                    .font(.system(size: 14, weight: .medium))
+                                Text("\(selectedItems.count)件削除")
+                                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                            }
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 18)
+                            .padding(.vertical, 9)
+                            .background(Capsule().fill(selectedItems.isEmpty ? Color.gray : Color.red))
+                        }
+                        .disabled(selectedItems.isEmpty)
                     }
-                    .foregroundStyle(.red.opacity(0.6))
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 9)
-                    .background(
-                        Capsule()
-                            .fill(.ultraThinMaterial)
-                    )
-                    .overlay(
-                        Capsule()
-                            .strokeBorder(Color.red.opacity(0.15), lineWidth: 0.5)
-                    )
+                    .padding(.bottom, 8)
+                } else {
+                    // 通常: 削除メニューを開く
+                    Button {
+                        showDeleteMenu = true
+                    } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: "list.bullet")
+                                .font(.system(size: 14, weight: .medium))
+                            Text("削除")
+                                .font(.system(size: 14, weight: .medium, design: .rounded))
+                        }
+                        .foregroundStyle(.red.opacity(0.6))
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 9)
+                        .background(
+                            Capsule()
+                                .fill(.ultraThinMaterial)
+                        )
+                        .overlay(
+                            Capsule()
+                                .strokeBorder(Color.red.opacity(0.15), lineWidth: 0.5)
+                        )
+                    }
+                    .padding(.bottom, 8)
                 }
-                .padding(.bottom, 8)
             }
         }
         // 全展開ダイアログ（カスタムリッチUI）
@@ -444,7 +487,82 @@ struct TodoListView: View {
                 .transition(.opacity)
             }
         }
-        // 全タスク削除ダイアログ
+        // 削除メニューダイアログ（選択削除 or 全件削除）
+        .overlay {
+            if showDeleteMenu {
+                ZStack {
+                    Color.black.opacity(0.3)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                showDeleteMenu = false
+                            }
+                        }
+                    VStack(spacing: 16) {
+                        Text("項目を削除")
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .padding(.top, 4)
+                        VStack(spacing: 10) {
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.15)) {
+                                    showDeleteMenu = false
+                                    isSelectMode = true
+                                    selectedItems.removeAll()
+                                }
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "checkmark.circle")
+                                        .font(.system(size: 14))
+                                    Text("選択して削除")
+                                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                                .background(Color.blue.opacity(0.1))
+                                .foregroundStyle(.blue)
+                                .cornerRadius(8)
+                            }
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.15)) {
+                                    showDeleteMenu = false
+                                    showClearAllDialog = true
+                                }
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "trash")
+                                        .font(.system(size: 14))
+                                    Text("全件削除")
+                                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                                .background(Color.red.opacity(0.1))
+                                .foregroundStyle(.red)
+                                .cornerRadius(8)
+                            }
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.15)) {
+                                    showDeleteMenu = false
+                                }
+                            } label: {
+                                Text("キャンセル")
+                                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .padding(20)
+                    .background(.regularMaterial)
+                    .cornerRadius(16)
+                    .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
+                    .padding(.horizontal, 40)
+                }
+                .transition(.opacity)
+            }
+        }
+        // 全項目削除ダイアログ
         .overlay {
             if showClearAllDialog {
                 ZStack {
@@ -456,10 +574,10 @@ struct TodoListView: View {
                             }
                         }
                     VStack(spacing: 16) {
-                        Text("全タスクを削除")
+                        Text("全項目を削除")
                             .font(.system(size: 15, weight: .semibold, design: .rounded))
                             .padding(.top, 4)
-                        Text("\(allItems.count)件のタスクを全て削除します\nリスト自体は残ります")
+                        Text("\(allItems.count)件の項目を全て削除します\nリスト自体は残ります")
                             .font(.system(size: 13, design: .rounded))
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
@@ -500,7 +618,7 @@ struct TodoListView: View {
                 .transition(.opacity)
             }
         }
-        // 全タスク削除 2段階目（最終確認）
+        // 全項目削除 2段階目（最終確認）
         .overlay {
             if showClearAllConfirm {
                 ZStack {
@@ -517,7 +635,7 @@ struct TodoListView: View {
                             .foregroundStyle(.red)
                         Text("本当によろしいですか？")
                             .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        Text("全タスクを削除します。この操作は取り消せません。")
+                        Text("全項目を削除します。この操作は取り消せません。")
                             .font(.system(size: 13, design: .rounded))
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
@@ -647,7 +765,7 @@ struct TodoListView: View {
                     Button(role: .destructive) {
                         showClearAllDialog = true
                     } label: {
-                        Label("全タスクを削除", systemImage: "trash")
+                        Label("全項目を削除", systemImage: "trash")
                     }
                 }
             }
@@ -865,19 +983,34 @@ struct TodoListView: View {
             }
         VStack(spacing: 0) {
         HStack(spacing: 8) {
-            // チェックボックス（タップ領域をアイコンに限定）
-            Image(systemName: item.isDone ? "checkmark.square.fill" : "square")
-                .font(.system(size: 34, weight: .medium))
-                .foregroundStyle(item.isDone ? .green : .secondary.opacity(0.35))
-                .animation(nil, value: item.isDone)
-                .frame(width: 34, height: 34)
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    guard !isAnythingEditing else { return }
-                    item.isDone.toggle()
-                    item.updatedAt = Date()
-                    try? modelContext.save()
-                }
+            // チェックボックス / 選択モード（タップ領域をアイコンに限定）
+            if isSelectMode {
+                Image(systemName: selectedItems.contains(item.id) ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 28, weight: .medium))
+                    .foregroundStyle(selectedItems.contains(item.id) ? .red : .secondary.opacity(0.35))
+                    .frame(width: 34, height: 34)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        if selectedItems.contains(item.id) {
+                            selectedItems.remove(item.id)
+                        } else {
+                            selectedItems.insert(item.id)
+                        }
+                    }
+            } else {
+                Image(systemName: item.isDone ? "checkmark.square.fill" : "square")
+                    .font(.system(size: 34, weight: .medium))
+                    .foregroundStyle(item.isDone ? .green : .secondary.opacity(0.35))
+                    .animation(nil, value: item.isDone)
+                    .frame(width: 34, height: 34)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        guard !isAnythingEditing else { return }
+                        item.isDone.toggle()
+                        item.updatedAt = Date()
+                        try? modelContext.save()
+                    }
+            }
 
             // タイトル（通常表示 or インライン編集）
             if isEditing {
@@ -1148,7 +1281,7 @@ struct TodoListView: View {
     private func addItemRow(parentID: UUID?, depth: Int, rowID: String) -> some View {
         if let parentID = parentID,
            let parent = allItems.first(where: { $0.id == parentID }) {
-            // 子タスク追加
+            // 子項目追加
             let accentColor = depthAccentColor(depth)
 
             Group {
@@ -1284,7 +1417,18 @@ struct TodoListView: View {
         }
     }
 
-    // MARK: - 全タスク削除（リスト自体は残す）
+    // MARK: - 選択項目を削除（子も再帰的に削除）
+    private func deleteSelectedItems() {
+        for id in selectedItems {
+            if let item = allItems.first(where: { $0.id == id }) {
+                deleteItem(item)
+            }
+        }
+        selectedItems.removeAll()
+        isSelectMode = false
+    }
+
+    // MARK: - 全項目削除（リスト自体は残す）
     private func clearAllItems() {
         for item in allItems {
             modelContext.delete(item)

@@ -25,6 +25,16 @@ struct LineNumberTextEditor: UIViewRepresentable {
         view.textView.delegate = context.coordinator
         view.textView.text = text
         view.showGutter = showLineNumbers
+
+        // キーボード上に「完了」バーを追加
+        let toolbar = UIToolbar(frame: CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width, height: 44))
+        toolbar.items = [
+            UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
+            UIBarButtonItem(title: "完了", style: .done, target: context.coordinator, action: #selector(Coordinator.doneButtonTapped))
+        ]
+        toolbar.sizeToFit()
+        view.textView.inputAccessoryView = toolbar
+
         return view
     }
 
@@ -79,6 +89,10 @@ struct LineNumberTextEditor: UIViewRepresentable {
 
         func textViewDidEndEditing(_ tv: UITextView) {
             DispatchQueue.main.async { self.parent.isFocused = false }
+        }
+
+        @objc func doneButtonTapped() {
+            parent.isFocused = false
         }
 
         func scrollViewDidScroll(_ sv: UIScrollView) {

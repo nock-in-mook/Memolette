@@ -72,6 +72,7 @@ struct TodoListView: View {
 
 
 
+
     // 進捗情報（ルート項目のみ）
     private var rootItems_: [TodoItem] { allItems.filter { $0.parentID == nil } }
     private var totalCount: Int { rootItems_.count }
@@ -81,6 +82,7 @@ struct TodoListView: View {
     }
 
     var body: some View {
+        ZStack(alignment: .bottom) {
         NavigationStack {
             VStack(spacing: 0) {
                 // リッチヘッダー
@@ -227,6 +229,26 @@ struct TodoListView: View {
                 }
             }
         }
+        // メモ編集中: キーボード直上に「完了」バー
+        if memoEditingItemID != nil {
+            HStack {
+                Spacer()
+                Button {
+                    commitMemo()
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                } label: {
+                    Text("完了")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(.blue)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 8)
+            .background(.bar)
+        }
+        } // ZStack
         .onAppear {
             cleanupEmptyItems()
             // 初期表示時にツリーを全展開（メモは省略のまま）
@@ -1117,21 +1139,25 @@ struct TodoListView: View {
                     .padding(.vertical, 2)
                     // チェックボックス中心に合わせる: indentLeading(depth) + 12(padding) + 17(34/2) - 7.5(15/2) = depth*28 + 21.5
                     .padding(.leading, CGFloat(depth) * indentStep + 21.5)
-                    // L字罫線：角丸＋横線のみCanvasで描画（縦線との重なり防止）
+                    // L字罫線：角丸＋横線のみCanvasで描画（編集中は非表示）
                     .overlay(alignment: .topLeading) {
-                        let lineX: CGFloat = 16 + CGFloat(depth - 1) * indentStep + indentStep / 2 - 0.75
-                        LShapeCorner(color: lineColor)
-                            .frame(width: 14, height: 12)
-                            .padding(.leading, lineX)
-                    }
-                    // 縦線（上半分のみ、Rectangleで子行の縦線と統一）
-                    .overlay(alignment: .topLeading) {
-                        let lineX: CGFloat = 16 + CGFloat(depth - 1) * indentStep + indentStep / 2 - 0.75
-                        GeometryReader { geo in
-                            Rectangle()
-                                .fill(lineColor)
-                                .frame(width: 1.5, height: geo.size.height * 0.5 - 12)
+                        if editingItemID == nil {
+                            let lineX: CGFloat = 16 + CGFloat(depth - 1) * indentStep + indentStep / 2 - 0.75
+                            LShapeCorner(color: lineColor)
+                                .frame(width: 14, height: 12)
                                 .padding(.leading, lineX)
+                        }
+                    }
+                    // 縦線（上半分のみ、編集中は非表示）
+                    .overlay(alignment: .topLeading) {
+                        if editingItemID == nil {
+                            let lineX: CGFloat = 16 + CGFloat(depth - 1) * indentStep + indentStep / 2 - 0.75
+                            GeometryReader { geo in
+                                Rectangle()
+                                    .fill(lineColor)
+                                    .frame(width: 1.5, height: geo.size.height * 0.5 - 12)
+                                    .padding(.leading, lineX)
+                            }
                         }
                     }
             }

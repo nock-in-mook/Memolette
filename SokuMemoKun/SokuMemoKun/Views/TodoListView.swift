@@ -844,6 +844,8 @@ struct TodoListView: View {
 
             // メモアイコン
             Button {
+                // アイテム編集中なら先に確定
+                commitCurrentEditIfNeeded()
                 withAnimation(.easeInOut(duration: 0.15)) {
                     let hasMemo = !(item.memo ?? "").isEmpty
                     if memoEditingItemID == item.id {
@@ -875,15 +877,16 @@ struct TodoListView: View {
                 Image(systemName: (item.memo ?? "").isEmpty ? "doc" : "doc.fill")
                     .rotationEffect(.degrees(90))
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(isAnythingEditing ? Color.secondary.opacity(0.2) : ((item.memo ?? "").isEmpty ? Color.secondary.opacity(0.35) : memoColor))
+                    .foregroundStyle(memoEditingItemID != nil ? Color.secondary.opacity(0.2) : ((item.memo ?? "").isEmpty ? Color.secondary.opacity(0.35) : memoColor))
                     .frame(width: 36, height: 36)
             }
             .buttonStyle(.plain)
-            .disabled(isAnythingEditing)
+            .disabled(memoEditingItemID != nil)
 
             // 展開/折りたたみ矢印
             if hasKids {
                 Button {
+                    commitCurrentEditIfNeeded()
                     withAnimation(.easeInOut(duration: 0.2)) {
                         if isExpanded {
                             expandedItems.remove(item.id)
@@ -894,14 +897,15 @@ struct TodoListView: View {
                 } label: {
                     Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(isAnythingEditing ? Color.secondary.opacity(0.2) : (isExpanded ? Color.orange : Color.blue))
+                        .foregroundStyle(memoEditingItemID != nil ? Color.secondary.opacity(0.2) : (isExpanded ? Color.orange : Color.blue))
                         .frame(width: 40, height: 40)
                 }
                 .buttonStyle(.plain)
-                .disabled(isAnythingEditing)
+                .disabled(memoEditingItemID != nil)
             } else if depth < maxDepth {
                 // 子がない＆まだ階層追加可能 → 展開ボタン
                 Button {
+                    commitCurrentEditIfNeeded()
                     withAnimation(.easeInOut(duration: 0.2)) {
                         if isExpanded {
                             expandedItems.remove(item.id)
@@ -912,11 +916,11 @@ struct TodoListView: View {
                 } label: {
                     Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(isAnythingEditing ? Color.secondary.opacity(0.2) : (isExpanded ? Color.orange : Color.secondary.opacity(0.35)))
+                        .foregroundStyle(memoEditingItemID != nil ? Color.secondary.opacity(0.2) : (isExpanded ? Color.orange : Color.secondary.opacity(0.35)))
                         .frame(width: 40, height: 40)
                 }
                 .buttonStyle(.plain)
-                .disabled(isAnythingEditing)
+                .disabled(memoEditingItemID != nil)
             } else {
                 // 最深階層：展開ボタンなし、同じ幅のスペース確保
                 Color.clear.frame(width: 40, height: 40)

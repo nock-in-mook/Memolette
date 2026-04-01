@@ -249,15 +249,6 @@ enum FrequentGridOption: Int, CaseIterable {
     case full = 2       // 2×1（全文）
     case titleOnly = 3  // タイトルのみ（1列）
 
-    var itemsPerColumn: Int {
-        switch self {
-        case .grid2x5: return 5
-        case .grid2x3: return 3
-        case .full: return 6
-        case .titleOnly: return 20
-        }
-    }
-
     var label: String {
         switch self {
         case .grid2x5: return "2×5"
@@ -481,16 +472,14 @@ struct TabbedMemoListView: View {
         tabItems[selectedTabIndex].colorIndex == frequentTabColorIndex
     }
 
-    // よく見るメモ（閲覧回数順、件数はグリッド設定に応じて可変）
+    // よく見るメモ（閲覧回数順、スクロールで全件表示）
     private var frequentMemos: [Memo] {
-        let limit = currentFrequentGridOption.itemsPerColumn
-        return Array(allMemos.filter { $0.viewCount > 0 }.sorted { $0.viewCount > $1.viewCount }.prefix(limit))
+        allMemos.filter { $0.viewCount > 0 }.sorted { $0.viewCount > $1.viewCount }
     }
 
-    // 最近見たメモ（最終閲覧日時順、件数はグリッド設定に応じて可変）
+    // 最近見たメモ（最終閲覧日時順、スクロールで全件表示）
     private var recentMemos: [Memo] {
-        let limit = currentFrequentGridOption.itemsPerColumn
-        return Array(allMemos.filter { $0.lastViewedAt != nil }.sorted { ($0.lastViewedAt ?? .distantPast) > ($1.lastViewedAt ?? .distantPast) }.prefix(limit))
+        allMemos.filter { $0.lastViewedAt != nil }.sorted { ($0.lastViewedAt ?? .distantPast) > ($1.lastViewedAt ?? .distantPast) }
     }
 
     // 現在の親タグ（あれば）

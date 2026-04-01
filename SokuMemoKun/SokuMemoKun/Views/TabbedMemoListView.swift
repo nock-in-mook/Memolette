@@ -2076,6 +2076,16 @@ struct MemoCardView: View {
 
     private var cardHeight: CGFloat? {
         if isFullMode || isTitleOnly { return nil }
+        guard availableHeight > 0 else {
+            switch gridSize {
+            case .grid3x8: return 40
+            case .grid2x6: return 72
+            case .grid2x3: return 120
+            case .grid1x2: return 180
+            case .full: return nil
+            case .titleOnly: return nil
+            }
+        }
         let rows: CGFloat
         switch gridSize {
         case .grid3x8: rows = 8
@@ -2085,17 +2095,11 @@ struct MemoCardView: View {
         case .full: return nil
         case .titleOnly: return nil
         }
-        guard availableHeight > 0 else {
-            // フォールバック（availableHeight未取得時）
-            return max(36, 600 / rows)
-        }
         let spacing: CGFloat = 8
-        // 上部: drawerBand(37) + 余白(6) = 43
-        // 下部: ボタンバー(44) + 余白(10) = 54
-        let topPadding: CGFloat = 43
-        let bottomPadding: CGFloat = 54
+        let topPadding: CGFloat = 58
+        let bottomPadding: CGFloat = 70
         let usable = availableHeight - topPadding - bottomPadding - (spacing * (rows - 1))
-        return max(36, usable / rows)
+        return max(40, usable / rows)
     }
 
     var body: some View {
@@ -2166,7 +2170,7 @@ struct MemoCardView: View {
                 }
                 .padding(3)
             }
-            .frame(height: cardHeight, alignment: .topLeading)
+            .frame(height: gridSize == .grid3x8 ? 36 : gridSize == .grid2x6 ? 48 : gridSize == .grid2x3 ? 104 : gridSize == .grid1x2 ? 160 : cardHeight, alignment: .topLeading)
             .background(Color(uiColor: .systemBackground))
             .contentShape(RoundedRectangle(cornerRadius: 6))
             .onTapGesture { onTap?() }

@@ -244,16 +244,14 @@ enum GridSizeOption: Int, CaseIterable {
 
 // 「よく見る」フォルダ専用グリッドオプション
 enum FrequentGridOption: Int, CaseIterable {
-    case grid2x8 = 0   // 2×8（各列8件）
-    case grid2x6 = 1   // 2×5（各列6件）
-    case grid2x3 = 2   // 2×3（各列3件）
-    case full = 3       // 2×1（全文）
-    case titleOnly = 4  // タイトルのみ（1列）
+    case grid2x5 = 0   // 2×5（各列5件）
+    case grid2x3 = 1   // 2×3（各列3件）
+    case full = 2       // 2×1（全文）
+    case titleOnly = 3  // タイトルのみ（1列）
 
     var itemsPerColumn: Int {
         switch self {
-        case .grid2x8: return 8
-        case .grid2x6: return 6
+        case .grid2x5: return 5
         case .grid2x3: return 3
         case .full: return 6
         case .titleOnly: return 20
@@ -262,8 +260,7 @@ enum FrequentGridOption: Int, CaseIterable {
 
     var label: String {
         switch self {
-        case .grid2x8: return "2×8"
-        case .grid2x6: return "2×6"
+        case .grid2x5: return "2×5"
         case .grid2x3: return "2×3"
         case .full: return "2×1(全文)"
         case .titleOnly: return "タイトルのみ"
@@ -273,11 +270,20 @@ enum FrequentGridOption: Int, CaseIterable {
     // 対応するGridSizeOption（カード描画用）
     var cardGridSize: GridSizeOption {
         switch self {
-        case .grid2x8: return .grid3x8
-        case .grid2x6: return .grid2x6
+        case .grid2x5: return .grid2x6  // 2×5用のカードスタイル
         case .grid2x3: return .grid2x3
         case .full: return .full
         case .titleOnly: return .titleOnly
+        }
+    }
+
+    // よく見る用の行数（高さ計算用）
+    var rows: CGFloat {
+        switch self {
+        case .grid2x5: return 5
+        case .grid2x3: return 3
+        case .full: return 0
+        case .titleOnly: return 0
         }
     }
 }
@@ -383,7 +389,7 @@ struct TabbedMemoListView: View {
     // すべて用のグリッドサイズ
     @AppStorage("allTagGridSize") private var allTagGridSize: Int = 2
     // よく見る用のグリッドサイズ
-    @AppStorage("frequentTabGridSize") private var frequentTabGridSize: Int = 1
+    @AppStorage("frequentTabGridSize") private var frequentTabGridSize: Int = 0
     // コールバック
     var onAddMemo: ((UUID?, UUID?) -> Void)?  // (親タグID, 子タグID)
     var onEditMemo: ((Memo) -> Void)?
@@ -522,7 +528,7 @@ struct TabbedMemoListView: View {
 
     // 「よく見る」フォルダ専用のグリッドオプション
     private var currentFrequentGridOption: FrequentGridOption {
-        FrequentGridOption(rawValue: frequentTabGridSize) ?? .grid2x6
+        FrequentGridOption(rawValue: frequentTabGridSize) ?? .grid2x5
     }
 
     private var currentColumns: [GridItem] {
@@ -1347,6 +1353,8 @@ struct TabbedMemoListView: View {
                     .padding(.horizontal, 6)
                 } else {
                     // 左右分割: よく見る | 最近
+                    // よく見るは列ラベル(20pt)+列padding(16pt)分だけ通常より狭い
+                    let frequentExtraOffset: CGFloat = 36
                     HStack(alignment: .top, spacing: 8) {
                         // 左列: よく見る
                         VStack(spacing: 8) {
@@ -1356,7 +1364,7 @@ struct TabbedMemoListView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             LazyVGrid(columns: [GridItem(.flexible())], spacing: 8) {
                                 ForEach(frequentMemos) { memo in
-                                    memoGridItem(memo: memo, availableHeight: geo.size.height)
+                                    memoGridItem(memo: memo, availableHeight: geo.size.height - frequentExtraOffset)
                                 }
                             }
                         }
@@ -1376,7 +1384,7 @@ struct TabbedMemoListView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             LazyVGrid(columns: [GridItem(.flexible())], spacing: 8) {
                                 ForEach(recentMemos) { memo in
-                                    memoGridItem(memo: memo, availableHeight: geo.size.height)
+                                    memoGridItem(memo: memo, availableHeight: geo.size.height - frequentExtraOffset)
                                 }
                             }
                         }

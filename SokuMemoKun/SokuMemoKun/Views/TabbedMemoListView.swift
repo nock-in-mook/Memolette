@@ -1889,6 +1889,8 @@ struct TabbedMemoListView: View {
         for (i, item) in newOrder.enumerated() {
             if item.colorIndex == allTabColorIndex {
                 allTagSortOrder = i
+            } else if item.colorIndex == frequentTabColorIndex {
+                frequentTagSortOrder = i
             } else if let tag = item.tag {
                 tag.sortOrder = i
             } else {
@@ -1900,10 +1902,12 @@ struct TabbedMemoListView: View {
         if let newIndex = newOrder.firstIndex(where: { item in
             if currentItem.colorIndex == allTabColorIndex {
                 return item.colorIndex == allTabColorIndex
+            } else if currentItem.colorIndex == frequentTabColorIndex {
+                return item.colorIndex == frequentTabColorIndex
             } else if let currentTag = currentItem.tag {
                 return item.tag?.id == currentTag.id
             } else {
-                return item.tag == nil && item.colorIndex != allTabColorIndex
+                return item.tag == nil && item.colorIndex != allTabColorIndex && item.colorIndex != frequentTabColorIndex
             }
         }) {
             selectedTabIndex = newIndex

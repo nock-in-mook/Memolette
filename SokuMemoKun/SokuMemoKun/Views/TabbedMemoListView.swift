@@ -2021,13 +2021,27 @@ struct MemoCardView: View {
     var parentTag: Tag? = nil  // 現在のフォルダの親タグ（子タグバッジ表示用）
     var onTap: (() -> Void)? = nil
 
-    // このメモに付いている子タグ（現在のフォルダの子タグのみ）
-    private var childTagsForBadge: [(name: String, colorIndex: Int)] {
-        guard let parent = parentTag else { return [] }
-        return memo.tags
-            .filter { $0.parentTagID == parent.id }
-            .sorted { $0.sortOrder < $1.sortOrder }
-            .map { (name: $0.name, colorIndex: $0.colorIndex) }
+    // このメモに付いている子タグ（現在のフォルダの子タグ、1つだけ）
+    private var childTagForBadge: (name: String, colorIndex: Int)? {
+        guard let parent = parentTag else { return nil }
+        guard let childTag = memo.tags.first(where: { $0.parentTagID == parent.id }) else { return nil }
+        return (name: childTag.name, colorIndex: childTag.colorIndex)
+    }
+
+    // 表示用にタグ名を全角換算8文字に制限
+    private func truncatedTagName(_ name: String) -> String {
+        var width: Double = 0
+        var result = ""
+        for char in name {
+            // ASCII文字は0.5、それ以外は1として全角換算
+            let charWidth: Double = char.isASCII ? 0.5 : 1.0
+            if width + charWidth > 8 {
+                return result + "…"
+            }
+            width += charWidth
+            result.append(char)
+        }
+        return result
     }
 
     // グリッドサイズに応じたスタイル
@@ -2178,31 +2192,17 @@ struct MemoCardView: View {
             .shadow(color: .black.opacity(0.08), radius: 2, x: 0, y: 1)
             .overlay(alignment: .bottomTrailing) {
                 // 子タグバッジ（右下、カード右端に揃えてはみ出し）
-                if !childTagsForBadge.isEmpty {
-                    HStack(spacing: 2) {
-                        let maxShow = 3
-                        ForEach(Array(childTagsForBadge.prefix(maxShow).enumerated()), id: \.offset) { _, tag in
-                            Text(tag.name)
-                                .font(.system(size: 9, weight: .semibold, design: .rounded))
-                                .foregroundStyle(.primary)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 2)
-                                .background(
-                                    Capsule().fill(tagColor(for: tag.colorIndex))
-                                )
-                        }
-                        if childTagsForBadge.count > maxShow {
-                            Text("+\(childTagsForBadge.count - maxShow)")
-                                .font(.system(size: 9, weight: .semibold, design: .rounded))
-                                .foregroundStyle(.secondary)
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 2)
-                                .background(
-                                    Capsule().fill(Color(uiColor: .systemGray5))
-                                )
-                        }
-                    }
-                    .offset(y: 6)
+                if let tag = childTagForBadge {
+                    Text(truncatedTagName(tag.name))
+                        .font(.system(size: 9, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(
+                            Capsule().fill(tagColor(for: tag.colorIndex))
+                        )
+                        .offset(y: 6)
                 }
             }
         }

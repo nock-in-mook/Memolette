@@ -986,24 +986,14 @@ struct SokuMemoKunApp: App {
         ]
 
         for i in 0..<20 {
+            // 子タグを1つだけ付ける（メモごとに異なる子タグ）
+            let childTag = childTags[i % childTags.count]
             let memo = Memo(
                 content: bodies[i],
                 title: titles[i],
-                tags: [parentTag]
+                tags: [parentTag, childTag]
             )
             context.insert(memo)
-
-            // 子タグをランダムに1〜6個付ける
-            let tagCount = (i % 6) + 1
-            var shuffled = childTags
-            // 簡易シャッフル（iベースで散らす）
-            for j in 0..<shuffled.count {
-                let swapIdx = (j + i * 7 + 3) % shuffled.count
-                shuffled.swapAt(j, swapIdx)
-            }
-            for tag in shuffled.prefix(tagCount) {
-                memo.tags.append(tag)
-            }
         }
 
         try? context.save()

@@ -772,17 +772,6 @@ struct TodoListView: View {
         // タグ選択ルーレット（overlayで右からスライドイン、中央やや上に配置）
         .overlay {
             ZStack {
-                // overlay上端のグローバル座標を取得
-                GeometryReader { geo in
-                    Color.clear.onAppear {
-                        overlayTopY = geo.frame(in: .global).minY
-                    }
-                    .onChange(of: geo.frame(in: .global).minY) { _, v in
-                        overlayTopY = v
-                    }
-                }
-                .frame(height: 0)
-
                 if showParentDial {
                     // グレーアウト背景
                     Color.black.opacity(0.4)
@@ -832,6 +821,16 @@ struct TodoListView: View {
                     Spacer()
                 }
             }
+            .background(
+                GeometryReader { geo in
+                    Color.clear.onAppear {
+                        overlayTopY = geo.frame(in: .global).minY
+                    }
+                    .onChange(of: geo.frame(in: .global).minY) { _, v in
+                        overlayTopY = v
+                    }
+                }
+            )
             .animation(.easeInOut(duration: 0.25), value: showParentDial)
         }
         // ルーレット操作をリアルタイムでタグに反映

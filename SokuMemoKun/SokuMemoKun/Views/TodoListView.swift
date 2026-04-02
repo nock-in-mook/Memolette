@@ -774,10 +774,31 @@ struct TodoListView: View {
                 }
                 // ルーレットパネル（QuickSortCellViewと同じ配置方法）
                 VStack(spacing: 0) {
-                    Spacer().frame(height: 80)
+                    Spacer().frame(height: 180)
 
                     if showParentDial {
                         dialPanel
+                            // 履歴ボタン（トレーの外、MemoInputViewと同じ配置）
+                            .overlay(alignment: .bottomTrailing) {
+                                Button {
+                                    if showTagHistory {
+                                        showTagHistory = false
+                                    } else {
+                                        tagHistoryItems = TagHistory.recentHistory(context: modelContext)
+                                        showTagHistory = true
+                                    }
+                                } label: {
+                                    HStack(spacing: 3) {
+                                        Image(systemName: showTagHistory ? "chevron.down" : "chevron.right")
+                                            .font(.system(size: 9, weight: .semibold))
+                                        Text("履歴")
+                                            .font(.system(size: 11, weight: .medium))
+                                    }
+                                    .foregroundStyle(.white.opacity(0.7))
+                                }
+                                .padding(.trailing, 8)
+                                .offset(y: 21)
+                            }
                             .fixedSize(horizontal: true, vertical: false)
                             .frame(maxWidth: .infinity, alignment: .trailing)
                             .transition(.move(edge: .trailing).combined(with: .opacity))
@@ -787,6 +808,13 @@ struct TodoListView: View {
                 }
             }
             .animation(.easeInOut(duration: 0.25), value: showParentDial)
+        }
+        // ルーレット操作をリアルタイムでタグに反映
+        .onChange(of: dialParentID) { _, _ in
+            if showParentDial { saveDialTags() }
+        }
+        .onChange(of: dialChildID) { _, _ in
+            if showParentDial { saveDialTags() }
         }
         // 新規タグ作成シート
         .sheet(isPresented: $showNewTagSheet) {
@@ -2032,27 +2060,6 @@ struct TodoListView: View {
                         showParentDial = false; showChildDial = false
                     }
                 }
-        }
-        // 履歴ボタン（トレー右下）
-        .overlay(alignment: .bottomTrailing) {
-            Button {
-                if showTagHistory {
-                    showTagHistory = false
-                } else {
-                    tagHistoryItems = TagHistory.recentHistory(context: modelContext)
-                    showTagHistory = true
-                }
-            } label: {
-                HStack(spacing: 3) {
-                    Image(systemName: showTagHistory ? "chevron.down" : "chevron.right")
-                        .font(.system(size: 9, weight: .semibold))
-                    Text("履歴")
-                        .font(.system(size: 11, weight: .medium))
-                }
-                .foregroundStyle(.white.opacity(0.7))
-            }
-            .padding(.trailing, 12)
-            .offset(y: 16)
         }
     }
 

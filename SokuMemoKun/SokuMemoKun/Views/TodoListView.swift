@@ -754,9 +754,12 @@ struct TodoListView: View {
         }
         // タグ選択ルーレットoverlay
         .overlay {
-            if showDialOverlay {
-                tagDialOverlay
+            ZStack {
+                if showDialOverlay {
+                    tagDialOverlay
+                }
             }
+            .animation(.spring(response: 0.3), value: showDialOverlay)
         }
     }
 
@@ -1869,56 +1872,50 @@ struct TodoListView: View {
         .buttonStyle(.plain)
     }
 
-    // ルーレットoverlay
+    // ルーレットoverlay（右からスライドイン）
     private var tagDialOverlay: some View {
         ZStack {
+            // グレーアウト背景
             Color.black.opacity(0.5)
                 .ignoresSafeArea()
                 .onTapGesture {
                     saveDialTags()
-                    withAnimation(.easeOut(duration: 0.2)) { showDialOverlay = false }
+                    withAnimation(.spring(response: 0.3)) { showDialOverlay = false }
                 }
 
-            VStack(spacing: 16) {
-                // 現在の選択状態
-                HStack(spacing: 6) {
-                    if let pid = dialParentID, let tag = allTags.first(where: { $0.id == pid }) {
-                        Text(tag.name)
-                            .font(.system(size: 14, weight: .semibold, design: .rounded))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(Capsule().fill(tagColor(for: tag.colorIndex)))
-                        if let cid = dialChildID, let ctag = allTags.first(where: { $0.id == cid }) {
-                            Text("›")
+            // 右寄せパネル（ルーレット＋選択状態＋決定ボタン）
+            HStack(spacing: 0) {
+                Spacer()
+
+                VStack(spacing: 12) {
+                    // 現在の選択状態
+                    HStack(spacing: 6) {
+                        if let pid = dialParentID, let tag = allTags.first(where: { $0.id == pid }) {
+                            Text(truncTagName(tag.name))
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Capsule().fill(tagColor(for: tag.colorIndex)))
+                            if let cid = dialChildID, let ctag = allTags.first(where: { $0.id == cid }) {
+                                Text("›")
+                                    .foregroundStyle(.white.opacity(0.6))
+                                Text(truncTagName(ctag.name))
+                                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Capsule().fill(tagColor(for: ctag.colorIndex)))
+                            }
+                        } else {
+                            Text("タグなし")
+                                .font(.system(size: 13, design: .rounded))
                                 .foregroundStyle(.white.opacity(0.6))
-                            Text(ctag.name)
-                                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
-                                .background(Capsule().fill(tagColor(for: ctag.colorIndex)))
                         }
-                    } else {
-                        Text("タグなし")
-                            .font(.system(size: 14, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.6))
                     }
-                }
+                    .padding(.trailing, 8)
 
-                // ルーレット
-                HStack(spacing: 0) {
-                    Rectangle().fill(Color.gray.opacity(0.2)).frame(width: 1)
-
-                    TagDialView(
-                        parentOptions: parentOptions,
-                        parentSelectedID: $dialParentID,
-                        childOptions: childOptions,
-                        childSelectedID: $dialChildID,
-                        showChild: $showChildDial,
-                        childExternalDragY: $childExternalDragY
-                    )
-
-                    // 子タブ開閉ボタン
-                    if dialParentID != nil {
+                    // ルーレット本体（右端に配置）
+                    HStack(spacing: 0) {
+                        // 子タブ開閉ボタン（ルーレットの左側）
                         ZStack {
                             if showChildDial {
                                 Text("›")
@@ -1930,7 +1927,7 @@ struct TodoListView: View {
                                     .onTapGesture {
                                         withAnimation(.spring(response: 0.3)) { showChildDial = false }
                                     }
-                            } else {
+                            } else if dialParentID != nil {
                                 VStack(spacing: 2) {
                                     Text("子").font(.system(size: 11, weight: .bold, design: .rounded))
                                     Text("‹").font(.system(size: 12, weight: .bold))
@@ -1944,29 +1941,47 @@ struct TodoListView: View {
                                 }
                             }
                         }
-                    }
-                }
-                .frame(height: 211)
-                .background(.regularMaterial)
-                .cornerRadius(16)
-                .padding(.horizontal, 8)
+                        .contentShape(Rectangle())
+                        .simultaneousGesture(
+                            DragGesture(minimumDistance: 5)
+                                .onChanged { value in
+                                    if !showChildDial { showChildDial = true }
+                                    childExternalDragY = value.translation.height
+                                }
+                                .onEnded { _ in childExternalDragY = nil }
+                        )
 
-                // 決定ボタン
-                Button {
-                    saveDialTags()
-                    withAnimation(.easeOut(duration: 0.2)) { showDialOverlay = false }
-                } label: {
-                    Text("決定")
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(RoundedRectangle(cornerRadius: 10).fill(Color.blue))
+                        Rectangle().fill(Color.gray.opacity(0.2)).frame(width: 1)
+
+                        TagDialView(
+                            parentOptions: parentOptions,
+                            parentSelectedID: $dialParentID,
+                            childOptions: childOptions,
+                            childSelectedID: $dialChildID,
+                            showChild: $showChildDial,
+                            childExternalDragY: $childExternalDragY
+                        )
+                    }
+                    .fixedSize(horizontal: true, vertical: false)
+                    .frame(height: 211)
+
+                    // 決定ボタン
+                    Button {
+                        saveDialTags()
+                        withAnimation(.spring(response: 0.3)) { showDialOverlay = false }
+                    } label: {
+                        Text("決定")
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 40)
+                            .padding(.vertical, 12)
+                            .background(RoundedRectangle(cornerRadius: 10).fill(Color.blue))
+                    }
+                    .padding(.trailing, 16)
                 }
-                .padding(.horizontal, 40)
             }
+            .transition(.move(edge: .trailing))
         }
-        .transition(.opacity)
     }
 
     // タグ保存

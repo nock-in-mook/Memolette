@@ -6,6 +6,7 @@ struct TodoListsView: View {
     let onDismiss: () -> Void
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \TodoList.updatedAt, order: .reverse) private var todoLists: [TodoList]
+    @Query(sort: \Tag.name) private var allTags: [Tag]
 
     // ソート済みリスト（固定→通常、manualSortOrder→更新日）
     private var sortedLists: [TodoList] {
@@ -27,6 +28,33 @@ struct TodoListsView: View {
     // 削除確認ダイアログ
     @State private var pendingDeleteList: TodoList?
     @State private var showDeleteConfirm = false
+
+    // ルーレット用ステート
+    @State private var dialTargetList: TodoList?  // タグ編集対象のリスト
+    @State private var dialParentID: UUID? = nil
+    @State private var dialChildID: UUID? = nil
+    @State private var showChildDial = false
+    @State private var childExternalDragY: CGFloat? = nil
+
+    // ルーレットの親タグオプション
+    private var parentOptions: [(id: String, name: String, color: Color)] {
+        var list: [(String, String, Color)] = [("none", "タグなし", tagColor(for: 0))]
+        for tag in allTags where tag.parentTagID == nil && !tag.isSystem {
+            list.append((tag.id.uuidString, tag.name, tagColor(for: tag.colorIndex)))
+        }
+        return list
+    }
+
+    // ルーレットの子タグオプション
+    private var childOptions: [(id: String, name: String, color: Color)] {
+        var list: [(String, String, Color)] = [("none", "子タグなし", tagColor(for: 0))]
+        if let parentID = dialParentID {
+            for tag in allTags where tag.parentTagID == parentID {
+                list.append((tag.id.uuidString, tag.name, tagColor(for: tag.colorIndex)))
+            }
+        }
+        return list
+    }
 
     // TODOタブの緑色
     private let todoTabColor = Color(red: 0.55, green: 0.82, blue: 0.55)
@@ -99,6 +127,11 @@ struct TodoListsView: View {
             // ダイアログ
             if showNewListDialog {
                 newListDialogOverlay
+            }
+
+            // ルーレットoverlay
+            if dialTargetList != nil {
+                dialOverlay
             }
 
             // 削除確認ダイアログ
@@ -291,6 +324,9 @@ struct TodoListsView: View {
                     }
                     .padding(.leading, 4)
                 }
+
+                // タグ表示（タップでルーレット起動）
+                tagRow(for: list)
 
                 // 右下に件数表示
                 let summary2 = fetchSummary(for: list)
@@ -529,6 +565,188 @@ struct TodoListsView: View {
     private func moveListToTop(_ list: TodoList) {
         let minOrder = todoLists.map(\.manualSortOrder).min() ?? 0
         list.manualSortOrder = minOrder - 1
+        list.updatedAt = Date()
+        try? modelContext.save()
+    }
+
+    // MARK: - タグ表示行（カード内に表示）
+    @ViewBuilder
+    private func tagRow(for list: TodoList) -> some View {
+        let parentTag = list.tags.first(where: { $0.parentTagID == nil && !$0.isSystem })
+        let childTag: Tag? = {
+            guard let parent = parentTag else { return nil }
+            return list.tags.first(where: { $0.parentTagID == parent.id })
+        }()
+
+        Button {
+            // ルーレット起動
+            dialTargetList = list
+            dialParentID = parentTag?.id
+            dialChildID = childTag?.id
+            showChildDial = false
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "tag.fill")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary.opacity(0.5))
+                if let parent = parentTag {
+                    Text(parent.name)
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundStyle(tagColor(for: parent.colorIndex))
+                    if let child = childTag {
+                        Text("›")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary.opacity(0.4))
+                        Text(child.name)
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .foregroundStyle(tagColor(for: child.colorIndex))
+                    }
+                } else {
+                    Text("タグなし")
+                        .font(.system(size: 11, design: .rounded))
+                        .foregroundStyle(.secondary.opacity(0.5))
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9))
+                    .foregroundStyle(.secondary.opacity(0.3))
+            }
+            .padding(.vertical, 4)
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - ルーレットoverlay（全画面グレーアウト＋ルーレット）
+    private var dialOverlay: some View {
+        ZStack {
+            // グレーアウト背景
+            Color.black.opacity(0.5)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    saveTags()
+                    withAnimation { dialTargetList = nil }
+                }
+
+            VStack(spacing: 16) {
+                // 対象リスト名
+                if let list = dialTargetList {
+                    Text(list.title)
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                }
+
+                // 現在の選択状態
+                HStack(spacing: 6) {
+                    if let pid = dialParentID, let tag = allTags.first(where: { $0.id == pid }) {
+                        Text(tag.name)
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(Capsule().fill(tagColor(for: tag.colorIndex)))
+                        if let cid = dialChildID, let ctag = allTags.first(where: { $0.id == cid }) {
+                            Text("›")
+                                .foregroundStyle(.white.opacity(0.6))
+                            Text(ctag.name)
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(Capsule().fill(tagColor(for: ctag.colorIndex)))
+                        }
+                    } else {
+                        Text("タグなし")
+                            .font(.system(size: 14, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.6))
+                    }
+                }
+
+                // ルーレット
+                HStack(spacing: 0) {
+                    Rectangle().fill(Color.gray.opacity(0.2)).frame(width: 1)
+
+                    TagDialView(
+                        parentOptions: parentOptions,
+                        parentSelectedID: $dialParentID,
+                        childOptions: childOptions,
+                        childSelectedID: $dialChildID,
+                        showChild: $showChildDial,
+                        childExternalDragY: $childExternalDragY
+                    )
+
+                    // 子タブ開閉ボタン
+                    if dialParentID != nil {
+                        ZStack {
+                            if showChildDial {
+                                Text("›")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 14, height: 60)
+                                    .background(RoundedRectangle(cornerRadius: 4).fill(Color.gray.opacity(0.1)))
+                                    .contentShape(Rectangle())
+                                    .onTapGesture {
+                                        withAnimation(.spring(response: 0.3)) { showChildDial = false }
+                                    }
+                            } else {
+                                VStack(spacing: 2) {
+                                    Text("子").font(.system(size: 11, weight: .bold, design: .rounded))
+                                    Text("‹").font(.system(size: 12, weight: .bold))
+                                }
+                                .foregroundStyle(.secondary)
+                                .frame(width: 20, height: 60)
+                                .background(RoundedRectangle(cornerRadius: 4).fill(Color.gray.opacity(0.15)))
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    withAnimation(.spring(response: 0.3)) { showChildDial = true }
+                                }
+                            }
+                        }
+                    }
+                }
+                .frame(height: 211)
+                .background(.regularMaterial)
+                .cornerRadius(16)
+                .padding(.horizontal, 8)
+
+                // 決定ボタン
+                Button {
+                    saveTags()
+                    withAnimation { dialTargetList = nil }
+                } label: {
+                    Text("決定")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(Color.blue)
+                        )
+                }
+                .padding(.horizontal, 40)
+            }
+        }
+        .transition(.opacity)
+    }
+
+    // MARK: - タグ保存
+    private func saveTags() {
+        guard let list = dialTargetList else { return }
+
+        // 既存のメモ用タグ（親＋子）を除去してから新しいタグを設定
+        // システムタグ（TODO等）は残す
+        list.tags.removeAll { !$0.isSystem }
+
+        // 親タグ設定
+        if let parentID = dialParentID,
+           let parentTag = allTags.first(where: { $0.id == parentID }) {
+            list.tags.append(parentTag)
+
+            // 子タグ設定
+            if let childID = dialChildID,
+               let childTag = allTags.first(where: { $0.id == childID && $0.parentTagID == parentID }) {
+                list.tags.append(childTag)
+            }
+        }
+
         list.updatedAt = Date()
         try? modelContext.save()
     }

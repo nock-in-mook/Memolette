@@ -799,10 +799,13 @@ struct TodoListView: View {
 
                     Spacer()
                 }
-                // タグ履歴リスト（中央overlay）
-                .overlay(alignment: .center) {
-                    if showTagHistory {
+                // タグ履歴リスト（履歴ボタンの下に展開）
+                .overlay(alignment: .topTrailing) {
+                    if showTagHistory && showParentDial {
                         tagHistoryListView
+                            .padding(.trailing, 8)
+                            // ルーレットパネルの下端あたりに配置
+                            .padding(.top, max(0, headerBottomY - overlayTopY) + 290)
                     }
                 }
             }

@@ -772,16 +772,17 @@ struct TodoListView: View {
                         }
                         .transition(.opacity)
                 }
-                // ルーレットパネル（右寄せ、中央やや上）
-                VStack {
+                // ルーレットパネル（QuickSortCellViewと同じ配置方法）
+                VStack(spacing: 0) {
                     Spacer().frame(height: 80)
-                    HStack(spacing: 0) {
-                        Spacer()
-                        if showParentDial {
-                            dialPanel
-                                .transition(.move(edge: .trailing))
-                        }
+
+                    if showParentDial {
+                        dialPanel
+                            .fixedSize(horizontal: true, vertical: false)
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                            .transition(.move(edge: .trailing).combined(with: .opacity))
                     }
+
                     Spacer()
                 }
             }

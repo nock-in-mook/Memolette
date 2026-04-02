@@ -2030,23 +2030,6 @@ struct TodoListView: View {
                     }
                     .padding(.trailing, 86)
                 }
-                // 履歴ボタン（右端）
-                Button {
-                    if showTagHistory {
-                        showTagHistory = false
-                    } else {
-                        tagHistoryItems = TagHistory.recentHistory(context: modelContext)
-                        showTagHistory = true
-                    }
-                } label: {
-                    HStack(spacing: 3) {
-                        Image(systemName: showTagHistory ? "chevron.down" : "chevron.right")
-                            .font(.system(size: 9, weight: .semibold))
-                        Text("履歴")
-                            .font(.system(size: 11, weight: .medium))
-                    }
-                    .foregroundStyle(.white.opacity(0.7))
-                }
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
             .padding(.vertical, 4)
@@ -2098,6 +2081,27 @@ struct TodoListView: View {
                         showParentDial = false; showChildDial = false
                     }
                 }
+        }
+        // 履歴ボタン（トレー右下、QuickSortCellViewと同じ）
+        .overlay(alignment: .bottomTrailing) {
+            Button {
+                if showTagHistory {
+                    showTagHistory = false
+                } else {
+                    tagHistoryItems = TagHistory.recentHistory(context: modelContext)
+                    showTagHistory = true
+                }
+            } label: {
+                HStack(spacing: 3) {
+                    Image(systemName: showTagHistory ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 9, weight: .semibold))
+                    Text("履歴")
+                        .font(.system(size: 11, weight: .medium))
+                }
+                .foregroundStyle(.white.opacity(0.7))
+            }
+            .padding(.trailing, 12)
+            .offset(y: 16)
         }
     }
 

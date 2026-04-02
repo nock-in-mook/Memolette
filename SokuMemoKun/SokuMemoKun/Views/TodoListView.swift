@@ -111,8 +111,6 @@ struct TodoListView: View {
                 Divider()
                     .padding(.horizontal, 16)
 
-                // ToDoリスト + ルーレット（横並び）
-                HStack(spacing: 0) {
                 // ToDoリスト（Listベース: スワイプ・スクロール・リオーダー全対応）
                     ScrollViewReader { proxy in
                         List {
@@ -232,9 +230,6 @@ struct TodoListView: View {
                     .padding(.bottom, 50)
                 }
 
-                    // ルーレット（右側に配置、MemoDetailViewと同じ収納式）
-                    dialArea
-                } // HStack
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -757,6 +752,32 @@ struct TodoListView: View {
                 }
                 .transition(.opacity)
             }
+        }
+        // タグ選択ルーレット（overlayで右からスライドイン）
+        .overlay {
+            ZStack {
+                if showParentDial {
+                    // グレーアウト背景
+                    Color.black.opacity(0.4)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            saveDialTags()
+                            withAnimation(.spring(response: 0.3)) {
+                                showParentDial = false; showChildDial = false
+                            }
+                        }
+                        .transition(.opacity)
+                }
+                // ルーレットパネル（右端）
+                HStack(spacing: 0) {
+                    Spacer()
+                    if showParentDial {
+                        dialPanel
+                            .transition(.move(edge: .trailing))
+                    }
+                }
+            }
+            .animation(.spring(response: 0.3), value: showParentDial)
         }
     }
 
@@ -1868,99 +1889,73 @@ struct TodoListView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: - ルーレット（収納式、MemoDetailViewと同じ方式）
-    private var dialArea: some View {
+    // MARK: - ルーレットパネル（overlay内で右からスライドイン）
+    private var dialPanel: some View {
         VStack(spacing: 0) {
             HStack(spacing: 0) {
-                if showParentDial {
-                    Rectangle().fill(Color.gray.opacity(0.2)).frame(width: 1)
-
-                    TagDialView(
-                        parentOptions: parentOptions,
-                        parentSelectedID: $dialParentID,
-                        childOptions: childOptions,
-                        childSelectedID: $dialChildID,
-                        showChild: $showChildDial,
-                        childExternalDragY: $childExternalDragY
-                    )
-
-                    // 子タブ開閉ボタン
-                    ZStack {
-                        if showChildDial {
-                            Text("›")
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundStyle(.secondary)
-                                .frame(width: 14, height: 60)
-                                .background(RoundedRectangle(cornerRadius: 4).fill(Color.gray.opacity(0.1)))
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    withAnimation(.spring(response: 0.3)) { showChildDial = false }
-                                }
-                        } else {
-                            VStack(spacing: 2) {
-                                Text("子").font(.system(size: 11, weight: .bold, design: .rounded))
-                                Text("‹").font(.system(size: 12, weight: .bold))
-                            }
-                            .foregroundStyle(.secondary)
-                            .frame(width: 20, height: 60)
-                            .background(RoundedRectangle(cornerRadius: 4).fill(Color.gray.opacity(0.15)))
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                withAnimation(.spring(response: 0.3)) { showChildDial = true }
-                            }
-                        }
-                    }
-                    .contentShape(Rectangle())
-                    .simultaneousGesture(
-                        DragGesture(minimumDistance: 5)
-                            .onChanged { value in
-                                if !showChildDial { showChildDial = true }
-                                childExternalDragY = value.translation.height
-                            }
-                            .onEnded { _ in childExternalDragY = nil }
-                    )
-
-                    // 全収納ボタン（しまう時にタグ保存）
-                    Text("›")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.tertiary)
-                        .frame(width: 12, height: 50)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            saveDialTags()
-                            withAnimation(.spring(response: 0.3)) {
-                                showParentDial = false; showChildDial = false
-                            }
-                        }
-                } else {
-                    // 収納状態（上寄せ）
-                    VStack(spacing: 3) {
-                        Text("タグ").font(.system(size: 11, weight: .bold, design: .rounded))
-                        Text("‹").font(.system(size: 14, weight: .bold))
-                    }
-                    .foregroundStyle(.secondary)
-                    .frame(width: 28, height: 60)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(Color.gray.opacity(0.12)))
+                // 収納ボタン（しまう時にタグ保存）
+                Text("›")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(.tertiary)
+                    .frame(width: 12, height: 50)
                     .contentShape(Rectangle())
                     .onTapGesture {
-                        dialParentID = currentParentTag?.id
-                        dialChildID = currentChildTag?.id
-                        withAnimation(.spring(response: 0.3)) { showParentDial = true }
+                        saveDialTags()
+                        withAnimation(.spring(response: 0.3)) {
+                            showParentDial = false; showChildDial = false
+                        }
                     }
-                    .simultaneousGesture(
-                        DragGesture(minimumDistance: 5)
-                            .onChanged { _ in
-                                if !showParentDial {
-                                    dialParentID = currentParentTag?.id
-                                    dialChildID = currentChildTag?.id
-                                    withAnimation(.spring(response: 0.3)) { showParentDial = true }
-                                }
+
+                // 子タブ開閉ボタン
+                ZStack {
+                    if showChildDial {
+                        Text("›")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 14, height: 60)
+                            .background(RoundedRectangle(cornerRadius: 4).fill(Color.gray.opacity(0.1)))
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                withAnimation(.spring(response: 0.3)) { showChildDial = false }
                             }
-                    )
+                    } else {
+                        VStack(spacing: 2) {
+                            Text("子").font(.system(size: 11, weight: .bold, design: .rounded))
+                            Text("‹").font(.system(size: 12, weight: .bold))
+                        }
+                        .foregroundStyle(.secondary)
+                        .frame(width: 20, height: 60)
+                        .background(RoundedRectangle(cornerRadius: 4).fill(Color.gray.opacity(0.15)))
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.3)) { showChildDial = true }
+                        }
+                    }
                 }
+                .contentShape(Rectangle())
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 5)
+                        .onChanged { value in
+                            if !showChildDial { showChildDial = true }
+                            childExternalDragY = value.translation.height
+                        }
+                        .onEnded { _ in childExternalDragY = nil }
+                )
+
+                Rectangle().fill(Color.gray.opacity(0.2)).frame(width: 1)
+
+                TagDialView(
+                    parentOptions: parentOptions,
+                    parentSelectedID: $dialParentID,
+                    childOptions: childOptions,
+                    childSelectedID: $dialChildID,
+                    showChild: $showChildDial,
+                    childExternalDragY: $childExternalDragY
+                )
             }
             Spacer()
         }
+        .background(Color(uiColor: .systemBackground))
     }
 
     // タグ保存

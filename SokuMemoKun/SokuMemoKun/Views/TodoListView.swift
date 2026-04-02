@@ -1950,6 +1950,7 @@ struct TodoListView: View {
                     childOptions: childOptions,
                     childSelectedID: $dialChildID,
                     showChild: $showChildDial,
+                    isOpen: true,
                     childExternalDragY: $childExternalDragY
                 )
             }

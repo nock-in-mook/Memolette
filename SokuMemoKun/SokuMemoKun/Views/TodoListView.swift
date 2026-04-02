@@ -197,7 +197,7 @@ struct TodoListView: View {
                             } else if !focused {
                                 // フォーカスが外れたら少し待ってからcommitEdit
                                 // （submitEditのisChainEditing=trueが先に実行される猶予）
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) {
                                     guard !isChainEditing else { return }
                                     if let editID = editingItemID,
                                        let item = allItems.first(where: { $0.id == editID }) {
@@ -772,14 +772,16 @@ struct TodoListView: View {
                 Text(todoList.title)
                     .font(.system(size: 20, weight: .bold, design: .rounded))
 
-                if totalCount > 0 {
-                    Text("\(doneCount)/\(totalCount) 完了")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(.secondary)
+                HStack(spacing: 0) {
+                    if totalCount > 0 {
+                        Text("\(doneCount)/\(totalCount) 完了")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 4)
+                    // タグバッジ（右端固定、左に伸びる）
+                    tagRowInHeader
                 }
-
-                // タグ表示（タップでルーレット起動）
-                tagRowInHeader
             }
             .contextMenu {
                 if allItems.count > 0 {
@@ -1807,6 +1809,19 @@ struct TodoListView: View {
     }
 
     // ヘッダー内のタグ行
+    // 全角8文字に制限
+    private func truncTagName(_ name: String) -> String {
+        var width: Double = 0
+        var result = ""
+        for char in name {
+            let w: Double = char.isASCII ? 0.5 : 1.0
+            if width + w > 8 { return result + "…" }
+            width += w
+            result.append(char)
+        }
+        return result
+    }
+
     private var tagRowInHeader: some View {
         Button {
             dialParentID = currentParentTag?.id
@@ -1816,32 +1831,36 @@ struct TodoListView: View {
                 showDialOverlay = true
             }
         } label: {
-            HStack(spacing: 4) {
-                Image(systemName: "tag.fill")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary.opacity(0.5))
+            HStack(spacing: 3) {
                 if let parent = currentParentTag {
-                    Text(parent.name)
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundStyle(tagColor(for: parent.colorIndex))
+                    Text(truncTagName(parent.name))
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(Capsule().fill(tagColor(for: parent.colorIndex)))
                     if let child = currentChildTag {
                         Text("›")
-                            .font(.system(size: 12))
+                            .font(.system(size: 10))
                             .foregroundStyle(.secondary.opacity(0.4))
-                        Text(child.name)
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
-                            .foregroundStyle(tagColor(for: child.colorIndex))
+                        Text(truncTagName(child.name))
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(Capsule().fill(tagColor(for: child.colorIndex)))
                     }
                 } else {
                     Text("タグなし")
-                        .font(.system(size: 12, design: .rounded))
+                        .font(.system(size: 11, design: .rounded))
                         .foregroundStyle(.secondary.opacity(0.5))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(Capsule().strokeBorder(Color.secondary.opacity(0.2), lineWidth: 1))
                 }
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 9))
-                    .foregroundStyle(.secondary.opacity(0.3))
             }
-            .padding(.vertical, 2)
         }
         .buttonStyle(.plain)
     }

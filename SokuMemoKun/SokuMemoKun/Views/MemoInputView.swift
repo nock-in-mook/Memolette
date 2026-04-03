@@ -284,19 +284,19 @@ struct MemoInputView: View {
                 ZStack(alignment: .topLeading) {
                     if isEditing || !viewModel.inputText.isEmpty {
                         if viewModel.isMarkdown && showMarkdownPreview {
-                            // マークダウンプレビュー表示
+                            // マークダウンプレビュー表示（エディタと同じpadding）
                             ScrollView {
                                 MarkdownPreviewView(text: viewModel.inputText)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 12)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                             }
+                            .padding(.leading, showLineNumbers ? 6 : 16)
+                            .padding(.trailing, 8)
+                            .padding(.top, 16)
                             .onTapGesture {
-                                // プレビュータップで編集に戻る
                                 showMarkdownPreview = false
                             }
                         } else if viewModel.isMarkdown {
                             // マークダウンモード: Bear風インラインエディタ
-                            // LineNumberTextEditorと同じpadding（レイアウト統一）
                             MarkdownTextEditor(text: $viewModel.inputText, isFocused: $isTextEditorFocused)
                                 .padding(.leading, showLineNumbers ? 0 : 10)
                                 .padding(.trailing, 4)

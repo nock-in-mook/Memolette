@@ -6,6 +6,28 @@ extension Notification.Name {
     static let memoSavedFlash = Notification.Name("memoSavedFlash")
 }
 
+// テキストエリアのレイアウト定数（エディタ・プレビュー・プレースホルダー共通）
+// ここを変えれば全箇所に反映される
+enum TextAreaLayout {
+    // UITextView内部のinset（GutteredTextView / MarkdownTextEditor共通）
+    static let textInsetTop: CGFloat = 16
+    static let textInsetLeft: CGFloat = 6
+    static let textInsetBottom: CGFloat = 0
+    static let textInsetRight: CGFloat = 4
+    static let contentInsetBottom: CGFloat = 40
+
+    // SwiftUI側のpadding（行番号なしの場合）
+    static let leadingPadding: CGFloat = 10
+    // SwiftUI側のpadding（行番号ありの場合）
+    static let leadingPaddingWithGutter: CGFloat = 0
+    static let trailingPadding: CGFloat = 4
+
+    // プレースホルダーのpadding（UITextViewのinset + SwiftUIのpadding を合算）
+    static let placeholderLeading: CGFloat = 21  // leadingPadding(10) + textInsetLeft(6) + lineFragmentPadding(5)
+    static let placeholderLeadingWithGutter: CGFloat = 48
+    static let placeholderTop: CGFloat = 20  // textInsetTop(16) + 微調整(4)
+}
+
 struct MemoInputView: View {
     @Bindable var viewModel: MemoInputViewModel
     @Binding var focusInput: Bool
@@ -289,17 +311,19 @@ struct MemoInputView: View {
                                 MarkdownPreviewView(text: viewModel.inputText)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                             }
-                            .padding(.leading, showLineNumbers ? 6 : 16)
-                            .padding(.trailing, 8)
-                            .padding(.top, 16)
+                            .padding(.leading, showLineNumbers
+                                ? (TextAreaLayout.leadingPaddingWithGutter + TextAreaLayout.textInsetLeft)
+                                : (TextAreaLayout.leadingPadding + TextAreaLayout.textInsetLeft))
+                            .padding(.trailing, TextAreaLayout.trailingPadding + TextAreaLayout.textInsetRight)
+                            .padding(.top, TextAreaLayout.textInsetTop)
                             .onTapGesture {
                                 showMarkdownPreview = false
                             }
                         } else if viewModel.isMarkdown {
                             // マークダウンモード: Bear風インラインエディタ
                             MarkdownTextEditor(text: $viewModel.inputText, isFocused: $isTextEditorFocused)
-                                .padding(.leading, showLineNumbers ? 0 : 10)
-                                .padding(.trailing, 4)
+                                .padding(.leading, showLineNumbers ? TextAreaLayout.leadingPaddingWithGutter : TextAreaLayout.leadingPadding)
+                                .padding(.trailing, TextAreaLayout.trailingPadding)
                                 .padding(.top, 0)
                         } else {
                             LineNumberTextEditor(
@@ -339,8 +363,8 @@ struct MemoInputView: View {
                                 )
                                 .frame(maxWidth: .infinity, alignment: .topLeading)
                                 // 編集モードと同じSwiftUIパディング
-                                .padding(.leading, showLineNumbers ? 0 : 10)
-                                .padding(.trailing, 4)
+                                .padding(.leading, showLineNumbers ? TextAreaLayout.leadingPaddingWithGutter : TextAreaLayout.leadingPadding)
+                                .padding(.trailing, TextAreaLayout.trailingPadding)
                             }
                             .padding(.bottom, 40)
                         }
@@ -363,7 +387,7 @@ struct MemoInputView: View {
                         Text(viewModel.isMarkdown ? "タップでマークダウン編集..." : "メモを入力...")
                             .font(.system(size: 17))
                             .foregroundStyle(.gray.opacity(0.5))
-                            .padding(.leading, showLineNumbers ? 48 : 21)
+                            .padding(.leading, showLineNumbers ? TextAreaLayout.placeholderLeadingWithGutter : TextAreaLayout.placeholderLeading)
                             .padding(.trailing, 8)
                             .padding(.top, 20)
                             .padding(.bottom, 24)

@@ -121,8 +121,13 @@ class GutteredTextView: UIView {
 
         textView.font = .systemFont(ofSize: fontSize)
         textView.backgroundColor = .clear
-        textView.textContainerInset = UIEdgeInsets(top: 16, left: 6, bottom: 0, right: 4)
-        textView.contentInset.bottom = 40
+        textView.textContainerInset = UIEdgeInsets(
+            top: TextAreaLayout.textInsetTop,
+            left: TextAreaLayout.textInsetLeft,
+            bottom: TextAreaLayout.textInsetBottom,
+            right: TextAreaLayout.textInsetRight
+        )
+        textView.contentInset.bottom = TextAreaLayout.contentInsetBottom
         textView.alwaysBounceVertical = true
 
         gutterScroll.showsVerticalScrollIndicator = false
@@ -146,7 +151,7 @@ class GutteredTextView: UIView {
     }
 
     @objc private func adjustForKeyboard(_ notification: Notification) {
-        let baseBottom: CGFloat = 40
+        let baseBottom = TextAreaLayout.contentInsetBottom
         guard let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else {
             textView.contentInset.bottom = baseBottom
             return

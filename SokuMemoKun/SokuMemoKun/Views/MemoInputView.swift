@@ -534,9 +534,9 @@ struct MemoInputView: View {
         }
         .background(
             ZStack {
-                RoundedRectangle(cornerRadius: 10)
+                RoundedRectangle(cornerRadius: DesignConstants.CornerRadius.card)
                     .fill(Color(uiColor: .systemBackground))
-                RoundedRectangle(cornerRadius: 10)
+                RoundedRectangle(cornerRadius: DesignConstants.CornerRadius.card)
                     .stroke(coloredFrame ? selectedTagInfo.color.opacity(0.5) : Color.gray.opacity(0.25), lineWidth: coloredFrame ? 2.5 : 1)
             }
         )
@@ -785,7 +785,7 @@ struct MemoInputView: View {
                             .padding(.leading, 7)
                             .padding(.trailing, 10)
                             .padding(.vertical, 4)
-                            .background(RoundedRectangle(cornerRadius: 6).fill(info.color))
+                            .background(RoundedRectangle(cornerRadius: DesignConstants.CornerRadius.tag).fill(info.color))
                         // 子タグ
                         Text(childDisplay)
                             .font(.system(size: 11, weight: .medium, design: .rounded))
@@ -794,10 +794,10 @@ struct MemoInputView: View {
                             .padding(.horizontal, 5)
                             .padding(.vertical, 2)
                             .background(
-                                RoundedRectangle(cornerRadius: 4).fill(childInfo.color)
+                                RoundedRectangle(cornerRadius: DesignConstants.CornerRadius.badge).fill(childInfo.color)
                             )
                             .overlay(
-                                RoundedRectangle(cornerRadius: 4)
+                                RoundedRectangle(cornerRadius: DesignConstants.CornerRadius.badge)
                                     .stroke(Color.white, lineWidth: 1.5)
                             )
                     }
@@ -807,7 +807,7 @@ struct MemoInputView: View {
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .padding(.horizontal, 7)
                         .padding(.vertical, 4)
-                        .background(RoundedRectangle(cornerRadius: 6).fill(info.color))
+                        .background(RoundedRectangle(cornerRadius: DesignConstants.CornerRadius.tag).fill(info.color))
                 }
             }
         }
@@ -945,7 +945,7 @@ struct MemoInputView: View {
     private let trayCornerRadius: CGFloat = 10
 
     // タブ寸法
-    private let tabWidth: CGFloat = 38      // タブの横幅（「タグ」テキスト分）
+    private let tabWidth: CGFloat = 22      // タブの横幅（三角マークのみ）
     private let tabHeight: CGFloat = 22     // タブの高さ（最初のデザインと同じ細さ）
     private let tabRadius: CGFloat = 6      // タブの左側角丸
 
@@ -1009,7 +1009,7 @@ struct MemoInputView: View {
                         .shadow(color: .black.opacity(0.5), radius: 3, x: -2, y: 0)
                         .allowsHitTesting(false)
                 }
-                .offset(x: showParentDial ? -27 : -50, y: -10) // 開き時は右寄せ、閉じ時はチラ見せ
+                .offset(x: showParentDial ? -27 : -43, y: -10) // 開き時は右寄せ、閉じ時はチラ見せ（控えめに）
                 .allowsHitTesting(showParentDial) // チラ見せ時はタッチ無効
                 // 引き出し時: 右端の余白に「しまう」ボタン
                 if showParentDial {
@@ -1110,12 +1110,14 @@ struct MemoInputView: View {
                     // 完全収納時: 矢印だけ
                     Text("◀").font(.system(size: 12))
                 } else {
-                    Text(showParentDial ? "しまう" : "タグ").font(.system(size: 13, weight: .bold, design: .rounded))
+                    // チラ見せ時: 三角マーク、全開時: しまう
+                    Text(showParentDial ? "▶" : "◀")
+                        .font(.system(size: 11))
                 }
             }
-            .foregroundStyle(.white)
-            .frame(width: trayHidden ? hiddenPeekAmount : tabWidth, height: tabHeight, alignment: .leading)
-            .padding(.leading, trayHidden ? 4 : 3)
+            .foregroundStyle(.white.opacity(0.8))
+            .frame(width: trayHidden ? hiddenPeekAmount : tabWidth, height: tabHeight, alignment: .center)
+            .padding(.leading, trayHidden ? 4 : 0)
             .contentShape(Rectangle())
             .onTapGesture {
                 withAnimation(.spring(response: 0.3)) {

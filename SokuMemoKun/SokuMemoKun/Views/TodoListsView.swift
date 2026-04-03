@@ -147,8 +147,8 @@ struct TodoListsView: View {
                     }
                     .padding(20)
                     .background(.regularMaterial)
-                    .cornerRadius(16)
-                    .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
+                    .cornerRadius(DesignConstants.CornerRadius.dialog)
+                    .shadowDialog()
                     .padding(.horizontal, 40)
                 }
                 .transition(.opacity)
@@ -503,8 +503,8 @@ struct TodoListsView: View {
                 .buttonStyle(.plain)
             }
             .background(Color(uiColor: .systemBackground))
-            .cornerRadius(16)
-            .shadow(color: .black.opacity(0.2), radius: 16, y: 6)
+            .cornerRadius(DesignConstants.CornerRadius.dialog)
+            .shadowHeavy()
             .padding(.horizontal, 40)
         }
         .transition(.opacity)

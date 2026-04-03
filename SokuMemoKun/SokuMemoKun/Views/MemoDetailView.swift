@@ -222,13 +222,13 @@ struct MemoDetailView: View {
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(info.color))
+                    .background(RoundedRectangle(cornerRadius: DesignConstants.CornerRadius.tag).fill(info.color))
                 if let childInfo = selectedChildTagInfo {
                     Text(childInfo.name.prefix(4) + (childInfo.name.count > 4 ? "…" : ""))
                         .font(.system(size: 12, weight: .medium, design: .rounded))
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(RoundedRectangle(cornerRadius: 5).fill(childInfo.color))
+                        .background(RoundedRectangle(cornerRadius: DesignConstants.CornerRadius.tagSmall).fill(childInfo.color))
                 }
             }
             .onTapGesture {

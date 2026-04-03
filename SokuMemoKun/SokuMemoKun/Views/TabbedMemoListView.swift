@@ -348,7 +348,7 @@ struct SpecialColorEditSheet: View {
                 Text(tabLabel)
                     .font(.system(size: 14, weight: .bold, design: .rounded))
                     .foregroundStyle(.primary)
-                    .shadow(color: .black.opacity(0.2), radius: 0.5, x: -0.5, y: 0.5)
+                    .shadowEmboss()
                     .lineLimit(1)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 9)
@@ -1181,7 +1181,7 @@ struct TabbedMemoListView: View {
                                 .background(
                                     Capsule()
                                         .fill(Color(uiColor: .systemGray6))
-                                        .shadow(color: .black.opacity(0.15), radius: 3, y: 1)
+                                        .shadowCard()
                                 )
                                 .overlay(
                                     Capsule()
@@ -1290,7 +1290,7 @@ struct TabbedMemoListView: View {
                                         .background(
                                             Capsule()
                                                 .fill(Color(uiColor: .systemGray6))
-                                                .shadow(color: .black.opacity(0.15), radius: 3, y: 1)
+                                                .shadowCard()
                                         )
                                         .overlay(
                                             Capsule()
@@ -1317,7 +1317,7 @@ struct TabbedMemoListView: View {
                                     .background(
                                         Capsule()
                                             .fill(Color(uiColor: .systemGray6))
-                                            .shadow(color: .black.opacity(0.15), radius: 3, y: 1)
+                                            .shadowCard()
                                     )
                                     .overlay(
                                         Capsule()
@@ -1340,7 +1340,7 @@ struct TabbedMemoListView: View {
                                     .background(
                                         Capsule()
                                             .fill(Color(uiColor: .systemGray6))
-                                            .shadow(color: .black.opacity(0.15), radius: 3, y: 1)
+                                            .shadowCard()
                                     )
                                     .overlay(
                                         Capsule()
@@ -1361,7 +1361,7 @@ struct TabbedMemoListView: View {
                                     .background(
                                         Capsule()
                                             .fill(Color(uiColor: .systemGray6))
-                                            .shadow(color: .black.opacity(0.15), radius: 3, y: 1)
+                                            .shadowCard()
                                     )
                                     .overlay(
                                         Capsule()
@@ -1396,7 +1396,7 @@ struct TabbedMemoListView: View {
                                     .background(
                                         Capsule()
                                             .fill(Color(uiColor: .systemGray6))
-                                            .shadow(color: .black.opacity(0.15), radius: 3, y: 1)
+                                            .shadowCard()
                                     )
                                     .overlay(
                                         Capsule()
@@ -1478,7 +1478,7 @@ struct TabbedMemoListView: View {
                         .background(
                             RoundedRectangle(cornerRadius: 10)
                                 .fill(frequentColumnColors.left)
-                                .shadow(color: .black.opacity(0.3), radius: 0.5, x: -0.5, y: 0.5)
+                                .shadowEmboss()
                         )
                         .frame(maxWidth: .infinity)
 
@@ -1498,7 +1498,7 @@ struct TabbedMemoListView: View {
                         .background(
                             RoundedRectangle(cornerRadius: 10)
                                 .fill(frequentColumnColors.right)
-                                .shadow(color: .black.opacity(0.3), radius: 0.5, x: -0.5, y: 0.5)
+                                .shadowEmboss()
                         )
                         .frame(maxWidth: .infinity)
                     }
@@ -1528,7 +1528,7 @@ struct TabbedMemoListView: View {
         .background(
             RoundedRectangle(cornerRadius: 10)
                 .fill(color)
-                .shadow(color: .black.opacity(0.3), radius: 0.5, x: -0.5, y: 0.5)
+                .shadowEmboss()
         )
     }
 
@@ -1785,7 +1785,7 @@ struct TabbedMemoListView: View {
             .background(
                 Capsule()
                     .fill(Color(uiColor: .systemGray6))
-                    .shadow(color: .black.opacity(0.15), radius: 3, y: 1)
+                    .shadowCard()
             )
             .overlay(
                 Capsule()

@@ -182,7 +182,7 @@ struct QuickSortView: View {
                         .background(
                             Circle()
                                 .fill(Color(uiColor: .secondarySystemBackground))
-                                .shadow(color: .black.opacity(0.15), radius: 2, y: 1)
+                                .shadowLight()
                         )
                 }
                 .buttonStyle(.plain)
@@ -750,8 +750,8 @@ struct QuickSortView: View {
                 .buttonStyle(.plain)
             }
             .background(Color(uiColor: .systemBackground))
-            .cornerRadius(16)
-            .shadow(color: .black.opacity(0.2), radius: 16, y: 6)
+            .cornerRadius(DesignConstants.CornerRadius.dialog)
+            .shadowHeavy()
             .padding(.horizontal, 40)
         }
         .transition(.opacity)
@@ -816,8 +816,8 @@ struct QuickSortView: View {
                 .buttonStyle(.plain)
             }
             .background(Color(uiColor: .systemBackground))
-            .cornerRadius(16)
-            .shadow(color: .black.opacity(0.2), radius: 16, y: 6)
+            .cornerRadius(DesignConstants.CornerRadius.dialog)
+            .shadowHeavy()
             .padding(.horizontal, 40)
         }
         .transition(.opacity)
@@ -883,8 +883,8 @@ struct QuickSortView: View {
                 .buttonStyle(.plain)
             }
             .background(Color(uiColor: .systemBackground))
-            .cornerRadius(16)
-            .shadow(color: .black.opacity(0.2), radius: 16, y: 6)
+            .cornerRadius(DesignConstants.CornerRadius.dialog)
+            .shadowHeavy()
             .padding(.horizontal, 40)
         }
         .transition(.opacity)
@@ -950,8 +950,8 @@ struct QuickSortView: View {
                 .buttonStyle(.plain)
             }
             .background(Color(uiColor: .systemBackground))
-            .cornerRadius(16)
-            .shadow(color: .black.opacity(0.2), radius: 16, y: 6)
+            .cornerRadius(DesignConstants.CornerRadius.dialog)
+            .shadowHeavy()
             .padding(.horizontal, 40)
         }
         .transition(.opacity)

@@ -450,8 +450,8 @@ struct TodoListView: View {
                     }
                     .padding(20)
                     .background(.regularMaterial)
-                    .cornerRadius(16)
-                    .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
+                    .cornerRadius(DesignConstants.CornerRadius.dialog)
+                    .shadowDialog()
                     .padding(.horizontal, 40)
                 }
                 .transition(.opacity)
@@ -509,8 +509,8 @@ struct TodoListView: View {
                     }
                     .padding(20)
                     .background(.regularMaterial)
-                    .cornerRadius(16)
-                    .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
+                    .cornerRadius(DesignConstants.CornerRadius.dialog)
+                    .shadowDialog()
                     .padding(.horizontal, 40)
                 }
                 .transition(.opacity)
@@ -584,8 +584,8 @@ struct TodoListView: View {
                     }
                     .padding(20)
                     .background(.regularMaterial)
-                    .cornerRadius(16)
-                    .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
+                    .cornerRadius(DesignConstants.CornerRadius.dialog)
+                    .shadowDialog()
                     .padding(.horizontal, 40)
                 }
                 .transition(.opacity)
@@ -640,8 +640,8 @@ struct TodoListView: View {
                     }
                     .padding(20)
                     .background(.regularMaterial)
-                    .cornerRadius(16)
-                    .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
+                    .cornerRadius(DesignConstants.CornerRadius.dialog)
+                    .shadowDialog()
                     .padding(.horizontal, 40)
                 }
                 .transition(.opacity)
@@ -698,8 +698,8 @@ struct TodoListView: View {
                     }
                     .padding(20)
                     .background(.regularMaterial)
-                    .cornerRadius(16)
-                    .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
+                    .cornerRadius(DesignConstants.CornerRadius.dialog)
+                    .shadowDialog()
                     .padding(.horizontal, 40)
                 }
                 .transition(.opacity)
@@ -762,8 +762,8 @@ struct TodoListView: View {
                     }
                     .padding(20)
                     .background(.regularMaterial)
-                    .cornerRadius(16)
-                    .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
+                    .cornerRadius(DesignConstants.CornerRadius.dialog)
+                    .shadowDialog()
                     .padding(.horizontal, 40)
                 }
                 .transition(.opacity)
@@ -2076,7 +2076,7 @@ struct TodoListView: View {
                 bodyPeek: 0
             )
             .fill(trayColor)
-            .shadow(color: .black.opacity(0.2), radius: 3, x: -2, y: 0)
+            .shadowTray()
         )
         // ルーレットラベル
         .overlay(alignment: .topTrailing) {
@@ -2151,15 +2151,15 @@ struct TodoListView: View {
                                             .font(.system(size: 12, weight: .bold, design: .rounded))
                                             .padding(.horizontal, 6)
                                             .padding(.vertical, 3)
-                                            .background(RoundedRectangle(cornerRadius: 5).fill(tagColor(for: parentTag.colorIndex)))
+                                            .background(RoundedRectangle(cornerRadius: DesignConstants.CornerRadius.tagSmall).fill(tagColor(for: parentTag.colorIndex)))
                                         if let childID = item.childTagID,
                                            let childTag = allTags.first(where: { $0.id == childID }) {
                                             Text(childTag.name)
                                                 .font(.system(size: 11, weight: .semibold, design: .rounded))
                                                 .padding(.horizontal, 5)
                                                 .padding(.vertical, 2)
-                                                .background(RoundedRectangle(cornerRadius: 4).fill(tagColor(for: childTag.colorIndex)))
-                                                .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.white.opacity(0.3), lineWidth: 1))
+                                                .background(RoundedRectangle(cornerRadius: DesignConstants.CornerRadius.badge).fill(tagColor(for: childTag.colorIndex)))
+                                                .overlay(RoundedRectangle(cornerRadius: DesignConstants.CornerRadius.badge).stroke(DesignConstants.TagStyle.borderColor, lineWidth: 1))
                                         }
                                         Spacer()
                                     }
@@ -2181,9 +2181,9 @@ struct TodoListView: View {
             }
         }
         .background(
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: DesignConstants.CornerRadius.card)
                 .fill(Color(uiColor: .systemBackground))
-                .shadow(color: .black.opacity(0.15), radius: 6, y: 2)
+                .shadowMedium()
         )
         .frame(maxWidth: 220)
     }

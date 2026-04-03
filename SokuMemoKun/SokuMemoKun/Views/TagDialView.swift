@@ -236,7 +236,7 @@ struct TagDialView: View {
                         Circle()
                             .fill(color)
                             .frame(width: 32, height: 32)
-                            .shadow(color: .black.opacity(0.15), radius: 2, y: 1)
+                            .shadowLight()
 
                         Text(name)
                             .font(.system(size: 17, weight: .bold, design: .rounded))
@@ -311,8 +311,8 @@ struct TagDialView: View {
                 }
                 .frame(width: min(geo.size.width - 60, 300))
                 .background(Color(uiColor: .systemBackground))
-                .cornerRadius(16)
-                .shadow(color: .black.opacity(0.15), radius: 12, y: 4)
+                .cornerRadius(DesignConstants.CornerRadius.dialog)
+                .shadowDialog()
             }
             .frame(width: geo.size.width, height: geo.size.height)
         }

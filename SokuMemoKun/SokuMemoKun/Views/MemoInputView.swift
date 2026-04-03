@@ -28,6 +28,8 @@ struct MemoInputView: View {
     @State private var isEditing = true
     /// タップ位置のカーソルオフセット（nil=末尾）
     @State private var contentTapOffset: Int?
+    // マークダウンプレビュー表示中
+    @State private var showMarkdownPreview = false
     // 削除確認ダイアログ
     @State private var showDeleteAlert = false
     // 本文クリア確認ダイアログ
@@ -281,7 +283,18 @@ struct MemoInputView: View {
                 // 本文入力（編集中はTextEditor、閲覧中はText）
                 ZStack(alignment: .topLeading) {
                     if isEditing || !viewModel.inputText.isEmpty {
-                        if viewModel.isMarkdown {
+                        if viewModel.isMarkdown && showMarkdownPreview {
+                            // マークダウンプレビュー表示
+                            ScrollView {
+                                MarkdownPreviewView(text: viewModel.inputText)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 12)
+                            }
+                            .onTapGesture {
+                                // プレビュータップで編集に戻る
+                                showMarkdownPreview = false
+                            }
+                        } else if viewModel.isMarkdown {
                             // マークダウンモード: Bear風インラインエディタ
                             MarkdownTextEditor(text: $viewModel.inputText, isFocused: $isTextEditorFocused)
                                 .padding(.leading, 6)
@@ -402,6 +415,26 @@ struct MemoInputView: View {
                                 .frame(width: 28, height: 28)
                                 .background(
                                     Circle().fill(Color.orange.opacity(0.6))
+                                )
+                                .shadow(color: .black.opacity(0.2), radius: 2, x: 1, y: 1)
+                        }
+                    }
+                    // プレビューボタン（MDモード＋本文ありのときだけ表示）
+                    if viewModel.isMarkdown && !viewModel.inputText.isEmpty {
+                        Button {
+                            // プレビュー切替時にキーボードを閉じる
+                            if !showMarkdownPreview {
+                                isTextEditorFocused = false
+                                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                            }
+                            showMarkdownPreview.toggle()
+                        } label: {
+                            Image(systemName: showMarkdownPreview ? "eye.fill" : "eye")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(.white)
+                                .frame(width: 28, height: 28)
+                                .background(
+                                    Circle().fill(showMarkdownPreview ? Color.blue.opacity(0.8) : Color.purple.opacity(0.6))
                                 )
                                 .shadow(color: .black.opacity(0.2), radius: 2, x: 1, y: 1)
                         }

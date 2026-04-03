@@ -30,6 +30,7 @@
 		B1000000000000000000B7 /* FullEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000B7 /* FullEditorView.swift */; };
 		B1000000000000000000B8 /* MarkdownToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000B8 /* MarkdownToolbar.swift */; };
 		B1000000000000000000B9 /* MarkdownTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000B9 /* MarkdownTextEditor.swift */; };
+		B1000000000000000000BA /* MarkdownPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000BA /* MarkdownPreviewView.swift */; };
 		C0L0RLAB000000000002 /* ColorLabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0L0RLAB000000000001 /* ColorLabView.swift */; };
 		CAROUSEL00000000000002 /* CarouselView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAROUSEL00000000000001 /* CarouselView.swift */; };
 		CELLVIEW00000000000002 /* QuickSortCellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CELLVIEW00000000000001 /* QuickSortCellView.swift */; };
@@ -75,6 +76,7 @@
 		A1000000000000000000B7 /* FullEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullEditorView.swift; sourceTree = "<group>"; };
 		A1000000000000000000B8 /* MarkdownToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownToolbar.swift; sourceTree = "<group>"; };
 		A1000000000000000000B9 /* MarkdownTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownTextEditor.swift; sourceTree = "<group>"; };
+		A1000000000000000000BA /* MarkdownPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownPreviewView.swift; sourceTree = "<group>"; };
 		C0L0RLAB000000000001 /* ColorLabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ColorLabView.swift; path = SokuMemoKun/Views/ColorLabView.swift; sourceTree = SOURCE_ROOT; };
 		CAROUSEL00000000000001 /* CarouselView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarouselView.swift; sourceTree = "<group>"; };
 		CELLVIEW00000000000001 /* QuickSortCellView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickSortCellView.swift; sourceTree = "<group>"; };
@@ -160,6 +162,7 @@
 				A1000000000000000000B7 /* FullEditorView.swift */,
 				A1000000000000000000B8 /* MarkdownToolbar.swift */,
 				A1000000000000000000B9 /* MarkdownTextEditor.swift */,
+				A1000000000000000000BA /* MarkdownPreviewView.swift */,
 				863DCF5D059F41899ADDD158 /* MemoDetailView.swift */,
 				LNTXT00000000000000001 /* LineNumberTextEditor.swift */,
 
@@ -282,6 +285,7 @@
 				B1000000000000000000B7 /* FullEditorView.swift in Sources */,
 				B1000000000000000000B8 /* MarkdownToolbar.swift in Sources */,
 				B1000000000000000000B9 /* MarkdownTextEditor.swift in Sources */,
+				B1000000000000000000BA /* MarkdownPreviewView.swift in Sources */,
 				E20F22AC7EBE4432A424C594 /* MemoDetailView.swift in Sources */,
 				A00245AE9633A906577EE733 /* TextureLabView.swift in Sources */,
 				C0L0RLAB000000000002 /* ColorLabView.swift in Sources */,

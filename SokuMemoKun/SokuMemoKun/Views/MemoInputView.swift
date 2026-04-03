@@ -404,21 +404,24 @@ struct MemoInputView: View {
             }
             .overlay(alignment: .bottomLeading) {
                 HStack(spacing: 6) {
-                    // 本文クリアボタン（編集中かつ本文があるときだけ表示）
-                    if isTextEditorFocused && !viewModel.inputText.isEmpty {
-                        Button {
-                            showClearBodyAlert = true
-                        } label: {
-                            Image(systemName: "eraser")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(.white)
-                                .frame(width: 28, height: 28)
-                                .background(
-                                    Circle().fill(Color.orange.opacity(0.6))
+                    // 本文クリアボタン（常時表示、編集中はオレンジ、それ以外は薄グレー）
+                    Button {
+                        showClearBodyAlert = true
+                    } label: {
+                        Image(systemName: "eraser")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 28, height: 28)
+                            .background(
+                                Circle().fill(
+                                    isTextEditorFocused && !viewModel.inputText.isEmpty
+                                        ? Color.orange.opacity(0.6)
+                                        : Color.gray.opacity(0.25)
                                 )
-                                .shadow(color: .black.opacity(0.2), radius: 2, x: 1, y: 1)
-                        }
+                            )
+                            .shadow(color: .black.opacity(0.2), radius: 2, x: 1, y: 1)
                     }
+                    .disabled(viewModel.inputText.isEmpty)
                     // 文字数カウンター（フロートバッジ）
                     if showCharCount && !viewModel.inputText.isEmpty {
                         Text("\(viewModel.inputText.count.formatted())文字")

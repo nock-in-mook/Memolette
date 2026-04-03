@@ -419,26 +419,6 @@ struct MemoInputView: View {
                                 .shadow(color: .black.opacity(0.2), radius: 2, x: 1, y: 1)
                         }
                     }
-                    // プレビューボタン（MDモード＋本文ありのときだけ表示）
-                    if viewModel.isMarkdown && !viewModel.inputText.isEmpty {
-                        Button {
-                            // プレビュー切替時にキーボードを閉じる
-                            if !showMarkdownPreview {
-                                isTextEditorFocused = false
-                                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                            }
-                            showMarkdownPreview.toggle()
-                        } label: {
-                            Image(systemName: showMarkdownPreview ? "eye.fill" : "eye")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(.white)
-                                .frame(width: 28, height: 28)
-                                .background(
-                                    Circle().fill(showMarkdownPreview ? Color.blue.opacity(0.8) : Color.purple.opacity(0.6))
-                                )
-                                .shadow(color: .black.opacity(0.2), radius: 2, x: 1, y: 1)
-                        }
-                    }
                     // 文字数カウンター（フロートバッジ）
                     if showCharCount && !viewModel.inputText.isEmpty {
                         Text("\(viewModel.inputText.count.formatted())文字")
@@ -811,6 +791,7 @@ struct MemoInputView: View {
             if markdownEnabled {
                 Button {
                     viewModel.isMarkdown.toggle()
+                    showMarkdownPreview = false
                     if let memo = viewModel.editingMemo {
                         memo.isMarkdown = viewModel.isMarkdown
                     }
@@ -827,6 +808,31 @@ struct MemoInputView: View {
                             RoundedRectangle(cornerRadius: 5)
                                 .stroke(viewModel.isMarkdown ? Color.blue : Color.gray.opacity(0.4), lineWidth: 1)
                         )
+                }
+
+                // プレビューボタン（MDモード時のみ）
+                if viewModel.isMarkdown && !viewModel.inputText.isEmpty {
+                    Button {
+                        if !showMarkdownPreview {
+                            isTextEditorFocused = false
+                            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                        }
+                        showMarkdownPreview.toggle()
+                    } label: {
+                        Text("プレビュー")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(showMarkdownPreview ? .white : .secondary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(
+                                RoundedRectangle(cornerRadius: 5)
+                                    .fill(showMarkdownPreview ? Color.orange : Color.clear)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 5)
+                                    .stroke(showMarkdownPreview ? Color.orange : Color.gray.opacity(0.4), lineWidth: 1)
+                            )
+                    }
                 }
             }
 

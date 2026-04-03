@@ -1009,7 +1009,7 @@ struct MemoInputView: View {
                         .shadow(color: .black.opacity(0.5), radius: 3, x: -2, y: 0)
                         .allowsHitTesting(false)
                 }
-                .offset(x: showParentDial ? -27 : -43, y: -10) // 開き時は右寄せ、閉じ時はチラ見せ（控えめに）
+                .offset(x: showParentDial ? -27 : -42, y: -10) // 開き時は右寄せ、閉じ時はチラ見せ（控えめに）
                 .allowsHitTesting(showParentDial) // チラ見せ時はタッチ無効
                 // 引き出し時: 右端の余白に「しまう」ボタン
                 if showParentDial {
@@ -1117,7 +1117,7 @@ struct MemoInputView: View {
             }
             .foregroundStyle(.white.opacity(0.8))
             .frame(width: trayHidden ? hiddenPeekAmount : tabWidth, height: tabHeight, alignment: .center)
-            .padding(.leading, trayHidden ? 4 : 0)
+            .padding(.leading, trayHidden ? 4 : -3)
             .contentShape(Rectangle())
             .onTapGesture {
                 withAnimation(.spring(response: 0.3)) {

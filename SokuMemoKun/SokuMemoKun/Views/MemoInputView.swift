@@ -296,9 +296,11 @@ struct MemoInputView: View {
                             }
                         } else if viewModel.isMarkdown {
                             // マークダウンモード: Bear風インラインエディタ
+                            // LineNumberTextEditorと同じpadding（レイアウト統一）
                             MarkdownTextEditor(text: $viewModel.inputText, isFocused: $isTextEditorFocused)
-                                .padding(.leading, 6)
+                                .padding(.leading, showLineNumbers ? 0 : 10)
                                 .padding(.trailing, 4)
+                                .padding(.top, 0)
                         } else {
                             LineNumberTextEditor(
                                 text: $viewModel.inputText,

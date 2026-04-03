@@ -21,7 +21,9 @@ struct MarkdownTextEditor: UIViewRepresentable {
         textView.delegate = context.coordinator
         textView.font = UIFont.systemFont(ofSize: baseFontSize)
         textView.backgroundColor = .clear
-        textView.textContainerInset = UIEdgeInsets(top: 8, left: 4, bottom: 8, right: 4)
+        // GutteredTextViewと同じinset（レイアウト統一）
+        textView.textContainerInset = UIEdgeInsets(top: 16, left: 6, bottom: 0, right: 4)
+        textView.contentInset.bottom = 40
         textView.autocorrectionType = .default
         textView.autocapitalizationType = .none
         textView.isScrollEnabled = true

@@ -419,6 +419,30 @@ struct MemoInputView: View {
                                 .shadow(color: .black.opacity(0.2), radius: 2, x: 1, y: 1)
                         }
                     }
+                    // プレビューボタン（MDモード＋本文ありのとき表示）
+                    if viewModel.isMarkdown && !viewModel.inputText.isEmpty {
+                        Button {
+                            if !showMarkdownPreview {
+                                isTextEditorFocused = false
+                                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                            }
+                            showMarkdownPreview.toggle()
+                        } label: {
+                            Text("プレビュー")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(showMarkdownPreview ? .white : .secondary)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 5)
+                                        .fill(showMarkdownPreview ? Color.orange : Color.clear)
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 5)
+                                        .stroke(showMarkdownPreview ? Color.orange : Color.gray.opacity(0.4), lineWidth: 1)
+                                )
+                        }
+                    }
                     // 文字数カウンター（フロートバッジ）
                     if showCharCount && !viewModel.inputText.isEmpty {
                         Text("\(viewModel.inputText.count.formatted())文字")
@@ -775,7 +799,7 @@ struct MemoInputView: View {
     // MARK: - フッター（左=削除 右=コピー+閉じる）
 
     private var footerRow: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 10) {
             // 左: 削除
             Button {
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
@@ -810,30 +834,6 @@ struct MemoInputView: View {
                         )
                 }
 
-                // プレビューボタン（MDモード時のみ）
-                if viewModel.isMarkdown && !viewModel.inputText.isEmpty {
-                    Button {
-                        if !showMarkdownPreview {
-                            isTextEditorFocused = false
-                            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                        }
-                        showMarkdownPreview.toggle()
-                    } label: {
-                        Text("プレビュー")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(showMarkdownPreview ? .white : .secondary)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(
-                                RoundedRectangle(cornerRadius: 5)
-                                    .fill(showMarkdownPreview ? Color.orange : Color.clear)
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 5)
-                                    .stroke(showMarkdownPreview ? Color.orange : Color.gray.opacity(0.4), lineWidth: 1)
-                            )
-                    }
-                }
             }
 
             Spacer()
@@ -899,6 +899,7 @@ struct MemoInputView: View {
             }
 
         }
+        .lineLimit(1)
         .padding(.horizontal, 10)
         .padding(.vertical, 5)
     }

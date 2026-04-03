@@ -15,8 +15,8 @@ struct MemoDetailView: View {
     /// タップ位置のカーソルオフセット（nil=末尾）
     @State private var contentTapOffset: Int?
     @FocusState private var isTitleFocused: Bool
-    @AppStorage("showCharCount") private var showCharCount = false
-    @AppStorage("showLineNumbers") private var showLineNumbers = false
+    @AppStorage(AppStorageKeys.showCharCount) private var showCharCount = false
+    @AppStorage(AppStorageKeys.showLineNumbers) private var showLineNumbers = false
 
     // タグ選択状態
     @State private var selectedTagID: UUID? = nil

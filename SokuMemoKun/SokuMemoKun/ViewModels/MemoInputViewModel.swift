@@ -10,7 +10,7 @@ class MemoInputViewModel {
     var titleText: String = ""
     var selectedTagID: UUID?       // 親タグ
     var selectedChildTagID: UUID?  // 子タグ
-    var isMarkdown: Bool = UserDefaults.standard.bool(forKey: "defaultMarkdown")
+    var isMarkdown: Bool = UserDefaults.standard.bool(forKey: AppStorageKeys.defaultMarkdown)
 
     // 現在編集中のメモ（自動保存の対象）
     var editingMemo: Memo?
@@ -96,7 +96,7 @@ class MemoInputViewModel {
                 // 本文もタイトルも空 → 白紙メモは削除
                 context.delete(memo)
                 editingMemo = nil
-                UserDefaults.standard.removeObject(forKey: "lastEditingMemoID")
+                UserDefaults.standard.removeObject(forKey: AppStorageKeys.lastEditingMemoID)
                 return
             }
             // 既存メモを更新
@@ -151,8 +151,8 @@ class MemoInputViewModel {
         titleText = ""
         selectedTagID = nil
         selectedChildTagID = nil
-        isMarkdown = UserDefaults.standard.bool(forKey: "defaultMarkdown")
-        UserDefaults.standard.removeObject(forKey: "lastEditingMemoID")
+        isMarkdown = UserDefaults.standard.bool(forKey: AppStorageKeys.defaultMarkdown)
+        UserDefaults.standard.removeObject(forKey: AppStorageKeys.lastEditingMemoID)
     }
 
     // 保存ボタン（入力欄をクリアして新規入力待ちに）
@@ -162,8 +162,8 @@ class MemoInputViewModel {
         titleText = ""
         selectedTagID = nil
         selectedChildTagID = nil
-        isMarkdown = UserDefaults.standard.bool(forKey: "defaultMarkdown")
-        UserDefaults.standard.removeObject(forKey: "lastEditingMemoID")
+        isMarkdown = UserDefaults.standard.bool(forKey: AppStorageKeys.defaultMarkdown)
+        UserDefaults.standard.removeObject(forKey: AppStorageKeys.lastEditingMemoID)
         resetUndoStack()
     }
 
@@ -196,7 +196,7 @@ class MemoInputViewModel {
     }
 
     private func saveLastMemoID(_ id: UUID) {
-        UserDefaults.standard.set(id.uuidString, forKey: "lastEditingMemoID")
+        UserDefaults.standard.set(id.uuidString, forKey: AppStorageKeys.lastEditingMemoID)
     }
 
 }

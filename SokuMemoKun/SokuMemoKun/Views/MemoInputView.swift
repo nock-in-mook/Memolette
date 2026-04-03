@@ -36,10 +36,10 @@ struct MemoInputView: View {
     var onConfirm: (() -> Void)? = nil
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Tag.name) private var tags: [Tag]
-    @AppStorage("coloredFrame") private var coloredFrame = true
-    @AppStorage("showCharCount") private var showCharCount = false
-    @AppStorage("showLineNumbers") private var showLineNumbers = false
-    @AppStorage("markdownEnabled") private var markdownEnabled = false
+    @AppStorage(AppStorageKeys.coloredFrame) private var coloredFrame = true
+    @AppStorage(AppStorageKeys.showCharCount) private var showCharCount = false
+    @AppStorage(AppStorageKeys.showLineNumbers) private var showLineNumbers = false
+    @AppStorage(AppStorageKeys.markdownEnabled) private var markdownEnabled = false
     @State private var isTextEditorFocused: Bool = false
     @FocusState private var isTitleFocused: Bool
 
@@ -69,13 +69,13 @@ struct MemoInputView: View {
     @State private var trayHidden = false // 完全収納（取っ手も隠れる）
     @State private var showChildDial = true
     @State private var childExternalDragY: CGFloat? = nil
-    @AppStorage("dialDefault") private var dialDefault: Int = 0
+    @AppStorage(AppStorageKeys.dialDefault) private var dialDefault: Int = 0
     // タグ履歴
     @Binding var showTagHistory: Bool
     @Binding var tagHistoryItems: [TagHistory]
 
-    @AppStorage("allTagSortOrder") private var allTagSortOrder: Int = -1
-    @AppStorage("noTagSortOrder") private var noTagSortOrder: Int = 9999
+    @AppStorage(AppStorageKeys.allTagSortOrder) private var allTagSortOrder: Int = -1
+    @AppStorage(AppStorageKeys.noTagSortOrder) private var noTagSortOrder: Int = 9999
 
     // タグ削除ダイアログのタイトル・メッセージ
     private var longPressedTag: Tag? {
@@ -143,9 +143,9 @@ struct MemoInputView: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
                         .background(
-                            RoundedRectangle(cornerRadius: 10)
+                            RoundedRectangle(cornerRadius: DesignConstants.CornerRadius.card)
                                 .fill(tagColor(for: tag.colorIndex))
-                                .shadow(color: .black.opacity(0.15), radius: 2, y: 1)
+                                .shadowLight()
                         )
                 }
                 .padding(.top, 20)
@@ -220,8 +220,8 @@ struct MemoInputView: View {
                 .buttonStyle(.plain)
             }
             .background(Color(uiColor: .systemBackground))
-            .cornerRadius(16)
-            .shadow(color: .black.opacity(0.15), radius: 12, y: 4)
+            .cornerRadius(DesignConstants.CornerRadius.dialog)
+            .shadowDialog()
             .padding(.horizontal, 40)
         }
         .transition(.opacity)
@@ -1072,7 +1072,7 @@ struct MemoInputView: View {
                     bodyPeek: showParentDial ? 0 : peekAmount
                 )
                 .fill(trayColor)
-                .shadow(color: .black.opacity(0.2), radius: 3, x: -2, y: 0)
+                .shadowTray()
                 .onAppear { trayTotalWidth = geo.size.width }
                 .onChange(of: geo.size.width) { _, newW in trayTotalWidth = newW }
             }
@@ -1202,7 +1202,7 @@ struct MemoInputView: View {
                                             .padding(.horizontal, 6)
                                             .padding(.vertical, 3)
                                             .background(
-                                                RoundedRectangle(cornerRadius: 5)
+                                                RoundedRectangle(cornerRadius: DesignConstants.CornerRadius.tagSmall)
                                                     .fill(tagColor(for: parentTag.colorIndex))
                                             )
                                         if let childID = item.childTagID,
@@ -1212,12 +1212,12 @@ struct MemoInputView: View {
                                                 .padding(.horizontal, 5)
                                                 .padding(.vertical, 2)
                                                 .background(
-                                                    RoundedRectangle(cornerRadius: 4)
+                                                    RoundedRectangle(cornerRadius: DesignConstants.CornerRadius.badge)
                                                         .fill(tagColor(for: childTag.colorIndex))
                                                 )
                                                 .overlay(
-                                                    RoundedRectangle(cornerRadius: 4)
-                                                        .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                                                    RoundedRectangle(cornerRadius: DesignConstants.CornerRadius.badge)
+                                                        .stroke(DesignConstants.TagStyle.borderColor, lineWidth: 1)
                                                 )
                                         }
                                         Spacer()
@@ -1234,9 +1234,9 @@ struct MemoInputView: View {
             }
         }
         .background(
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: DesignConstants.CornerRadius.card)
                 .fill(Color(uiColor: .systemBackground))
-                .shadow(color: .black.opacity(0.15), radius: 6, y: 2)
+                .shadowMedium()
         )
         .frame(maxWidth: 220)
         .frame(maxWidth: .infinity, alignment: .trailing)

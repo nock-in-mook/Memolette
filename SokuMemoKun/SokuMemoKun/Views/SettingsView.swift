@@ -3,13 +3,13 @@ import SwiftUI
 // 設定画面
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
-    @AppStorage("markdownEnabled") private var markdownEnabled = false
-    @AppStorage("defaultMarkdown") private var defaultMarkdown = false
-    @AppStorage("restoreLastMemo") private var restoreLastMemo = false
-    @AppStorage("dialDefault") private var dialDefault: Int = 0
-    @AppStorage("coloredFrame") private var coloredFrame = true
-    @AppStorage("showCharCount") private var showCharCount = false
-    @AppStorage("showLineNumbers") private var showLineNumbers = false
+    @AppStorage(AppStorageKeys.markdownEnabled) private var markdownEnabled = false
+    @AppStorage(AppStorageKeys.defaultMarkdown) private var defaultMarkdown = false
+    @AppStorage(AppStorageKeys.restoreLastMemo) private var restoreLastMemo = false
+    @AppStorage(AppStorageKeys.dialDefault) private var dialDefault: Int = 0
+    @AppStorage(AppStorageKeys.coloredFrame) private var coloredFrame = true
+    @AppStorage(AppStorageKeys.showCharCount) private var showCharCount = false
+    @AppStorage(AppStorageKeys.showLineNumbers) private var showLineNumbers = false
 
     var body: some View {
         NavigationStack {

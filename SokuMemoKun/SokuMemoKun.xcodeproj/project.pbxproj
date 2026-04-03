@@ -48,6 +48,8 @@
 		TAGHIST000000000000002 /* TagHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = TAGHIST000000000000001 /* TagHistory.swift */; };
 		TODOL0000000000000004 /* TodoListsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = TODOL0000000000000003 /* TodoListsView.swift */; };
 		ICONL0000000000000002 /* IconLabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ICONL0000000000000001 /* IconLabView.swift */; };
+		DCONST0000000000000002 /* DesignConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCONST0000000000000001 /* DesignConstants.swift */; };
+		ASKEY0000000000000002 /* AppStorageKeys.swift in Sources */ = {isa = PBXBuildFile; fileRef = ASKEY0000000000000001 /* AppStorageKeys.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -90,6 +92,8 @@
 		TAGHIST000000000000001 /* TagHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagHistory.swift; sourceTree = "<group>"; };
 		TODOL0000000000000003 /* TodoListsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoListsView.swift; sourceTree = "<group>"; };
 		ICONL0000000000000001 /* IconLabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IconLabView.swift; sourceTree = "<group>"; };
+		DCONST0000000000000001 /* DesignConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignConstants.swift; sourceTree = "<group>"; };
+		ASKEY0000000000000001 /* AppStorageKeys.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStorageKeys.swift; sourceTree = "<group>"; };
 		QSORT0000000000000001 /* QuickSortView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickSortView.swift; sourceTree = "<group>"; };
 		QSORT0000000000000003 /* QuickSortFilterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickSortFilterView.swift; sourceTree = "<group>"; };
 		QSORT0000000000000005 /* QuickSortResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickSortResultView.swift; sourceTree = "<group>"; };
@@ -126,6 +130,7 @@
 				C1000000000000000000A3 /* Models */,
 				C1000000000000000000A4 /* Views */,
 				C1000000000000000000A5 /* ViewModels */,
+				DCONST0000000000000003 /* Constants */,
 			);
 			path = SokuMemoKun;
 			sourceTree = "<group>";
@@ -184,6 +189,15 @@
 				A1000000000000000000AD /* MemoInputViewModel.swift */,
 			);
 			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		DCONST0000000000000003 /* Constants */ = {
+			isa = PBXGroup;
+			children = (
+				DCONST0000000000000001 /* DesignConstants.swift */,
+				ASKEY0000000000000001 /* AppStorageKeys.swift */,
+			);
+			path = Constants;
 			sourceTree = "<group>";
 		};
 		C1000000000000000000A6 /* Products */ = {
@@ -304,6 +318,8 @@
 				TAGHIST000000000000002 /* TagHistory.swift in Sources */,
 				TODOL0000000000000004 /* TodoListsView.swift in Sources */,
 				ICONL0000000000000002 /* IconLabView.swift in Sources */,
+				DCONST0000000000000002 /* DesignConstants.swift in Sources */,
+				ASKEY0000000000000002 /* AppStorageKeys.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -416,11 +416,11 @@ struct TabbedMemoListView: View {
     @State private var swipeDirection: SwipeDirection = .none
     enum SwipeDirection { case none, left, right }
     // タグなし用のグリッドサイズ（UserDefaultsで保存）
-    @AppStorage("noTagGridSize") private var noTagGridSize: Int = 2
+    @AppStorage(AppStorageKeys.noTagGridSize) private var noTagGridSize: Int = 2
     // すべて用のグリッドサイズ
-    @AppStorage("allTagGridSize") private var allTagGridSize: Int = 2
+    @AppStorage(AppStorageKeys.allTagGridSize) private var allTagGridSize: Int = 2
     // よく見る用のグリッドサイズ
-    @AppStorage("frequentTabGridSize") private var frequentTabGridSize: Int = 0
+    @AppStorage(AppStorageKeys.frequentTabGridSize) private var frequentTabGridSize: Int = 0
     // コールバック
     var onAddMemo: ((UUID?, UUID?) -> Void)?  // (親タグID, 子タグID)
     var onEditMemo: ((Memo) -> Void)?
@@ -462,12 +462,12 @@ struct TabbedMemoListView: View {
     private let frequentTabColorIndex = -2
 
     // タブの並び順（sortOrder順、すべて=-1、タグなし=sortOrder）
-    @AppStorage("allTagSortOrder") private var allTagSortOrder: Int = -1
-    @AppStorage("noTagSortOrder") private var noTagSortOrder: Int = 9999
-    @AppStorage("frequentTagSortOrder") private var frequentTagSortOrder: Int = -2
+    @AppStorage(AppStorageKeys.allTagSortOrder) private var allTagSortOrder: Int = -1
+    @AppStorage(AppStorageKeys.noTagSortOrder) private var noTagSortOrder: Int = 9999
+    @AppStorage(AppStorageKeys.frequentTagSortOrder) private var frequentTagSortOrder: Int = -2
     // 「すべて」「よく見る」のカスタムカラーインデックス（-1=デフォルト色）
-    @AppStorage("allTabCustomColor") private var allTabCustomColor: Int = 5
-    @AppStorage("frequentTabCustomColor") private var frequentTabCustomColor: Int = 8
+    @AppStorage(AppStorageKeys.allTabCustomColor) private var allTabCustomColor: Int = 5
+    @AppStorage(AppStorageKeys.frequentTabCustomColor) private var frequentTabCustomColor: Int = 8
 
     private var tabItems: [(label: String, tag: Tag?, colorIndex: Int)] {
         var items: [(label: String, tag: Tag?, colorIndex: Int, order: Int)] = []

@@ -32,8 +32,8 @@ struct MainView: View {
     // ToDoリストモード
     @State private var showTodoList = false
     @State private var pendingTodoList: TodoList? = nil
-    @AppStorage("defaultMarkdown") private var defaultMarkdown = false
-    @AppStorage("markdownEnabled") private var markdownEnabled = false
+    @AppStorage(AppStorageKeys.defaultMarkdown) private var defaultMarkdown = false
+    @AppStorage(AppStorageKeys.markdownEnabled) private var markdownEnabled = false
     @Environment(\.modelContext) private var modelContext
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Query(sort: \Tag.name) private var tags: [Tag]
@@ -355,7 +355,7 @@ struct MainView: View {
                             .background(
                                 Circle()
                                     .fill(Color(uiColor: .secondarySystemBackground))
-                                    .shadow(color: .black.opacity(0.15), radius: 2, y: 1)
+                                    .shadowLight()
                             )
                     }
                     .padding(.trailing, 12)
@@ -563,7 +563,7 @@ struct MainView: View {
                                             .padding(.horizontal, 6)
                                             .padding(.vertical, 3)
                                             .background(
-                                                RoundedRectangle(cornerRadius: 5)
+                                                RoundedRectangle(cornerRadius: DesignConstants.CornerRadius.tagSmall)
                                                     .fill(tagColor(for: parentTag.colorIndex))
                                             )
                                         if let childID = item.childTagID,
@@ -573,12 +573,12 @@ struct MainView: View {
                                                 .padding(.horizontal, 5)
                                                 .padding(.vertical, 2)
                                                 .background(
-                                                    RoundedRectangle(cornerRadius: 4)
+                                                    RoundedRectangle(cornerRadius: DesignConstants.CornerRadius.badge)
                                                         .fill(tagColor(for: childTag.colorIndex))
                                                 )
                                                 .overlay(
-                                                    RoundedRectangle(cornerRadius: 4)
-                                                        .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                                                    RoundedRectangle(cornerRadius: DesignConstants.CornerRadius.badge)
+                                                        .stroke(DesignConstants.TagStyle.borderColor, lineWidth: 1)
                                                 )
                                         }
                                         Spacer()
@@ -602,9 +602,9 @@ struct MainView: View {
             }
         }
         .background(
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: DesignConstants.CornerRadius.card)
                 .fill(Color(uiColor: .systemBackground))
-                .shadow(color: .black.opacity(0.15), radius: 6, y: 2)
+                .shadowMedium()
         )
         .frame(maxWidth: 220)
     }

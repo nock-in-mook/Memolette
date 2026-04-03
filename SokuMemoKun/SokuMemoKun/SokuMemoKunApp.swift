@@ -29,7 +29,7 @@ struct SokuMemoKunApp: App {
 
     // 全データ削除→バリエーション豊富なサンプル投入
     private static func resetAndInsertSamples(container: ModelContainer) {
-        let key = "sampleDataV10"
+        let key = AppStorageKeys.sampleDataV10
         guard !UserDefaults.standard.bool(forKey: key) else { return }
 
         let context = ModelContext(container)
@@ -876,7 +876,7 @@ struct SokuMemoKunApp: App {
     // MARK: - 長文テストメモ生成
 
     private static func insertLongTextTestMemos(container: ModelContainer) {
-        let key = "longTextTestV2"
+        let key = AppStorageKeys.longTextTestV2
         guard !UserDefaults.standard.bool(forKey: key) else { return }
 
         let context = ModelContext(container)
@@ -916,7 +916,7 @@ struct SokuMemoKunApp: App {
 
     // 子タグバッジテスト用ダミーデータ（親タグ1つ＋子タグ多数＋メモ大量）
     private static func insertChildTagBadgeTestData(container: ModelContainer) {
-        let key = "childTagBadgeTestV1"
+        let key = AppStorageKeys.childTagBadgeTestV1
         guard !UserDefaults.standard.bool(forKey: key) else { return }
 
         let context = ModelContext(container)
@@ -1002,7 +1002,7 @@ struct SokuMemoKunApp: App {
 
     // タグ履歴ダミーデータ（デバッグ用・20件）
     private static func insertDummyTagHistory(container: ModelContainer) {
-        let key = "dummyTagHistoryV1"
+        let key = AppStorageKeys.dummyTagHistoryV1
         guard !UserDefaults.standard.bool(forKey: key) else { return }
 
         let context = ModelContext(container)

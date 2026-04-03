@@ -199,7 +199,43 @@ func tagColor(for index: Int) -> Color {
     return tabColors[index]
 }
 
-// 紙の質感を表現するオーバーレイ
+// メモとToDoリストを統合してグリッド表示するためのenum
+enum MemoGridItem: Identifiable {
+    case memo(Memo)
+    case todoList(TodoList)
+
+    var id: UUID {
+        switch self {
+        case .memo(let m): return m.id
+        case .todoList(let t): return t.id
+        }
+    }
+    var isPinned: Bool {
+        switch self {
+        case .memo(let m): return m.isPinned
+        case .todoList(let t): return t.isPinned
+        }
+    }
+    var manualSortOrder: Int {
+        switch self {
+        case .memo(let m): return m.manualSortOrder
+        case .todoList(let t): return t.manualSortOrder
+        }
+    }
+    var createdAt: Date {
+        switch self {
+        case .memo(let m): return m.createdAt
+        case .todoList(let t): return t.createdAt
+        }
+    }
+    var tags: [Tag] {
+        switch self {
+        case .memo(let m): return m.tags
+        case .todoList(let t): return t.tags
+        }
+    }
+}
+
 // グリッドサイズ定義（列数×行数）
 enum GridSizeOption: Int, CaseIterable {
     case grid3x8 = 0   // 3×6
@@ -351,6 +387,7 @@ struct SpecialColorEditSheet: View {
 struct TabbedMemoListView: View {
     @Query(sort: \Tag.name) private var tags: [Tag]
     @Query(sort: \Memo.createdAt, order: .reverse) private var allMemos: [Memo]
+    @Query(sort: \TodoList.createdAt, order: .reverse) private var allTodoLists: [TodoList]
     @Environment(\.modelContext) private var modelContext
     @Binding var selectedTabIndex: Int
     @Binding var searchText: String
@@ -364,6 +401,9 @@ struct TabbedMemoListView: View {
     // 長押し単体削除確認ダイアログ
     @State private var showSingleDeleteConfirm = false
     @State private var pendingDeleteMemo: Memo? = nil
+    // TodoList長押し削除用
+    @State private var showTodoDeleteConfirm = false
+    @State private var pendingDeleteTodoList: TodoList? = nil
     // ロック中メモ移動通知
     @State private var showLockedMemoMovedAlert = false
     @State private var lockedMemoMovedMessage = ""
@@ -384,6 +424,7 @@ struct TabbedMemoListView: View {
     // コールバック
     var onAddMemo: ((UUID?, UUID?) -> Void)?  // (親タグID, 子タグID)
     var onEditMemo: ((Memo) -> Void)?
+    var onSelectTodoList: ((TodoList) -> Void)?
     var onDeleteMemo: ((Memo) -> Void)?
     // 入力欄展開時はコンパクト表示（選択削除等を非表示）
     var isCompact = false
@@ -575,6 +616,58 @@ struct TabbedMemoListView: View {
         }
     }
 
+    // メモ+ToDoリストの統合グリッドアイテム
+    private var filteredGridItems: [MemoGridItem] {
+        let memos = filteredMemos
+        let item = tabItems[selectedTabIndex]
+
+        // 「よく見る」タブはfilteredMemosが空なのでそのまま返す
+        if item.colorIndex == frequentTabColorIndex {
+            return []
+        }
+
+        // タグフィルタに応じたTodoListを取得
+        let todoLists: [TodoList]
+        if item.colorIndex == allTabColorIndex {
+            todoLists = Array(allTodoLists)
+        } else if let tag = item.tag {
+            let filtered = allTodoLists.filter { list in
+                list.tags.contains { $0.id == tag.id }
+            }
+            if let childID = selectedChildFilterID {
+                todoLists = filtered.filter { list in
+                    list.tags.contains { $0.id == childID }
+                }
+            } else {
+                todoLists = filtered
+            }
+        } else {
+            // タグなし
+            todoLists = allTodoLists.filter { $0.tags.isEmpty }
+        }
+
+        // 統合してソート
+        var items: [MemoGridItem] = memos.map { .memo($0) } + todoLists.map { .todoList($0) }
+        items.sort { a, b in
+            if a.isPinned != b.isPinned { return a.isPinned }
+            if a.manualSortOrder != b.manualSortOrder {
+                return a.manualSortOrder > b.manualSortOrder
+            }
+            return a.createdAt > b.createdAt
+        }
+        return items
+    }
+
+    // TodoListのルート項目を取得
+    private func fetchRootItems(for list: TodoList) -> [TodoItem] {
+        let listID = list.id
+        let descriptor = FetchDescriptor<TodoItem>(
+            predicate: #Predicate { $0.listID == listID && $0.parentID == nil },
+            sortBy: [SortDescriptor(\.sortOrder)]
+        )
+        return (try? modelContext.fetch(descriptor)) ?? []
+    }
+
     // 検索結果の全メモ
     private var searchResultMemos: [Memo] {
         guard !searchQuery.isEmpty else { return [] }
@@ -738,6 +831,25 @@ struct TabbedMemoListView: View {
             }
             Button("キャンセル", role: .cancel) {
                 pendingDeleteMemo = nil
+            }
+        }
+        .alert("このToDoリストを削除します。よろしいですか？", isPresented: $showTodoDeleteConfirm) {
+            Button("削除", role: .destructive) {
+                if let list = pendingDeleteTodoList {
+                    // リストに属するアイテムも削除
+                    let listID = list.id
+                    let descriptor = FetchDescriptor<TodoItem>(
+                        predicate: #Predicate { $0.listID == listID }
+                    )
+                    if let items = try? modelContext.fetch(descriptor) {
+                        for item in items { modelContext.delete(item) }
+                    }
+                    modelContext.delete(list)
+                    pendingDeleteTodoList = nil
+                }
+            }
+            Button("キャンセル", role: .cancel) {
+                pendingDeleteTodoList = nil
             }
         }
         .alert(lockedMemoMovedMessage, isPresented: $showLockedMemoMovedAlert) {
@@ -979,7 +1091,7 @@ struct TabbedMemoListView: View {
                     } else if isFrequentTab {
                         // 「よく見る」特殊レイアウト: 左右分割
                         frequentTabContent(geo: geo)
-                    } else if filteredMemos.isEmpty {
+                    } else if filteredGridItems.isEmpty {
                         VStack(spacing: 8) {
                             Image(systemName: "note.text")
                                 .font(.title2)
@@ -999,8 +1111,13 @@ struct TabbedMemoListView: View {
                                     .allowsHitTesting(false)
 
                                 LazyVGrid(columns: currentColumns, spacing: 8) {
-                                    ForEach(filteredMemos) { memo in
-                                        memoGridItem(memo: memo, availableHeight: geo.size.height)
+                                    ForEach(filteredGridItems) { gridItem in
+                                        switch gridItem {
+                                        case .memo(let memo):
+                                            memoGridItem(memo: memo, availableHeight: geo.size.height)
+                                        case .todoList(let todoList):
+                                            todoGridItem(todoList: todoList, availableHeight: geo.size.height)
+                                        }
                                     }
                                 }
                                 .padding(.horizontal, 10)
@@ -1093,8 +1210,8 @@ struct TabbedMemoListView: View {
                                 Text(selectMode == .delete
                                      ? "削除するメモを選択してください"
                                      : "トップに移動するメモを選択してください")
-                                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                                    .foregroundStyle(.secondary)
+                                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                                    .foregroundStyle(selectMode == .delete ? .red : .blue)
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 4)
                             } else if isFrequentTab {
@@ -1104,7 +1221,7 @@ struct TabbedMemoListView: View {
                                     .frame(maxWidth: .infinity, alignment: .center)
                             } else {
                                 HStack(spacing: 6) {
-                                    Text("\(filteredMemos.count)枚のメモ")
+                                    Text("\(filteredGridItems.count)件")
                                         .font(.system(size: 13, weight: .medium, design: .rounded))
                                         .foregroundStyle(darkenedColor)
                                     // 親タグ-子タグバッジ（子タグフィルター中のみ）
@@ -1701,6 +1818,17 @@ struct TabbedMemoListView: View {
             onDeleteMemo?(memo)
             modelContext.delete(memo)
         }
+        // TodoListも削除対象
+        for list in allTodoLists where selectedMemoIDs.contains(list.id) {
+            let listID = list.id
+            let descriptor = FetchDescriptor<TodoItem>(
+                predicate: #Predicate { $0.listID == listID }
+            )
+            if let items = try? modelContext.fetch(descriptor) {
+                for item in items { modelContext.delete(item) }
+            }
+            modelContext.delete(list)
+        }
         selectedMemoIDs.removeAll()
         selectMode = .none
     }
@@ -1853,7 +1981,88 @@ struct TabbedMemoListView: View {
         }
     }
 
-    // メモカードタップ処理
+    // ToDoリストグリッドの1アイテム
+    @ViewBuilder
+    private func todoGridItem(todoList: TodoList, availableHeight: CGFloat) -> some View {
+        let rootItems = fetchRootItems(for: todoList)
+        HStack(spacing: 4) {
+            if isSelectMode {
+                if todoList.isLocked {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 16))
+                        .foregroundStyle(.gray.opacity(0.4))
+                } else {
+                    Image(systemName: selectedMemoIDs.contains(todoList.id) ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 20))
+                        .foregroundStyle(selectedMemoIDs.contains(todoList.id) ? .blue : .gray.opacity(0.6))
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            handleTodoListTap(todoList)
+                        }
+                }
+            }
+            TodoCardView(todoList: todoList, items: rootItems, gridSize: currentGridSize, availableHeight: availableHeight, parentTag: currentParentTag, onTap: {
+                handleTodoListTap(todoList)
+            })
+            .opacity(isSelectMode && todoList.isLocked ? 0.4 : 1.0)
+        }
+        .contextMenu {
+            if !isSelectMode {
+                if !isFrequentTab {
+                    Button {
+                        let maxOrder = (allMemos.map(\.manualSortOrder) + allTodoLists.map(\.manualSortOrder)).max() ?? 0
+                        todoList.manualSortOrder = maxOrder + 1
+                    } label: {
+                        Label("トップに移動", systemImage: "arrow.up.to.line")
+                    }
+                    Button {
+                        todoList.isPinned.toggle()
+                    } label: {
+                        Label(todoList.isPinned ? "固定を解除" : "トップに常時固定", systemImage: todoList.isPinned ? "pin.slash" : "pin")
+                    }
+                }
+                Button {
+                    let wasLocked = todoList.isLocked
+                    todoList.isLocked.toggle()
+                    if !wasLocked {
+                        showToastMessage("リストをロックしました", icon: "lock.fill")
+                    } else {
+                        showToastMessage("ロックを解除しました", icon: "lock.open")
+                    }
+                } label: {
+                    Label(todoList.isLocked ? "ロックを解除" : "削除防止ロック", systemImage: todoList.isLocked ? "lock.open" : "lock")
+                }
+                if todoList.isLocked {
+                    Button(role: .destructive) {} label: {
+                        Label("削除ロック中", systemImage: "lock.fill")
+                    }
+                    .disabled(true)
+                } else {
+                    Button(role: .destructive) {
+                        pendingDeleteTodoList = todoList
+                        showTodoDeleteConfirm = true
+                    } label: {
+                        Label("削除", systemImage: "trash")
+                    }
+                }
+            }
+        }
+    }
+
+    // TodoListタップ処理
+    private func handleTodoListTap(_ todoList: TodoList) {
+        if isSelectMode {
+            guard !todoList.isLocked else { return }
+            if selectedMemoIDs.contains(todoList.id) {
+                selectedMemoIDs.remove(todoList.id)
+            } else {
+                selectedMemoIDs.insert(todoList.id)
+            }
+        } else {
+            onSelectTodoList?(todoList)
+        }
+    }
+
     // 汎用トースト表示
     private func showToastMessage(_ message: String, icon: String = "lock.fill", duration: TimeInterval = 1.5) {
         toastMessage = message
@@ -2196,6 +2405,190 @@ struct MemoCardView: View {
             .shadow(color: .black.opacity(0.08), radius: 2, x: 0, y: 1)
             .overlay(alignment: .bottomTrailing) {
                 // 子タグバッジ（右下、カード右端に揃えてはみ出し）
+                if let tag = childTagForBadge {
+                    Text(truncatedTagName(tag.name))
+                        .font(.system(size: 9, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(
+                            Capsule().fill(tagColor(for: tag.colorIndex))
+                        )
+                        .offset(y: 6)
+                }
+            }
+        }
+    }
+}
+
+// メモ一覧用ToDoリストカード
+struct TodoCardView: View {
+    let todoList: TodoList
+    let items: [TodoItem]  // ルート項目（sortOrder順）
+    var gridSize: GridSizeOption = .grid3x8
+    var availableHeight: CGFloat = 0
+    var parentTag: Tag? = nil
+    var onTap: (() -> Void)? = nil
+
+    private var summary: (total: Int, done: Int) {
+        (items.count, items.filter(\.isDone).count)
+    }
+
+    // 子タグバッジ（メモカードと同じ仕様）
+    private var childTagForBadge: (name: String, colorIndex: Int)? {
+        guard let parent = parentTag else { return nil }
+        guard let childTag = todoList.tags.first(where: { $0.parentTagID == parent.id }) else { return nil }
+        return (name: childTag.name, colorIndex: childTag.colorIndex)
+    }
+
+    private func truncatedTagName(_ name: String) -> String {
+        var width: Double = 0
+        var result = ""
+        for char in name {
+            let charWidth: Double = char.isASCII ? 0.5 : 1.0
+            if width + charWidth > 8 { return result + "…" }
+            width += charWidth
+            result.append(char)
+        }
+        return result
+    }
+
+    // グリッドサイズに応じたスタイル（MemoCardViewと同じ）
+    private var titleFont: CGFloat {
+        switch gridSize {
+        case .grid3x8: return 13
+        case .grid2x6: return 15
+        case .grid2x3: return 16
+        case .grid1x2: return 17
+        case .full: return 18
+        case .titleOnly: return 14
+        }
+    }
+    private var bodyFont: CGFloat {
+        switch gridSize {
+        case .grid3x8: return 13
+        case .grid2x6: return 14
+        case .grid2x3: return 14
+        case .grid1x2: return 15
+        case .full: return 16
+        case .titleOnly: return 12
+        }
+    }
+    private var cardPadding: CGFloat {
+        switch gridSize {
+        case .grid3x8: return 4
+        case .grid2x6: return 8
+        case .grid2x3: return 10
+        case .grid1x2: return 12
+        case .full: return 12
+        case .titleOnly: return 6
+        }
+    }
+    private var isFullMode: Bool { gridSize == .full }
+    private var isTitleOnly: Bool { gridSize == .titleOnly }
+
+    private var cardHeight: CGFloat? {
+        if isFullMode || isTitleOnly { return nil }
+        let rows: CGFloat
+        switch gridSize {
+        case .grid3x8: rows = 6
+        case .grid2x6: rows = 5
+        case .grid2x3: rows = 3
+        case .grid1x2: rows = 2
+        case .full: return nil
+        case .titleOnly: return nil
+        }
+        guard availableHeight > 0 else {
+            return max(36, 322 / (rows + 0.2))
+        }
+        let spacing: CGFloat = 8
+        let peek: CGFloat = 0.2
+        let totalSpacing = spacing * (rows + peek)
+        return max(36, (availableHeight - totalSpacing) / (rows + peek))
+    }
+
+    var body: some View {
+        if isTitleOnly {
+            // タイトルのみモード
+            HStack(spacing: 3) {
+                Image(systemName: "bookmark.fill")
+                    .font(.system(size: 9))
+                    .foregroundStyle(.orange)
+                Text(todoList.title.isEmpty ? "無題" : todoList.title)
+                    .font(.system(size: titleFont, weight: todoList.title.isEmpty ? .regular : .semibold, design: .rounded))
+                    .foregroundStyle(todoList.title.isEmpty ? .gray.opacity(0.5) : .primary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if todoList.isLocked {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 7))
+                        .foregroundStyle(.blue.opacity(0.6))
+                }
+                if todoList.isPinned {
+                    Image(systemName: "pin.fill")
+                        .font(.system(size: 7))
+                        .foregroundStyle(.orange.opacity(0.6))
+                }
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 5)
+            .background(Color(uiColor: .systemBackground))
+            .contentShape(RoundedRectangle(cornerRadius: 4))
+            .onTapGesture { onTap?() }
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+            .shadow(color: .black.opacity(0.06), radius: 1, x: 0, y: 1)
+        } else {
+            // 通常カードモード
+            VStack(alignment: .leading, spacing: 2) {
+                // タイトル行: しおり + タイトル
+                HStack(spacing: 4) {
+                    Image(systemName: "bookmark.fill")
+                        .font(.system(size: titleFont * 0.8))
+                        .foregroundStyle(.orange)
+                    Text(todoList.title.isEmpty ? "(タイトルなし)" : todoList.title)
+                        .font(.system(size: titleFont, weight: todoList.title.isEmpty ? .regular : .semibold, design: .rounded))
+                        .foregroundStyle(todoList.title.isEmpty ? .gray.opacity(0.5) : .primary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+
+                // "ToDo" + 件数（大きめフォント）
+                HStack(spacing: 6) {
+                    Text("ToDo")
+                        .font(.system(size: titleFont, weight: .bold, design: .rounded))
+                        .foregroundStyle(.green)
+                    Text("\(summary.done)/\(summary.total)件")
+                        .font(.system(size: titleFont * 0.9, weight: .medium, design: .rounded))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .padding(cardPadding)
+            .overlay(alignment: .topTrailing) {
+                VStack(spacing: 2) {
+                    if todoList.isLocked {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 8))
+                            .foregroundStyle(.blue.opacity(0.6))
+                    }
+                    if todoList.isPinned {
+                        Image(systemName: "pin.fill")
+                            .font(.system(size: 8))
+                            .foregroundStyle(.orange.opacity(0.6))
+                    }
+                }
+                .padding(3)
+            }
+            .frame(height: cardHeight, alignment: .topLeading)
+            .background(Color(uiColor: .systemBackground))
+            .contentShape(RoundedRectangle(cornerRadius: 6))
+            .onTapGesture { onTap?() }
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .shadow(color: .black.opacity(0.1), radius: 2, x: -1, y: 1)
+            .shadow(color: .black.opacity(0.08), radius: 2, x: 0, y: 1)
+            .overlay(alignment: .bottomTrailing) {
                 if let tag = childTagForBadge {
                     Text(truncatedTagName(tag.name))
                         .font(.system(size: 9, weight: .semibold, design: .rounded))

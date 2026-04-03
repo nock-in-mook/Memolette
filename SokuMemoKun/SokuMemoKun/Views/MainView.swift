@@ -31,6 +31,7 @@ struct MainView: View {
     @State private var showQuickSort = false
     // ToDoリストモード
     @State private var showTodoList = false
+    @State private var pendingTodoList: TodoList? = nil
     @AppStorage("defaultMarkdown") private var defaultMarkdown = false
     @AppStorage("markdownEnabled") private var markdownEnabled = false
     @Environment(\.modelContext) private var modelContext
@@ -315,6 +316,9 @@ struct MainView: View {
             .fullScreenCover(isPresented: $showTodoList) {
                 TodoListsView(onDismiss: { showTodoList = false })
             }
+            .fullScreenCover(item: $pendingTodoList) { list in
+                TodoListView(todoList: list) { pendingTodoList = nil }
+            }
             .sheet(isPresented: $showSettings, onDismiss: {
                 // 設定画面を閉じた時にマスタースイッチの状態を反映
                 if !markdownEnabled {
@@ -490,6 +494,9 @@ struct MainView: View {
                     originalContent = viewModel.inputText
                     originalTitle = viewModel.titleText
                 }
+            },
+            onSelectTodoList: { todoList in
+                pendingTodoList = todoList
             },
             onDeleteMemo: { memo in
                 if viewModel.editingMemo?.id == memo.id {

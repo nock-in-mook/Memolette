@@ -95,7 +95,6 @@ struct TodoListsView: View {
                     selectedList = nil
                 }
             }
-
             // ダイアログ
             if showNewListDialog {
                 newListDialogOverlay

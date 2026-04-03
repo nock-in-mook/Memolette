@@ -171,13 +171,8 @@ struct MainView: View {
                 }
             }
             .ignoresSafeArea(.keyboard)
-            .contentShape(Rectangle())
-            .simultaneousGesture(
-                TapGesture().onEnded {
-                    // 画面のどこをタップしてもキーボードを閉じる
-                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                }
-            )
+            // 枠外タップでキーボードを閉じる（UITextView内のタップは除外）
+            .background(KeyboardDismissView())
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 // 左: 展開時は「←」で縮小、最大化時は「↓」で戻す、通常時は「＋」で新規メモ
@@ -612,5 +607,59 @@ struct MainView: View {
                 .shadow(color: .black.opacity(0.15), radius: 6, y: 2)
         )
         .frame(maxWidth: 220)
+    }
+}
+
+// MARK: - 枠外タップでキーボードを閉じるUIKit制御
+// UITextView内のタップではキーボードを閉じず、それ以外のエリアでは閉じる
+
+struct KeyboardDismissView: UIViewRepresentable {
+    func makeUIView(context: Context) -> UIView {
+        let view = KeyboardDismissUIView()
+        view.backgroundColor = .clear
+        view.isUserInteractionEnabled = true
+        return view
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {}
+}
+
+private class KeyboardDismissUIView: UIView {
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        // windowに追加されたタイミングでタップジェスチャーを設定
+        let tap = UITapGestureRecognizer(target: self, action: #selector(handleTap))
+        tap.cancelsTouchesInView = false
+        tap.delegate = self
+        window?.addGestureRecognizer(tap)
+    }
+
+    @objc private func handleTap(_ gesture: UITapGestureRecognizer) {
+        // タップ位置がUITextView内でなければキーボードを閉じる
+        let location = gesture.location(in: window)
+        if let hitView = window?.hitTest(location, with: nil),
+           hitView.isDescendant(of: self),
+           isTextView(hitView) {
+            return  // UITextView内 → 何もしない
+        }
+        window?.endEditing(false)
+    }
+
+    // ビューまたはその親がUITextViewかどうか再帰的に判定
+    private func isTextView(_ view: UIView) -> Bool {
+        var current: UIView? = view
+        while let v = current {
+            if v is UITextView { return true }
+            current = v.superview
+        }
+        return false
+    }
+}
+
+extension KeyboardDismissUIView: UIGestureRecognizerDelegate {
+    // UITextView内のタップでは発動させない
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        guard let touchView = touch.view else { return true }
+        return !isTextView(touchView)
     }
 }

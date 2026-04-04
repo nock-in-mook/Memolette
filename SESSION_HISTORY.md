@@ -1321,3 +1321,17 @@ ToDo・ルーレット・入力欄のUI微調整多数。feature/todo-listをmai
 ### 次回予定
 - Flutter環境構築（別プロジェクト）
 - Flutter版開発開始
+
+---
+## Memolette_061 (2026-04-05)
+### Flutter移行環境構築
+- `_Apps2026/Memolette-Flutter` フォルダ作成
+- Flutter 3.41.6 + CocoaPods 1.16.2 インストール（Homebrew経由）
+- GitHubリポジトリ作成・push（nock-in-mook/Memolette-Flutter）
+- 技術選定確定: Drift（SQLite）+ Riverpod
+- 同期方針確定: SQLiteをローカル源、Firebase/iCloud同期
+- Swift版データモデル全調査（Memo/Tag/TodoItem/TodoList/TagHistory）
+- SESSION_HISTORY全59セッションからバグ報告30件を抽出
+- Flutter版CLAUDE.mdに全情報集約（技術選定・構造・バグ一覧・UIルール）
+- Flutter版ROADMAP.md全面作成（Phase 1〜13）
+- HANDOFF.mdにSwift版構造・移植計画を記載

@@ -51,16 +51,16 @@
 - 最大化時のカード高さ 80%→77%
 
 ## 次のアクション（最優先）
-1. **Flutter版プロジェクト作成**（別プロジェクトフォルダ: `_Apps2026/MemoletteFl` 等）
-2. **Flutter環境構築**（Flutter SDK, Android Studio, CocoaPods, flutter doctor）
-3. **Swift版の機能をFlutter版に移植開始**（コア機能から）
+1. **Flutter版で実装開始** — `_Apps2026/Memolette-Flutter` で新セッション立ち上げ
+2. **Phase 1: Driftセットアップ + Memo CRUD** から着手
+3. あっちのCLAUDE.mdに全情報あり（技術選定・Swift版構造・バグ一覧30件）
 
-## Flutter移行の方針
+## Flutter移行の方針（確定）
 - Swift版は `_Apps2026/Memolette` にそのまま残す（戻れるように）
-- Flutter版は別プロジェクトフォルダで管理
-- 同期はFirebaseベースで設計（全プラットフォーム対応）
+- Flutter版は `_Apps2026/Memolette-Flutter` で管理（GitHub: nock-in-mook/Memolette-Flutter）
+- **技術選定**: Drift（SQLite）+ Riverpod
+- **同期方針**: SQLiteをローカル源、Firebase/iCloud同期
 - 画像挿入は圧縮+リサイズ方式（長辺1024px, JPEG 70%, 1枚100-200KB）
-- 必要に応じてiCloud同期も後から追加可能
 
 ## 主要ファイル（マークダウン関連）
 - **LineNumberTextEditor.swift**: GutteredTextViewにMDスタイリング統合済み

@@ -970,6 +970,8 @@ struct MemoInputView: View {
             }
             .disabled(!viewModel.canClear)
 
+            Spacer().frame(width: 8)
+
             // MDラベル + トグルスイッチ
             if !mdToggleFirstSeen {
                 // 初回: まだ説明を見ていない → タップで説明ダイアログ

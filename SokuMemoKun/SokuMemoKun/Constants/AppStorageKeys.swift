@@ -19,6 +19,8 @@ enum AppStorageKeys {
     static let showCharCount = "showCharCount"
     /// 行番号表示ON/OFF
     static let showLineNumbers = "showLineNumbers"
+    /// MDトグル初回説明済みフラグ
+    static let mdToggleFirstSeen = "mdToggleFirstSeen"
 
     // MARK: - グリッドサイズ
 

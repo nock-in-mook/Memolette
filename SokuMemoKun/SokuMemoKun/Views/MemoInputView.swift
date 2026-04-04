@@ -56,6 +56,11 @@ struct MemoInputView: View {
     @State private var contentTapOffset: Int?
     // 削除確認ダイアログ
     @State private var showDeleteAlert = false
+    // MDトグル初回説明ダイアログ
+    @AppStorage(AppStorageKeys.mdToggleFirstSeen) private var mdToggleFirstSeen = false
+    @State private var showMdExplainDialog = false
+    // MDモードON/OFFトースト
+    @State private var mdToastText: String?
     // 子タグ追加時の親タグ未選択警告
     @State private var showNoParentAlert = false
     // タグ長押し編集/削除
@@ -225,6 +230,99 @@ struct MemoInputView: View {
             .padding(.horizontal, 40)
         }
         .transition(.opacity)
+    }
+
+    // MDトグル初回説明カスタムダイアログ
+    @ViewBuilder
+    private func mdExplainDialog() -> some View {
+        ZStack {
+            Color.black.opacity(0.3)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    withAnimation(.easeOut(duration: 0.2)) { showMdExplainDialog = false }
+                    mdToggleFirstSeen = true
+                }
+
+            VStack(spacing: 0) {
+                // アイコン + タイトル
+                VStack(spacing: 10) {
+                    Text("MD")
+                        .font(.system(size: 18, weight: .bold, design: .monospaced))
+                        .foregroundStyle(.white)
+                        .frame(width: 44, height: 32)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.blue)
+                        )
+
+                    Text("マークダウンモード")
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundStyle(.primary)
+                }
+                .padding(.top, 24)
+                .padding(.bottom, 12)
+
+                // 説明テキスト
+                Text("マークダウン記法のON/OFFを切り替えるボタンです。\n\nマークダウンを使わない方や、「何それ？」という方は、このボタンを常に非表示にできます。")
+                    .font(.system(size: 14))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(4)
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 20)
+
+                Text("設定からいつでも戻せます")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.tertiary)
+                    .padding(.bottom, 16)
+
+                Divider()
+
+                // 「非表示にする」ボタン
+                Button {
+                    withAnimation(.easeOut(duration: 0.2)) { showMdExplainDialog = false }
+                    mdToggleFirstSeen = true
+                    markdownEnabled = false
+                } label: {
+                    Text("非表示にする")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(.blue)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                }
+                .buttonStyle(.plain)
+
+                Divider()
+
+                // 「残しておく」ボタン（MD機能ON）
+                Button {
+                    withAnimation(.easeOut(duration: 0.2)) { showMdExplainDialog = false }
+                    mdToggleFirstSeen = true
+                    markdownEnabled = true
+                    showMdToast("マークダウンモード オン")
+                } label: {
+                    Text("残しておく")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(.blue)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                }
+                .buttonStyle(.plain)
+            }
+            .background(Color(uiColor: .systemBackground))
+            .cornerRadius(DesignConstants.CornerRadius.dialog)
+            .shadowDialog()
+            .padding(.horizontal, 40)
+        }
+        .transition(.opacity)
+    }
+
+    // MDモードトースト表示
+    private func showMdToast(_ text: String) {
+        withAnimation { mdToastText = text }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            withAnimation { mdToastText = nil }
+        }
     }
 
     private func tabIndex(for tagID: UUID?) -> Int {
@@ -594,6 +692,29 @@ struct MemoInputView: View {
                 tagActionDialog(tag: tag)
             }
         }
+        // MDトグル初回説明ダイアログ
+        .overlay {
+            if showMdExplainDialog {
+                mdExplainDialog()
+            }
+        }
+        // MDモードトースト
+        .overlay(alignment: .top) {
+            if let text = mdToastText {
+                Text(text)
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
+                    .background(
+                        Capsule()
+                            .fill(Color.black.opacity(0.7))
+                    )
+                    .padding(.top, 60)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.3), value: mdToastText)
         // タグ編集シート
         .sheet(isPresented: $showTagEditSheet) {
             if let tagID = longPressedTagID,
@@ -844,7 +965,7 @@ struct MemoInputView: View {
             }
             .disabled(!viewModel.canClear)
 
-            // MDトグル（設定でマークダウンが有効な場合のみ表示）
+            // MDトグル（markdownEnabled=trueなら通常トグル、falseでも初回説明用に表示）
             if markdownEnabled {
                 Button {
                     viewModel.isMarkdown.toggle()
@@ -852,6 +973,8 @@ struct MemoInputView: View {
                     if let memo = viewModel.editingMemo {
                         memo.isMarkdown = viewModel.isMarkdown
                     }
+                    // トースト表示
+                    showMdToast(viewModel.isMarkdown ? "マークダウンモード オン" : "マークダウンモード オフ")
                 } label: {
                     Text("MD")
                         .font(.system(size: 12, weight: .bold, design: .monospaced))
@@ -866,7 +989,24 @@ struct MemoInputView: View {
                                 .stroke(viewModel.isMarkdown ? Color.blue : Color.gray.opacity(0.4), lineWidth: 1)
                         )
                 }
-
+            } else if !mdToggleFirstSeen {
+                // 初回: まだ説明を見ていない場合はボタンを表示し、タップで説明ダイアログ
+                Button {
+                    withAnimation(.easeOut(duration: 0.2)) { showMdExplainDialog = true }
+                } label: {
+                    Text("MD")
+                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 32, height: 22)
+                        .background(
+                            RoundedRectangle(cornerRadius: 5)
+                                .fill(Color.clear)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 5)
+                                .stroke(Color.gray.opacity(0.4), lineWidth: 1)
+                        )
+                }
             }
 
             Spacer()

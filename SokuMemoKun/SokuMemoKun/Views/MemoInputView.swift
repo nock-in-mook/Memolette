@@ -1050,11 +1050,12 @@ struct MemoInputView: View {
                 }
                 .disabled(viewModel.inputText.isEmpty)
 
-                // 右: 編集中→「確定」、それ以外→「メモを閉じる」
+                // 右: 編集中（タイトル or 本文）→「確定」、それ以外→「メモを閉じる」
                 if viewModel.editingMemo != nil {
-                    if isTextEditorFocused {
+                    if isTextEditorFocused || isTitleFocused {
                         Button {
                             isTextEditorFocused = false
+                            isTitleFocused = false
                             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                         } label: {
                             HStack(spacing: 3) {
@@ -1066,6 +1067,7 @@ struct MemoInputView: View {
                     } else {
                         Button {
                             isTextEditorFocused = false
+                            isTitleFocused = false
                             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                             viewModel.clearInput()
                         } label: {

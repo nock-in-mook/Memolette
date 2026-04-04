@@ -1054,23 +1054,9 @@ struct MemoInputView: View {
                 }
                 .disabled(viewModel.inputText.isEmpty)
 
-                // 右: 編集中→「確定」（キーボード閉じるだけ）、非編集→「メモを閉じる」
-                if viewModel.editingMemo != nil && !isTextEditorFocused && !isTitleEditing {
-                    // キーボードが閉じてる状態 → メモを閉じる
-                    Button {
-                        isTextEditorFocused = false
-                        isTitleFocused = false
-                        isTitleEditing = false
-                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                        viewModel.clearInput()
-                    } label: {
-                        HStack(spacing: 3) {
-                            Image(systemName: "xmark.circle")
-                            Text("メモを閉じる")
-                        }.font(.system(size: 14))
-                    }
-                } else if isTextEditorFocused || isTitleEditing || viewModel.hasText {
-                    // キーボードが出てる or テキストがある → 確定（キーボード閉じるだけ）
+                // 右: 編集中（キーボード出てる）→「確定」、既存メモ非編集→「メモを閉じる」
+                if isTextEditorFocused || isTitleEditing {
+                    // キーボードが出てる → 確定（キーボード閉じるだけ）
                     Button {
                         isTextEditorFocused = false
                         isTitleFocused = false
@@ -1082,6 +1068,17 @@ struct MemoInputView: View {
                             Text("確定")
                         }.font(.system(size: 14))
                             .foregroundStyle(.blue)
+                    }
+                } else if viewModel.editingMemo != nil {
+                    // 既存メモ、キーボード閉じてる → メモを閉じる
+                    Button {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                        viewModel.clearInput()
+                    } label: {
+                        HStack(spacing: 3) {
+                            Image(systemName: "xmark.circle")
+                            Text("メモを閉じる")
+                        }.font(.system(size: 14))
                     }
                 }
             }

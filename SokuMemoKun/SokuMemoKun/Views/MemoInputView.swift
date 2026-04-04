@@ -978,7 +978,7 @@ struct MemoInputView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Text("MD")
-                            .font(.system(size: 12, weight: .bold, design: .monospaced))
+                            .font(.system(size: 14, weight: .bold, design: .monospaced))
                             .foregroundStyle(.secondary)
 
                         // OFFトグル風の見た目（Capsule）
@@ -999,7 +999,7 @@ struct MemoInputView: View {
                 // 説明済み＋MD有効: ラベル + ミニトグル
                 HStack(spacing: 4) {
                     Text("MD")
-                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                        .font(.system(size: 14, weight: .bold, design: .monospaced))
                         .foregroundStyle(viewModel.isMarkdown ? .blue : .secondary)
 
                     // ミニトグルスイッチ
@@ -1015,6 +1015,7 @@ struct MemoInputView: View {
                         }
                     ))
                     .labelsHidden()
+                    .tint(.blue)
                     .scaleEffect(0.6)
                     .frame(width: 34, height: 22)
                 }

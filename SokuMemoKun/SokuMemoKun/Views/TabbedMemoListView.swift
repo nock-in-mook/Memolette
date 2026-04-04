@@ -2388,10 +2388,10 @@ struct MemoCardView: View {
                             .font(.system(size: 8))
                             .foregroundStyle(.orange.opacity(0.6))
                     }
-                    if memo.isMarkdown {
-                        Text("M↓")
+                    if containsMarkdown(memo.content) {
+                        Text("MD")
                             .font(.system(size: 9, weight: .bold, design: .monospaced))
-                            .foregroundStyle(.gray.opacity(0.5))
+                            .foregroundStyle(.purple.opacity(0.6))
                     }
                 }
                 .padding(3)

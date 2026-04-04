@@ -721,22 +721,29 @@ struct KeyboardDismissView: UIViewRepresentable {
 }
 
 private class KeyboardDismissUIView: UIView {
+    private var isKeyboardVisible = false
+
     override func didMoveToWindow() {
         super.didMoveToWindow()
-        // windowに追加されたタイミングでタップジェスチャーを設定
+        // キーボード表示/非表示を監視
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardDidShow), name: UIResponder.keyboardDidShowNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardDidHide), name: UIResponder.keyboardDidHideNotification, object: nil)
+
         let tap = UITapGestureRecognizer(target: self, action: #selector(handleTap))
         tap.cancelsTouchesInView = false
         tap.delegate = self
-        window?.addGestureRecognizer(tap)
+        addGestureRecognizer(tap)
     }
 
+    @objc private func keyboardDidShow() { isKeyboardVisible = true }
+    @objc private func keyboardDidHide() { isKeyboardVisible = false }
+
     @objc private func handleTap(_ gesture: UITapGestureRecognizer) {
-        // タップ位置がUITextView内でなければキーボードを閉じる
-        let location = gesture.location(in: window)
-        if let hitView = window?.hitTest(location, with: nil),
-           hitView.isDescendant(of: self),
-           isTextView(hitView) {
-            return  // UITextView内 → 何もしない
+        guard isKeyboardVisible else { return }
+        // タップ位置がUITextView内ならキーボードを閉じない
+        let location = gesture.location(in: self)
+        if let hitView = hitTest(location, with: nil), isTextView(hitView) {
+            return
         }
         window?.endEditing(false)
     }
@@ -750,12 +757,17 @@ private class KeyboardDismissUIView: UIView {
         }
         return false
     }
+
+    // タップを他のビューにも通す（SwiftUIボタン等を妨げない）
+    override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+        // キーボード非表示時はタッチを透過
+        guard isKeyboardVisible else { return false }
+        return super.point(inside: point, with: event)
+    }
 }
 
 extension KeyboardDismissUIView: UIGestureRecognizerDelegate {
-    // UITextView内のタップでは発動させない
-    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
-        guard let touchView = touch.view else { return true }
-        return !isTextView(touchView)
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
+        return true
     }
 }

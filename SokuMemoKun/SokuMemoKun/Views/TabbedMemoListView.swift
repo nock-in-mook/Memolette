@@ -2213,7 +2213,7 @@ struct SearchMemoCardView: View {
                 }
                 if containsMarkdown(memo.content) {
                     Text("MD")
-                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .font(.system(size: 11, weight: .bold, design: .monospaced))
                         .foregroundStyle(.purple.opacity(0.6))
                 }
             }

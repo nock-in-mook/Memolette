@@ -46,6 +46,7 @@ struct MemoInputView: View {
     @AppStorage(AppStorageKeys.markdownEnabled) private var markdownEnabled = false
     @State private var isTextEditorFocused: Bool = false
     @FocusState private var isTitleFocused: Bool
+    @State private var isTitleEditing: Bool = false
 
     // 新規タグ作成シート
     @State private var showNewTagSheet = false
@@ -820,6 +821,9 @@ struct MemoInputView: View {
                         .font(.system(size: 17, weight: .semibold, design: .rounded))
                         .focused($isTitleFocused)
                         .opacity(isTitleFocused ? 1 : 0)
+                        .onChange(of: isTitleFocused) { _, newValue in
+                            isTitleEditing = newValue
+                        }
 
                     // 非フォーカス時: Text + 自動縮小を上に重ねる
                     if !isTitleFocused {
@@ -1052,10 +1056,11 @@ struct MemoInputView: View {
 
                 // 右: 編集中（タイトル or 本文）→「確定」、それ以外→「メモを閉じる」
                 if viewModel.editingMemo != nil {
-                    if isTextEditorFocused || isTitleFocused {
+                    if isTextEditorFocused || isTitleEditing {
                         Button {
                             isTextEditorFocused = false
                             isTitleFocused = false
+                            isTitleEditing = false
                             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                         } label: {
                             HStack(spacing: 3) {
@@ -1068,6 +1073,7 @@ struct MemoInputView: View {
                         Button {
                             isTextEditorFocused = false
                             isTitleFocused = false
+                            isTitleEditing = false
                             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                             viewModel.clearInput()
                         } label: {
@@ -1078,16 +1084,32 @@ struct MemoInputView: View {
                         }
                     }
                 } else if viewModel.hasText {
-                    Button {
-                        isTextEditorFocused = false
-                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                        onConfirm?()
-                    } label: {
-                        HStack(spacing: 3) {
-                            Image(systemName: "checkmark.circle")
-                            Text("確定")
-                        }.font(.system(size: 14))
-                            .foregroundStyle(.blue)
+                    if isTitleEditing {
+                        // タイトル編集中 → キーボード閉じるだけ
+                        Button {
+                            isTextEditorFocused = false
+                            isTitleFocused = false
+                            isTitleEditing = false
+                            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                        } label: {
+                            HStack(spacing: 3) {
+                                Image(systemName: "checkmark.circle")
+                                Text("確定")
+                            }.font(.system(size: 14))
+                                .foregroundStyle(.blue)
+                        }
+                    } else {
+                        Button {
+                            isTextEditorFocused = false
+                            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                            onConfirm?()
+                        } label: {
+                            HStack(spacing: 3) {
+                                Image(systemName: "checkmark.circle")
+                                Text("確定")
+                            }.font(.system(size: 14))
+                                .foregroundStyle(.blue)
+                        }
                     }
                 }
             }

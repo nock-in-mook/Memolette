@@ -2213,8 +2213,14 @@ struct SearchMemoCardView: View {
                 }
                 if containsMarkdown(memo.content) {
                     Text("MD")
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundStyle(.purple.opacity(0.6))
+                        .font(.system(size: 8, weight: .bold, design: .monospaced))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 3)
+                        .padding(.vertical, 1)
+                        .background(
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(Color.purple.opacity(0.7))
+                        )
                 }
             }
             .padding(3)
@@ -2390,8 +2396,14 @@ struct MemoCardView: View {
                     }
                     if containsMarkdown(memo.content) {
                         Text("MD")
-                            .font(.system(size: 9, weight: .bold, design: .monospaced))
-                            .foregroundStyle(.purple.opacity(0.6))
+                            .font(.system(size: 8, weight: .bold, design: .monospaced))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 3)
+                            .padding(.vertical, 1)
+                            .background(
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(Color.purple.opacity(0.7))
+                            )
                     }
                 }
                 .padding(3)

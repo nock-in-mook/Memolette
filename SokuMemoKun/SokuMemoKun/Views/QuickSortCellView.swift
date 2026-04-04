@@ -568,9 +568,15 @@ struct QuickSortCellView: View {
                 // MDマーク（カード右上、ロックの左隣）
                 if containsMarkdown(memo.content) {
                     Text("MD")
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundStyle(.purple.opacity(0.6))
-                        .offset(x: geo.size.width - (memo.isLocked ? 52 : 28), y: 8)
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 3)
+                        .background(
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color.purple.opacity(0.7))
+                        )
+                        .offset(x: geo.size.width - (memo.isLocked ? 58 : 28), y: 6)
                 }
 
                 // ロックアイコン（カード右上端）

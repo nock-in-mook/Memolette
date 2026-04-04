@@ -13,6 +13,8 @@ struct LineNumberTextEditor: UIViewRepresentable {
     var isEditable: Bool = true
     /// 非編集時のタップコールバック（文字オフセットを返す。UITextViewも渡す）
     var onTapWhileReadOnly: ((Int, UITextView) -> Void)? = nil
+    /// マークダウンモード（Bear風インラインスタイリング + ツールバー）
+    var isMarkdown: Bool = false
 
     func makeCoordinator() -> Coordinator {
         let c = Coordinator(self)
@@ -21,10 +23,13 @@ struct LineNumberTextEditor: UIViewRepresentable {
     }
 
     func makeUIView(context: Context) -> GutteredTextView {
-        let view = GutteredTextView(fontSize: fontSize)
+        let view = GutteredTextView(fontSize: fontSize, isMarkdown: isMarkdown, textBinding: $text)
         view.textView.delegate = context.coordinator
         view.textView.text = text
         view.showGutter = showLineNumbers
+        if isMarkdown {
+            view.applyMarkdownStyle()
+        }
         return view
     }
 
@@ -33,12 +38,18 @@ struct LineNumberTextEditor: UIViewRepresentable {
         if view.textView.text != text {
             view.textView.text = text
             view.refreshLineNumbers()
+            if isMarkdown {
+                view.applyMarkdownStyle()
+            }
         }
         view.showGutter = showLineNumbers
         view.textView.isEditable = isEditable
         view.textView.isSelectable = isEditable
         // 非編集時のタップコールバックを更新
         view.onTapWhileReadOnly = isEditable ? nil : onTapWhileReadOnly
+
+        // マークダウンモードの動的切り替え
+        view.updateMarkdownMode(isMarkdown: isMarkdown, textBinding: $text)
 
         // フォーカス管理
         if isFocused && !view.textView.isFirstResponder {
@@ -70,7 +81,12 @@ struct LineNumberTextEditor: UIViewRepresentable {
 
         func textViewDidChange(_ tv: UITextView) {
             parent.text = tv.text ?? ""
-            (tv.superview as? GutteredTextView)?.refreshLineNumbers()
+            if let gutter = tv.superview as? GutteredTextView {
+                gutter.refreshLineNumbers()
+                if gutter.isMarkdown {
+                    gutter.applyMarkdownStyle()
+                }
+            }
         }
 
         func textViewDidBeginEditing(_ tv: UITextView) {
@@ -106,6 +122,11 @@ class GutteredTextView: UIView {
     /// 非編集時のタップコールバック（文字オフセットとUITextViewを返す）
     var onTapWhileReadOnly: ((Int, UITextView) -> Void)?
 
+    /// マークダウンモード（動的に切り替え可能）
+    private(set) var isMarkdown: Bool
+    private let baseFontSize: CGFloat
+    private let symbolColor = UIColor.systemGray3
+
     var showGutter: Bool = false {
         didSet {
             guard showGutter != oldValue else { return }
@@ -114,7 +135,9 @@ class GutteredTextView: UIView {
         }
     }
 
-    init(fontSize: CGFloat) {
+    init(fontSize: CGFloat, isMarkdown: Bool = false, textBinding: Binding<String>? = nil) {
+        self.isMarkdown = isMarkdown
+        self.baseFontSize = fontSize
         // TextKit 1を使用（行レイアウト情報の取得に必要）
         textView = UITextView(usingTextLayoutManager: false)
         super.init(frame: .zero)
@@ -128,6 +151,7 @@ class GutteredTextView: UIView {
             right: TextAreaLayout.textInsetRight
         )
         textView.contentInset.bottom = TextAreaLayout.contentInsetBottom
+        textView.textContainer.lineFragmentPadding = TextAreaLayout.lineFragmentPadding
         textView.alwaysBounceVertical = true
 
         gutterScroll.showsVerticalScrollIndicator = false
@@ -139,6 +163,24 @@ class GutteredTextView: UIView {
         addSubview(gutterScroll)
         addSubview(textView)
         backgroundColor = .clear
+
+        // マークダウンモード: キーボード直上にツールバーを配置
+        if isMarkdown, let binding = textBinding {
+            let toolbar = MarkdownToolbar(text: binding)
+            let hostingController = UIHostingController(rootView: toolbar)
+            hostingController.view.frame = CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width, height: 44)
+            hostingController.view.backgroundColor = .secondarySystemBackground
+            hostingController.view.translatesAutoresizingMaskIntoConstraints = false
+            let wrapper = UIView(frame: CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width, height: 44))
+            wrapper.addSubview(hostingController.view)
+            NSLayoutConstraint.activate([
+                hostingController.view.leadingAnchor.constraint(equalTo: wrapper.leadingAnchor),
+                hostingController.view.trailingAnchor.constraint(equalTo: wrapper.trailingAnchor),
+                hostingController.view.topAnchor.constraint(equalTo: wrapper.topAnchor),
+                hostingController.view.bottomAnchor.constraint(equalTo: wrapper.bottomAnchor),
+            ])
+            textView.inputAccessoryView = wrapper
+        }
 
         // 非編集時のタップ検出用
         let tap = UITapGestureRecognizer(target: self, action: #selector(handleReadOnlyTap))
@@ -231,6 +273,243 @@ class GutteredTextView: UIView {
         gutterDrawView.frame = CGRect(x: 0, y: 0, width: gutterWidth, height: contentHeight)
         gutterScroll.contentSize = gutterDrawView.frame.size
         gutterDrawView.setNeedsDisplay()
+    }
+
+    // MARK: - マークダウンモードの動的切り替え
+
+    func updateMarkdownMode(isMarkdown: Bool, textBinding: Binding<String>) {
+        guard self.isMarkdown != isMarkdown else { return }
+        self.isMarkdown = isMarkdown
+
+        if isMarkdown {
+            // ツールバーを付ける
+            let toolbar = MarkdownToolbar(text: textBinding)
+            let hostingController = UIHostingController(rootView: toolbar)
+            hostingController.view.frame = CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width, height: 44)
+            hostingController.view.backgroundColor = .secondarySystemBackground
+            hostingController.view.translatesAutoresizingMaskIntoConstraints = false
+            let wrapper = UIView(frame: CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width, height: 44))
+            wrapper.addSubview(hostingController.view)
+            NSLayoutConstraint.activate([
+                hostingController.view.leadingAnchor.constraint(equalTo: wrapper.leadingAnchor),
+                hostingController.view.trailingAnchor.constraint(equalTo: wrapper.trailingAnchor),
+                hostingController.view.topAnchor.constraint(equalTo: wrapper.topAnchor),
+                hostingController.view.bottomAnchor.constraint(equalTo: wrapper.bottomAnchor),
+            ])
+            textView.inputAccessoryView = wrapper
+            applyMarkdownStyle()
+        } else {
+            // ツールバーを外してスタイルをリセット
+            textView.inputAccessoryView = nil
+            resetTextStyle()
+        }
+        // inputAccessoryViewの変更を反映
+        textView.reloadInputViews()
+    }
+
+    // マークダウンスタイルを解除して通常テキストに戻す
+    private func resetTextStyle() {
+        let storage = textView.textStorage
+        guard storage.length > 0 else { return }
+        let fullRange = NSRange(location: 0, length: storage.length)
+        let defaultFont = UIFont.systemFont(ofSize: baseFontSize)
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.lineSpacing = 4
+        storage.beginEditing()
+        storage.setAttributes([
+            .font: defaultFont,
+            .foregroundColor: UIColor.label,
+            .paragraphStyle: paragraphStyle,
+        ], range: fullRange)
+        storage.removeAttribute(.backgroundColor, range: fullRange)
+        storage.removeAttribute(.strikethroughStyle, range: fullRange)
+        storage.endEditing()
+    }
+
+    // MARK: - マークダウンスタイリング（Bear風インライン装飾）
+
+    func applyMarkdownStyle() {
+        let storage = textView.textStorage
+        let fullText = storage.string
+        guard !fullText.isEmpty else { return }
+        let fullRange = NSRange(location: 0, length: storage.length)
+
+        let defaultFont = UIFont.systemFont(ofSize: baseFontSize)
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.lineSpacing = 4
+
+        storage.beginEditing()
+
+        storage.setAttributes([
+            .font: defaultFont,
+            .foregroundColor: UIColor.label,
+            .paragraphStyle: paragraphStyle,
+        ], range: fullRange)
+
+        storage.removeAttribute(.backgroundColor, range: fullRange)
+        storage.removeAttribute(.strikethroughStyle, range: fullRange)
+
+        let lines = fullText.components(separatedBy: "\n")
+        var currentLocation = 0
+
+        for line in lines {
+            let lineLen = (line as NSString).length
+            let lineRange = NSRange(location: currentLocation, length: lineLen)
+
+            let trimmed = line.drop(while: { $0 == " " || $0 == "\t" })
+            let indent = line.count - trimmed.count
+
+            if line.hasPrefix("### ") {
+                mdStyleHeading(storage, lineRange: lineRange, prefixLength: 4, fontSize: baseFontSize + 2)
+            } else if line.hasPrefix("## ") {
+                mdStyleHeading(storage, lineRange: lineRange, prefixLength: 3, fontSize: baseFontSize + 5)
+            } else if line.hasPrefix("# ") {
+                mdStyleHeading(storage, lineRange: lineRange, prefixLength: 2, fontSize: baseFontSize + 8)
+            }
+            else if lineLen >= 3 && (
+                line.allSatisfy({ $0 == "-" }) ||
+                line.allSatisfy({ $0 == "*" }) ||
+                line.allSatisfy({ $0 == "_" })
+            ) {
+                storage.addAttribute(.foregroundColor, value: symbolColor, range: lineRange)
+            }
+            else if String(trimmed).hasPrefix("- [ ] ") || String(trimmed).hasPrefix("- [x] ") || String(trimmed).hasPrefix("- [X] ") {
+                mdStyleSymbol(storage, lineRange: lineRange, symbolLength: indent + 6)
+                if indent > 0 { mdApplyIndent(storage, lineRange: lineRange, level: indent) }
+                if String(trimmed).hasPrefix("- [x] ") || String(trimmed).hasPrefix("- [X] ") {
+                    let contentRange = NSRange(location: lineRange.location + indent + 6, length: max(0, lineLen - indent - 6))
+                    storage.addAttribute(.strikethroughStyle, value: NSUnderlineStyle.single.rawValue, range: contentRange)
+                    storage.addAttribute(.foregroundColor, value: UIColor.secondaryLabel, range: contentRange)
+                }
+            }
+            else if String(trimmed).hasPrefix("- ") {
+                mdStyleSymbol(storage, lineRange: lineRange, symbolLength: indent + 2)
+                if indent > 0 { mdApplyIndent(storage, lineRange: lineRange, level: indent) }
+            }
+            else if let dotRange = mdMatchNumberedList(String(trimmed)) {
+                let prefixLen = indent + dotRange
+                mdStyleSymbol(storage, lineRange: lineRange, symbolLength: prefixLen)
+                if indent > 0 { mdApplyIndent(storage, lineRange: lineRange, level: indent) }
+            }
+            else if line.hasPrefix("> ") {
+                mdStyleSymbol(storage, lineRange: lineRange, symbolLength: 2)
+                let contentRange = NSRange(location: lineRange.location + 2, length: max(0, lineLen - 2))
+                storage.addAttribute(.font, value: UIFont.italicSystemFont(ofSize: baseFontSize), range: contentRange)
+                storage.addAttribute(.foregroundColor, value: UIColor.secondaryLabel, range: contentRange)
+            }
+            else if line.hasPrefix("```") {
+                storage.addAttribute(.foregroundColor, value: symbolColor, range: lineRange)
+                storage.addAttribute(.font, value: UIFont.monospacedSystemFont(ofSize: baseFontSize - 1, weight: .regular), range: lineRange)
+            }
+
+            mdApplyInlineStyles(storage, in: lineRange, text: line)
+            currentLocation += lineLen + 1
+        }
+
+        storage.endEditing()
+
+        // カーソル位置の入力属性をデフォルトに戻す
+        let defaultParagraph = NSMutableParagraphStyle()
+        defaultParagraph.lineSpacing = 4
+        textView.typingAttributes = [
+            .font: defaultFont,
+            .foregroundColor: UIColor.label,
+            .paragraphStyle: defaultParagraph,
+        ]
+    }
+
+    private func mdStyleHeading(_ storage: NSTextStorage, lineRange: NSRange, prefixLength: Int, fontSize: CGFloat) {
+        let headingFont = UIFont.systemFont(ofSize: fontSize, weight: .bold)
+        storage.addAttribute(.font, value: headingFont, range: lineRange)
+        let symbolRange = NSRange(location: lineRange.location, length: min(prefixLength, lineRange.length))
+        storage.addAttribute(.foregroundColor, value: symbolColor, range: symbolRange)
+    }
+
+    private func mdStyleSymbol(_ storage: NSTextStorage, lineRange: NSRange, symbolLength: Int) {
+        let symbolRange = NSRange(location: lineRange.location, length: min(symbolLength, lineRange.length))
+        storage.addAttribute(.foregroundColor, value: symbolColor, range: symbolRange)
+    }
+
+    private func mdMatchNumberedList(_ line: String) -> Int? {
+        guard let first = line.first, first.isNumber else { return nil }
+        for (i, ch) in line.enumerated() {
+            if ch == "." {
+                let nextIndex = line.index(line.startIndex, offsetBy: i + 1, limitedBy: line.endIndex)
+                if let nextIndex, line[nextIndex] == " " { return i + 2 }
+                return nil
+            }
+            if !ch.isNumber { return nil }
+        }
+        return nil
+    }
+
+    private func mdApplyIndent(_ storage: NSTextStorage, lineRange: NSRange, level: Int) {
+        let indentParagraph = NSMutableParagraphStyle()
+        indentParagraph.lineSpacing = 4
+        let indentPoints = CGFloat(level) * 10.0
+        indentParagraph.headIndent = indentPoints
+        indentParagraph.firstLineHeadIndent = indentPoints
+        storage.addAttribute(.paragraphStyle, value: indentParagraph, range: lineRange)
+    }
+
+    private func mdApplyInlineStyles(_ storage: NSTextStorage, in lineRange: NSRange, text: String) {
+        let nsText = text as NSString
+
+        mdApplyPattern("\\*\\*(.+?)\\*\\*", storage: storage, lineRange: lineRange, nsText: nsText) { matchRange, innerRange in
+            storage.addAttribute(.foregroundColor, value: self.symbolColor, range: NSRange(location: matchRange.location, length: 2))
+            storage.addAttribute(.foregroundColor, value: self.symbolColor, range: NSRange(location: matchRange.location + matchRange.length - 2, length: 2))
+            storage.addAttribute(.font, value: UIFont.boldSystemFont(ofSize: self.baseFontSize), range: innerRange)
+        }
+
+        mdApplyPattern("(?<!\\*)\\*(?!\\*)(.+?)(?<!\\*)\\*(?!\\*)", storage: storage, lineRange: lineRange, nsText: nsText) { matchRange, innerRange in
+            storage.addAttribute(.foregroundColor, value: self.symbolColor, range: NSRange(location: matchRange.location, length: 1))
+            storage.addAttribute(.foregroundColor, value: self.symbolColor, range: NSRange(location: matchRange.location + matchRange.length - 1, length: 1))
+            storage.addAttribute(.font, value: UIFont.italicSystemFont(ofSize: self.baseFontSize), range: innerRange)
+        }
+
+        mdApplyPattern("~~(.+?)~~", storage: storage, lineRange: lineRange, nsText: nsText) { matchRange, innerRange in
+            storage.addAttribute(.foregroundColor, value: self.symbolColor, range: NSRange(location: matchRange.location, length: 2))
+            storage.addAttribute(.foregroundColor, value: self.symbolColor, range: NSRange(location: matchRange.location + matchRange.length - 2, length: 2))
+            storage.addAttribute(.strikethroughStyle, value: NSUnderlineStyle.single.rawValue, range: innerRange)
+        }
+
+        mdApplyPattern("`([^`]+)`", storage: storage, lineRange: lineRange, nsText: nsText) { matchRange, innerRange in
+            storage.addAttribute(.foregroundColor, value: self.symbolColor, range: NSRange(location: matchRange.location, length: 1))
+            storage.addAttribute(.foregroundColor, value: self.symbolColor, range: NSRange(location: matchRange.location + matchRange.length - 1, length: 1))
+            storage.addAttribute(.font, value: UIFont.monospacedSystemFont(ofSize: self.baseFontSize - 1, weight: .regular), range: innerRange)
+            storage.addAttribute(.backgroundColor, value: UIColor.systemGray6, range: innerRange)
+        }
+
+        mdApplyPattern("\\[([^\\]]+)\\]\\(([^)]+)\\)", storage: storage, lineRange: lineRange, nsText: nsText) { matchRange, innerRange in
+            storage.addAttribute(.foregroundColor, value: self.symbolColor, range: NSRange(location: matchRange.location, length: 1))
+            let closeBracketPos = matchRange.location + 1 + innerRange.length
+            storage.addAttribute(.foregroundColor, value: self.symbolColor, range: NSRange(location: closeBracketPos, length: 1))
+            storage.addAttribute(.foregroundColor, value: UIColor.systemBlue, range: innerRange)
+            storage.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, range: innerRange)
+            let urlPartStart = closeBracketPos + 1
+            let urlPartLen = matchRange.location + matchRange.length - urlPartStart
+            if urlPartLen > 0 {
+                let urlRange = NSRange(location: urlPartStart, length: urlPartLen)
+                storage.addAttribute(.foregroundColor, value: self.symbolColor, range: urlRange)
+                storage.addAttribute(.font, value: UIFont.systemFont(ofSize: self.baseFontSize - 2), range: urlRange)
+            }
+        }
+    }
+
+    private func mdApplyPattern(
+        _ pattern: String, storage: NSTextStorage, lineRange: NSRange, nsText: NSString,
+        apply: (NSRange, NSRange) -> Void
+    ) {
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return }
+        let matches = regex.matches(in: nsText as String, range: NSRange(location: 0, length: nsText.length))
+        for match in matches {
+            let matchRange = NSRange(location: lineRange.location + match.range.location, length: match.range.length)
+            let innerLocalRange = match.range(at: 1)
+            let innerRange = NSRange(location: lineRange.location + innerLocalRange.location, length: innerLocalRange.length)
+            guard matchRange.location + matchRange.length <= storage.length,
+                  innerRange.location + innerRange.length <= storage.length else { continue }
+            apply(matchRange, innerRange)
+        }
     }
 }
 

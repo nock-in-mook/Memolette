@@ -2,26 +2,126 @@ import SwiftUI
 import UIKit
 
 // Bear風インラインマークダウンエディタ
-// 記号を薄く表示しつつ、見出し・太字・斜体などをリアルタイムでスタイリング
+// GutteredTextViewと同じUIViewコンテナ方式でラップ（SwiftUIのpadding統一）
 struct MarkdownTextEditor: UIViewRepresentable {
     @Binding var text: String
     @Binding var isFocused: Bool
-
-    // 基本フォントサイズ
-    private let baseFontSize: CGFloat = 16
-    // 記号の色（薄いグレー）
-    private let symbolColor = UIColor.systemGray3
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
     }
 
-    func makeUIView(context: Context) -> UITextView {
-        let textView = UITextView()
-        textView.delegate = context.coordinator
+    func makeUIView(context: Context) -> MarkdownContainerView {
+        let container = MarkdownContainerView(text: $text)
+        container.textView.delegate = context.coordinator
+        container.textView.text = text
+        container.applyStyle()
+
+        // カーソル位置の通知を受け取る
+        context.coordinator.cursorObserver = NotificationCenter.default.addObserver(
+            forName: .markdownCursorFromEnd,
+            object: nil,
+            queue: .main
+        ) { [weak container] notification in
+            guard let container, let offset = notification.userInfo?["offset"] as? Int else { return }
+            let len = container.textView.text.count
+            let pos = max(0, len - offset)
+            container.textView.selectedRange = NSRange(location: pos, length: 0)
+        }
+
+        return container
+    }
+
+    func updateUIView(_ container: MarkdownContainerView, context: Context) {
+        guard !context.coordinator.isUpdating else { return }
+
+        // テキスト同期（外部からの変更のみ反映）
+        if container.textView.text != text {
+            context.coordinator.isUpdating = true
+            let selectedRange = container.textView.selectedRange
+            container.textView.text = text
+            container.applyStyle()
+            container.textView.selectedRange = selectedRange
+            context.coordinator.isUpdating = false
+        }
+
+        // フォーカス管理（LineNumberTextEditorと同じパターン）
+        if isFocused && !container.textView.isFirstResponder {
+            DispatchQueue.main.async {
+                container.textView.becomeFirstResponder()
+            }
+        } else if !isFocused && container.textView.isFirstResponder {
+            container.textView.resignFirstResponder()
+        }
+    }
+
+    static func dismantleUIView(_ container: MarkdownContainerView, coordinator: Coordinator) {
+        if let observer = coordinator.cursorObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
+
+    // MARK: - Coordinator
+
+    class Coordinator: NSObject, UITextViewDelegate {
+        var parent: MarkdownTextEditor
+        var isUpdating = false
+        var cursorObserver: Any?
+
+        init(_ parent: MarkdownTextEditor) {
+            self.parent = parent
+        }
+
+        func textViewDidBeginEditing(_ textView: UITextView) {
+            DispatchQueue.main.async { self.parent.isFocused = true }
+        }
+
+        func textViewDidEndEditing(_ textView: UITextView) {
+            DispatchQueue.main.async { self.parent.isFocused = false }
+        }
+
+        func textViewDidChange(_ textView: UITextView) {
+            guard !isUpdating else { return }
+            isUpdating = true
+            parent.text = textView.text
+            (textView.superview as? MarkdownContainerView)?.applyStyle()
+            isUpdating = false
+        }
+
+        // 最大文字数制限
+        func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
+            let current = textView.text ?? ""
+            let newLength = current.count - range.length + text.count
+            return newLength <= MemoInputViewModel.maxCharacterCount
+        }
+
+        deinit {
+            if let observer = cursorObserver {
+                NotificationCenter.default.removeObserver(observer)
+            }
+        }
+    }
+}
+
+// MARK: - UITextViewをラップするコンテナView（GutteredTextViewと同じパターン）
+
+class MarkdownContainerView: UIView {
+    let textView: UITextView
+    private var textBinding: Binding<String>
+
+    // スタイリング定数（GutteredTextViewのデフォルトと同じ17pt）
+    private let baseFontSize: CGFloat = 17
+    private let symbolColor = UIColor.systemGray3
+
+    init(text: Binding<String>) {
+        // GutteredTextViewと同じTextKit 1を使用（描画位置の統一）
+        textView = UITextView(usingTextLayoutManager: false)
+        self.textBinding = text
+        super.init(frame: .zero)
+
         textView.font = UIFont.systemFont(ofSize: baseFontSize)
         textView.backgroundColor = .clear
-        // TextAreaLayout定数を参照（レイアウト統一）
+        // TextAreaLayout定数を参照（GutteredTextViewと完全に同じ設定）
         textView.textContainerInset = UIEdgeInsets(
             top: TextAreaLayout.textInsetTop,
             left: TextAreaLayout.textInsetLeft,
@@ -29,19 +129,20 @@ struct MarkdownTextEditor: UIViewRepresentable {
             right: TextAreaLayout.textInsetRight
         )
         textView.contentInset.bottom = TextAreaLayout.contentInsetBottom
+        textView.textContainer.lineFragmentPadding = TextAreaLayout.lineFragmentPadding
         textView.autocorrectionType = .default
         textView.autocapitalizationType = .none
         textView.isScrollEnabled = true
         textView.alwaysBounceVertical = true
-        textView.text = text
-        applyStyle(to: textView)
+
+        addSubview(textView)
+        backgroundColor = .clear
 
         // キーボード直上にマークダウンツールバーを配置
-        let toolbar = MarkdownToolbar(text: $text)
+        let toolbar = MarkdownToolbar(text: text)
         let hostingController = UIHostingController(rootView: toolbar)
         hostingController.view.frame = CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width, height: 44)
         hostingController.view.backgroundColor = .secondarySystemBackground
-        // AutoLayoutの競合を防止
         hostingController.view.translatesAutoresizingMaskIntoConstraints = false
         let wrapper = UIView(frame: CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width, height: 44))
         wrapper.addSubview(hostingController.view)
@@ -51,50 +152,41 @@ struct MarkdownTextEditor: UIViewRepresentable {
             hostingController.view.topAnchor.constraint(equalTo: wrapper.topAnchor),
             hostingController.view.bottomAnchor.constraint(equalTo: wrapper.bottomAnchor),
         ])
-        context.coordinator.toolbarHostingController = hostingController
         textView.inputAccessoryView = wrapper
 
-        // カーソル位置の通知を受け取る
-        context.coordinator.cursorObserver = NotificationCenter.default.addObserver(
-            forName: .markdownCursorFromEnd,
-            object: nil,
-            queue: .main
-        ) { notification in
-            guard let offset = notification.userInfo?["offset"] as? Int else { return }
-            let len = textView.text.count
-            let pos = max(0, len - offset)
-            textView.selectedRange = NSRange(location: pos, length: 0)
-        }
-
-        return textView
+        // キーボード表示/非表示でcontentInset.bottomを自動調整
+        NotificationCenter.default.addObserver(self, selector: #selector(adjustForKeyboard), name: UIResponder.keyboardWillChangeFrameNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(adjustForKeyboard), name: UIResponder.keyboardWillHideNotification, object: nil)
     }
 
-    func updateUIView(_ textView: UITextView, context: Context) {
-        // Coordinator側からの更新中はスキップ（ループ防止）
-        guard !context.coordinator.isUpdating else { return }
-        // SwiftUI側からの変更（MarkdownToolbar等）を反映
-        if textView.text != text {
-            context.coordinator.isUpdating = true
-            textView.text = text
-            applyStyle(to: textView)
-            context.coordinator.isUpdating = false
+    required init?(coder: NSCoder) { fatalError() }
+
+    @objc private func adjustForKeyboard(_ notification: Notification) {
+        let baseBottom = TextAreaLayout.contentInsetBottom
+        guard let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else {
+            textView.contentInset.bottom = baseBottom
+            return
         }
+        let tvBottom = textView.convert(textView.bounds, to: nil).maxY
+        let kbTop = frame.origin.y
+        let overlap = max(0, tvBottom - kbTop)
+        textView.contentInset.bottom = baseBottom + overlap
+        textView.verticalScrollIndicatorInsets.bottom = overlap
     }
 
-    static func dismantleUIView(_ textView: UITextView, coordinator: Coordinator) {
-        if let observer = coordinator.cursorObserver {
-            NotificationCenter.default.removeObserver(observer)
-        }
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        textView.frame = bounds
     }
 
-    // textStorageを直接操作してスタイリング（テキスト自体は変えない）
-    func applyStyle(to textView: UITextView) {
+    // MARK: - マークダウンスタイリング
+
+    func applyStyle() {
         let storage = textView.textStorage
         let fullText = storage.string
         guard !fullText.isEmpty else { return }
         let fullRange = NSRange(location: 0, length: storage.length)
 
-        // デフォルトスタイルをリセット
         let defaultFont = UIFont.systemFont(ofSize: baseFontSize)
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.lineSpacing = 4
@@ -117,7 +209,6 @@ struct MarkdownTextEditor: UIViewRepresentable {
             let lineLen = (line as NSString).length
             let lineRange = NSRange(location: currentLocation, length: lineLen)
 
-            // ネストリスト（インデント付き箇条書き / チェックボックス）
             let trimmed = line.drop(while: { $0 == " " || $0 == "\t" })
             let indent = line.count - trimmed.count
 
@@ -128,7 +219,7 @@ struct MarkdownTextEditor: UIViewRepresentable {
             } else if line.hasPrefix("# ") {
                 styleHeading(storage, lineRange: lineRange, prefixLength: 2, fontSize: baseFontSize + 8)
             }
-            // 水平線（---、***、___ の3文字以上）
+            // 水平線
             else if lineLen >= 3 && (
                 line.allSatisfy({ $0 == "-" }) ||
                 line.allSatisfy({ $0 == "*" }) ||
@@ -139,10 +230,7 @@ struct MarkdownTextEditor: UIViewRepresentable {
             // チェックボックス（ネスト対応）
             else if String(trimmed).hasPrefix("- [ ] ") || String(trimmed).hasPrefix("- [x] ") || String(trimmed).hasPrefix("- [X] ") {
                 styleSymbol(storage, lineRange: lineRange, symbolLength: indent + 6)
-                // インデント分の左マージン
-                if indent > 0 {
-                    applyIndent(storage, lineRange: lineRange, level: indent)
-                }
+                if indent > 0 { applyIndent(storage, lineRange: lineRange, level: indent) }
                 if String(trimmed).hasPrefix("- [x] ") || String(trimmed).hasPrefix("- [X] ") {
                     let contentRange = NSRange(location: lineRange.location + indent + 6, length: max(0, lineLen - indent - 6))
                     storage.addAttribute(.strikethroughStyle, value: NSUnderlineStyle.single.rawValue, range: contentRange)
@@ -152,17 +240,13 @@ struct MarkdownTextEditor: UIViewRepresentable {
             // 箇条書き（ネスト対応）
             else if String(trimmed).hasPrefix("- ") {
                 styleSymbol(storage, lineRange: lineRange, symbolLength: indent + 2)
-                if indent > 0 {
-                    applyIndent(storage, lineRange: lineRange, level: indent)
-                }
+                if indent > 0 { applyIndent(storage, lineRange: lineRange, level: indent) }
             }
-            // 番号付きリスト（ネスト対応: "1. ", "12. " 等）
+            // 番号付きリスト
             else if let dotRange = matchNumberedList(String(trimmed)) {
                 let prefixLen = indent + dotRange
                 styleSymbol(storage, lineRange: lineRange, symbolLength: prefixLen)
-                if indent > 0 {
-                    applyIndent(storage, lineRange: lineRange, level: indent)
-                }
+                if indent > 0 { applyIndent(storage, lineRange: lineRange, level: indent) }
             }
             else if line.hasPrefix("> ") {
                 styleSymbol(storage, lineRange: lineRange, symbolLength: 2)
@@ -176,14 +260,12 @@ struct MarkdownTextEditor: UIViewRepresentable {
             }
 
             applyInlineStyles(storage, in: lineRange, text: line)
-
             currentLocation += lineLen + 1
         }
 
         storage.endEditing()
 
         // カーソル位置の入力属性をデフォルトに戻す
-        // （記号のグレー色や太字が後続入力に引き継がれるのを防止）
         let defaultParagraph = NSMutableParagraphStyle()
         defaultParagraph.lineSpacing = 4
         textView.typingAttributes = [
@@ -191,6 +273,15 @@ struct MarkdownTextEditor: UIViewRepresentable {
             .foregroundColor: UIColor.label,
             .paragraphStyle: defaultParagraph,
         ]
+
+        // applyStyle後にinsetを再確認（textStorage操作で変わる場合の保険）
+        textView.textContainerInset = UIEdgeInsets(
+            top: TextAreaLayout.textInsetTop,
+            left: TextAreaLayout.textInsetLeft,
+            bottom: TextAreaLayout.textInsetBottom,
+            right: TextAreaLayout.textInsetRight
+        )
+        textView.textContainer.lineFragmentPadding = TextAreaLayout.lineFragmentPadding
     }
 
     private func styleHeading(_ storage: NSTextStorage, lineRange: NSRange, prefixLength: Int, fontSize: CGFloat) {
@@ -205,15 +296,13 @@ struct MarkdownTextEditor: UIViewRepresentable {
         storage.addAttribute(.foregroundColor, value: symbolColor, range: symbolRange)
     }
 
-    // 番号付きリストかどうか判定（"1. " "12. " 等）。マッチしたら接頭辞の長さを返す
     private func matchNumberedList(_ line: String) -> Int? {
         guard let first = line.first, first.isNumber else { return nil }
         for (i, ch) in line.enumerated() {
             if ch == "." {
-                // "数字." の直後がスペースであること
                 let nextIndex = line.index(line.startIndex, offsetBy: i + 1, limitedBy: line.endIndex)
                 if let nextIndex, line[nextIndex] == " " {
-                    return i + 2  // "1. " → 3文字
+                    return i + 2
                 }
                 return nil
             }
@@ -222,11 +311,9 @@ struct MarkdownTextEditor: UIViewRepresentable {
         return nil
     }
 
-    // ネストリストのインデント表現（段落の左余白を増やす）
     private func applyIndent(_ storage: NSTextStorage, lineRange: NSRange, level: Int) {
         let indentParagraph = NSMutableParagraphStyle()
         indentParagraph.lineSpacing = 4
-        // 1インデント（スペース2つ or タブ1つ）= 20pt
         let indentPoints = CGFloat(level) * 10.0
         indentParagraph.headIndent = indentPoints
         indentParagraph.firstLineHeadIndent = indentPoints
@@ -271,16 +358,13 @@ struct MarkdownTextEditor: UIViewRepresentable {
 
         // リンク [テキスト](URL)
         applyPattern("\\[([^\\]]+)\\]\\(([^)]+)\\)", storage: storage, lineRange: lineRange, nsText: nsText) { matchRange, innerRange in
-            // [と] を薄く
             let openBracket = NSRange(location: matchRange.location, length: 1)
             storage.addAttribute(.foregroundColor, value: symbolColor, range: openBracket)
             let closeBracketPos = matchRange.location + 1 + innerRange.length
             let closeBracket = NSRange(location: closeBracketPos, length: 1)
             storage.addAttribute(.foregroundColor, value: symbolColor, range: closeBracket)
-            // テキスト部分をリンク色に
             storage.addAttribute(.foregroundColor, value: UIColor.systemBlue, range: innerRange)
             storage.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, range: innerRange)
-            // (URL) 部分を薄く
             let urlPartStart = closeBracketPos + 1
             let urlPartLen = matchRange.location + matchRange.length - urlPartStart
             if urlPartLen > 0 {
@@ -316,41 +400,6 @@ struct MarkdownTextEditor: UIViewRepresentable {
                   innerRange.location + innerRange.length <= storage.length else { continue }
 
             apply(matchRange, innerRange)
-        }
-    }
-
-    // MARK: - Coordinator
-
-    class Coordinator: NSObject, UITextViewDelegate {
-        var parent: MarkdownTextEditor
-        var isUpdating = false
-        var cursorObserver: Any?
-        var toolbarHostingController: UIHostingController<MarkdownToolbar>?
-
-        init(_ parent: MarkdownTextEditor) {
-            self.parent = parent
-        }
-
-        func textViewDidBeginEditing(_ textView: UITextView) {
-            parent.isFocused = true
-        }
-
-        func textViewDidEndEditing(_ textView: UITextView) {
-            parent.isFocused = false
-        }
-
-        func textViewDidChange(_ textView: UITextView) {
-            guard !isUpdating else { return }
-            isUpdating = true
-            parent.text = textView.text
-            parent.applyStyle(to: textView)
-            isUpdating = false
-        }
-
-        deinit {
-            if let observer = cursorObserver {
-                NotificationCenter.default.removeObserver(observer)
-            }
         }
     }
 }

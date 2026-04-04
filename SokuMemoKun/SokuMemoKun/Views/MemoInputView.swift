@@ -11,21 +11,23 @@ extension Notification.Name {
 enum TextAreaLayout {
     // UITextView内部のinset（GutteredTextView / MarkdownTextEditor共通）
     static let textInsetTop: CGFloat = 16
-    static let textInsetLeft: CGFloat = 6
+    static let textInsetLeft: CGFloat = 10
     static let textInsetBottom: CGFloat = 0
-    static let textInsetRight: CGFloat = 4
+    static let textInsetRight: CGFloat = 2
     static let contentInsetBottom: CGFloat = 40
+    // UITextViewのlineFragmentPadding（0にして余白を最小化）
+    static let lineFragmentPadding: CGFloat = 0
 
     // SwiftUI側のpadding（行番号なしの場合）
-    static let leadingPadding: CGFloat = 10
+    static let leadingPadding: CGFloat = 2
     // SwiftUI側のpadding（行番号ありの場合）
     static let leadingPaddingWithGutter: CGFloat = 0
-    static let trailingPadding: CGFloat = 4
+    static let trailingPadding: CGFloat = 2
 
-    // プレースホルダーのpadding（UITextViewのinset + SwiftUIのpadding を合算）
-    static let placeholderLeading: CGFloat = 21  // leadingPadding(10) + textInsetLeft(6) + lineFragmentPadding(5)
-    static let placeholderLeadingWithGutter: CGFloat = 48
-    static let placeholderTop: CGFloat = 20  // textInsetTop(16) + 微調整(4)
+    // プレースホルダーのpadding（SwiftUI padding + textInsetLeft + lineFragmentPadding の合算）
+    static let placeholderLeading: CGFloat = 10  // テキスト開始位置と揃える微調整
+    static let placeholderLeadingWithGutter: CGFloat = 38  // gutterWidth(36) + textInsetLeft(2)
+    static let placeholderTop: CGFloat = 16  // textInsetTopと同じ
 }
 
 struct MemoInputView: View {
@@ -312,28 +314,24 @@ struct MemoInputView: View {
                                     .frame(maxWidth: .infinity, alignment: .leading)
                             }
                             .padding(.leading, showLineNumbers
-                                ? (TextAreaLayout.leadingPaddingWithGutter + TextAreaLayout.textInsetLeft)
-                                : (TextAreaLayout.leadingPadding + TextAreaLayout.textInsetLeft))
+                                ? TextAreaLayout.placeholderLeadingWithGutter
+                                : TextAreaLayout.placeholderLeading)
                             .padding(.trailing, TextAreaLayout.trailingPadding + TextAreaLayout.textInsetRight)
-                            .padding(.top, TextAreaLayout.textInsetTop)
+                            .padding(.top, TextAreaLayout.placeholderTop)
                             .onTapGesture {
                                 showMarkdownPreview = false
                             }
-                        } else if viewModel.isMarkdown {
-                            // マークダウンモード: Bear風インラインエディタ
-                            MarkdownTextEditor(text: $viewModel.inputText, isFocused: $isTextEditorFocused)
-                                .padding(.leading, showLineNumbers ? TextAreaLayout.leadingPaddingWithGutter : TextAreaLayout.leadingPadding)
-                                .padding(.trailing, TextAreaLayout.trailingPadding)
-                                .padding(.top, 0)
                         } else {
+                            // 通常モード・マークダウンモード共通（同じGutteredTextView）
                             LineNumberTextEditor(
                                 text: $viewModel.inputText,
                                 isFocused: $isTextEditorFocused,
                                 showLineNumbers: showLineNumbers,
-                                initialCursorOffset: contentTapOffset
+                                initialCursorOffset: contentTapOffset,
+                                isMarkdown: viewModel.isMarkdown
                             )
-                            .padding(.leading, showLineNumbers ? 0 : 10)
-                            .padding(.trailing, 4)
+                            .padding(.leading, showLineNumbers ? TextAreaLayout.leadingPaddingWithGutter : TextAreaLayout.leadingPadding)
+                            .padding(.trailing, TextAreaLayout.trailingPadding)
                             .padding(.top, 0)
                         }
                     } else {
@@ -351,8 +349,13 @@ struct MemoInputView: View {
                                         ? .clear
                                         : .label,
                                     // 編集モード（GutteredTextView）と同じインセットで位置を揃える
-                                    insets: UIEdgeInsets(top: 20, left: 6, bottom: 0, right: 4),
-                                    lineFragmentPadding: 5,
+                                    insets: UIEdgeInsets(
+                                        top: TextAreaLayout.placeholderTop,
+                                        left: TextAreaLayout.textInsetLeft,
+                                        bottom: TextAreaLayout.textInsetBottom,
+                                        right: TextAreaLayout.textInsetRight
+                                    ),
+                                    lineFragmentPadding: TextAreaLayout.lineFragmentPadding,
                                     onTapAtOffset: { offset in
                                         contentTapOffset = viewModel.inputText.isEmpty ? nil : offset
                                         isEditing = true
@@ -388,8 +391,8 @@ struct MemoInputView: View {
                             .font(.system(size: 17))
                             .foregroundStyle(.gray.opacity(0.5))
                             .padding(.leading, showLineNumbers ? TextAreaLayout.placeholderLeadingWithGutter : TextAreaLayout.placeholderLeading)
-                            .padding(.trailing, 8)
-                            .padding(.top, 20)
+                            .padding(.trailing, TextAreaLayout.trailingPadding + TextAreaLayout.textInsetRight)
+                            .padding(.top, TextAreaLayout.placeholderTop)
                             .padding(.bottom, 24)
                             .allowsHitTesting(false)
                     }

@@ -576,7 +576,7 @@ struct QuickSortCellView: View {
                             RoundedRectangle(cornerRadius: 4)
                                 .fill(Color.purple.opacity(0.7))
                         )
-                        .offset(x: geo.size.width - (memo.isLocked ? 58 : 28), y: 6)
+                        .offset(x: geo.size.width - (memo.isLocked ? 58 : 28), y: 10)
                 }
 
                 // ロックアイコン（カード右上端）

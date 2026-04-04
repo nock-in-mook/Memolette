@@ -268,13 +268,14 @@ struct MemoInputView: View {
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .lineSpacing(4)
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 20)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 12)
 
                 Text("設定からいつでも戻せます")
                     .font(.system(size: 12))
                     .foregroundStyle(.tertiary)
-                    .padding(.bottom, 16)
+                    .padding(.bottom, 12)
 
                 Divider()
 
@@ -966,8 +967,32 @@ struct MemoInputView: View {
             .disabled(!viewModel.canClear)
 
             // MDラベル + トグルスイッチ
-            if markdownEnabled {
-                // MD有効時: ラベル + ミニトグル
+            if !mdToggleFirstSeen {
+                // 初回: まだ説明を見ていない → タップで説明ダイアログ
+                Button {
+                    withAnimation(.easeOut(duration: 0.2)) { showMdExplainDialog = true }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text("MD")
+                            .font(.system(size: 12, weight: .bold, design: .monospaced))
+                            .foregroundStyle(.secondary)
+
+                        // OFFトグル風の見た目（Capsule）
+                        ZStack(alignment: .leading) {
+                            Capsule()
+                                .fill(Color.gray.opacity(0.3))
+                                .frame(width: 30, height: 18)
+                            Circle()
+                                .fill(Color.white)
+                                .shadow(radius: 1)
+                                .frame(width: 14, height: 14)
+                                .offset(x: 2)
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+            } else if markdownEnabled {
+                // 説明済み＋MD有効: ラベル + ミニトグル
                 HStack(spacing: 4) {
                     Text("MD")
                         .font(.system(size: 12, weight: .bold, design: .monospaced))
@@ -988,22 +1013,6 @@ struct MemoInputView: View {
                     .labelsHidden()
                     .scaleEffect(0.6)
                     .frame(width: 34, height: 22)
-                }
-            } else if !mdToggleFirstSeen {
-                // 初回: まだ説明を見ていない場合はラベル+OFFトグルで表示、タップで説明ダイアログ
-                HStack(spacing: 4) {
-                    Text("MD")
-                        .font(.system(size: 12, weight: .bold, design: .monospaced))
-                        .foregroundStyle(.secondary)
-
-                    Toggle("", isOn: .constant(false))
-                        .labelsHidden()
-                        .scaleEffect(0.6)
-                        .frame(width: 34, height: 22)
-                        .allowsHitTesting(false)
-                }
-                .onTapGesture {
-                    withAnimation(.easeOut(duration: 0.2)) { showMdExplainDialog = true }
                 }
             }
 

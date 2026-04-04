@@ -318,15 +318,21 @@ struct MainView: View {
                 // 設定画面を閉じた時にマスタースイッチの状態を反映
                 if !markdownEnabled {
                     viewModel.isMarkdown = false
+                } else if defaultMarkdown {
+                    // 常時ON
+                    viewModel.isMarkdown = true
                 } else if viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    viewModel.isMarkdown = defaultMarkdown
+                    viewModel.isMarkdown = false
                 }
             }) {
                 SettingsView()
             }
             .onChange(of: defaultMarkdown) { _, newValue in
-                if viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    viewModel.isMarkdown = newValue
+                if newValue {
+                    // 常時ON
+                    viewModel.isMarkdown = true
+                } else if viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    viewModel.isMarkdown = false
                 }
             }
             .onChange(of: markdownEnabled) { _, newValue in
@@ -483,6 +489,8 @@ struct MainView: View {
                 viewModel.restoreLastMemo(context: modelContext)
                 if !markdownEnabled {
                     viewModel.isMarkdown = false
+                } else if defaultMarkdown {
+                    viewModel.isMarkdown = true
                 }
                 // 画面向き初期化
                 updateLandscape()

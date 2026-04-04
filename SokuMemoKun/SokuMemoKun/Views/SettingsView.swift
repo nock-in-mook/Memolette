@@ -58,13 +58,13 @@ struct SettingsView: View {
                 // マークダウン設定
                 Section {
                     Toggle(isOn: $markdownEnabled) {
-                        Label("マークダウンモード", systemImage: "text.quote")
+                        Label("マークダウン切替ボタンを常時表示", systemImage: "text.quote")
                     }
 
                     if markdownEnabled {
                         Toggle(isOn: $defaultMarkdown) {
                             HStack {
-                                Text("新規メモでデフォルトON")
+                                Text("常時ON")
                                     .font(.system(size: 15))
                             }
                         }

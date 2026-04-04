@@ -576,7 +576,7 @@ struct QuickSortCellView: View {
                             RoundedRectangle(cornerRadius: 4)
                                 .fill(Color.purple.opacity(0.7))
                         )
-                        .offset(x: geo.size.width - (memo.isLocked ? 58 : 28), y: 10)
+                        .offset(x: geo.size.width - (memo.isLocked ? 58 : 28), y: 6)
                 }
 
                 // ロックアイコン（カード右上端）
@@ -594,7 +594,7 @@ struct QuickSortCellView: View {
                                 )
                         )
                         .scaleEffect(lockIconFlash ? 1.3 : 1.0)
-                        .offset(x: geo.size.width - 28, y: 6)
+                        .offset(x: geo.size.width - 28, y: 2)
                         .transition(.scale.combined(with: .opacity))
                         .onAppear {
                             // 出現時フラッシュ

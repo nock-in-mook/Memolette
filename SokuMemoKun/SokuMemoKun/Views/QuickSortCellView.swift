@@ -114,6 +114,19 @@ struct QuickSortCellView: View {
                             .animation(.easeInOut(duration: 0.25), value: isExpanded)
                             .animation(.easeInOut(duration: 0.25), value: showDialArea)
 
+                        // 日付情報（入力中・ルーレット・最大化でないときのみ）
+                        if !isContentEditing && !isExpanded && editMode == .none {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("最終更新日：\(formatDateShort(memo.updatedAt))")
+                                Text("作成日：\(formatDateShort(memo.createdAt))")
+                            }
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary.opacity(0.5))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 20)
+                            .padding(.top, 6)
+                        }
+
                         Spacer(minLength: 0)
                     }
             }
@@ -357,9 +370,9 @@ struct QuickSortCellView: View {
 
     // MARK: - 本文確定
 
-    private func formatDate(_ date: Date) -> String {
+    private func formatDateShort(_ date: Date) -> String {
         let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy/MM/dd HH:mm"
+        formatter.dateFormat = "yyyy/MM/dd"
         return formatter.string(from: date)
     }
 
@@ -570,18 +583,6 @@ struct QuickSortCellView: View {
                     )
                 )
                 .shadow(color: .black.opacity(0.1), radius: 8, y: 4)
-
-                // 日付情報（入力中・ルーレット・最大化でないときのみ）
-                if !isContentEditing && !showDialArea && !isExpanded && editMode == .none {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("最終更新日：\(formatDate(memo.updatedAt))")
-                        Text("作成日：\(formatDate(memo.createdAt))")
-                    }
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary.opacity(0.5))
-                    .padding(.horizontal, 12)
-                    .padding(.top, 4)
-                }
 
                 // MDマーク（カード右上、ロックの左隣）
                 if containsMarkdown(memo.content) {

@@ -84,7 +84,16 @@ struct LineNumberTextEditor: UIViewRepresentable {
             if let gutter = tv.superview as? GutteredTextView {
                 gutter.refreshLineNumbers()
                 if gutter.isMarkdown {
+                    // スタイル適用後にtypingAttributesをリセット（入力中の文字色がグレーになるのを防止）
                     gutter.applyMarkdownStyle()
+                    let defaultFont = UIFont.systemFont(ofSize: gutter.baseFontSize)
+                    let paragraph = NSMutableParagraphStyle()
+                    paragraph.lineSpacing = 4
+                    tv.typingAttributes = [
+                        .font: defaultFont,
+                        .foregroundColor: UIColor.label,
+                        .paragraphStyle: paragraph,
+                    ]
                 }
             }
         }
@@ -124,7 +133,7 @@ class GutteredTextView: UIView {
 
     /// マークダウンモード（動的に切り替え可能）
     private(set) var isMarkdown: Bool
-    private let baseFontSize: CGFloat
+    let baseFontSize: CGFloat
     private let symbolColor = UIColor.systemGray3
 
     var showGutter: Bool = false {

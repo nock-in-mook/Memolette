@@ -25,7 +25,7 @@ enum TextAreaLayout {
     static let trailingPadding: CGFloat = 2
 
     // プレースホルダーのオフセット（カーソル位置から+3pt右にずらす）
-    private static let placeholderOffset: CGFloat = 3
+    private static let placeholderOffset: CGFloat = 1
     // プレースホルダーのpadding（カーソル位置 = leadingPadding + textInsetLeft + lineFragmentPadding に +3pt）
     static let placeholderLeading: CGFloat = leadingPadding + textInsetLeft + lineFragmentPadding + placeholderOffset
     static let placeholderLeadingWithGutter: CGFloat = leadingPaddingWithGutter + 36 + textInsetLeft + lineFragmentPadding + placeholderOffset  // 36 = gutterWidth

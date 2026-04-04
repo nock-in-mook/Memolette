@@ -1069,8 +1069,8 @@ struct MemoInputView: View {
                         }.font(.system(size: 14))
                             .foregroundStyle(.blue)
                     }
-                } else if viewModel.editingMemo != nil {
-                    // 既存メモ、キーボード閉じてる → メモを閉じる
+                } else if viewModel.editingMemo != nil || !viewModel.titleText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    // 既存メモ or タイトル入力あり、キーボード閉じてる → メモを閉じる
                     Button {
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                         viewModel.clearInput()

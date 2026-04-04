@@ -2219,14 +2219,8 @@ struct SearchMemoCardView: View {
                 }
                 if memo.isLocked {
                     Image(systemName: "lock.fill")
-                        .font(.system(size: 8, weight: .semibold))
-                        .foregroundStyle(.orange)
-                        .padding(4)
-                        .background(
-                            Circle()
-                                .fill(Color.orange.opacity(0.1))
-                                .overlay(Circle().stroke(Color.orange.opacity(0.4), lineWidth: 1))
-                        )
+                        .font(.system(size: 8))
+                        .foregroundStyle(.orange.opacity(0.6))
                 }
             }
             .padding(3)
@@ -2370,14 +2364,8 @@ struct MemoCardView: View {
                 }
                 if memo.isLocked {
                     Image(systemName: "lock.fill")
-                        .font(.system(size: 7, weight: .semibold))
-                        .foregroundStyle(.orange)
-                        .padding(3)
-                        .background(
-                            Circle()
-                                .fill(Color.orange.opacity(0.1))
-                                .overlay(Circle().stroke(Color.orange.opacity(0.4), lineWidth: 0.5))
-                        )
+                        .font(.system(size: 7))
+                        .foregroundStyle(.orange.opacity(0.6))
                 }
             }
             .padding(.horizontal, 6)
@@ -2425,14 +2413,8 @@ struct MemoCardView: View {
                     }
                     if memo.isLocked {
                         Image(systemName: "lock.fill")
-                            .font(.system(size: 8, weight: .semibold))
-                            .foregroundStyle(.orange)
-                            .padding(4)
-                            .background(
-                                Circle()
-                                    .fill(Color.orange.opacity(0.1))
-                                    .overlay(Circle().stroke(Color.orange.opacity(0.4), lineWidth: 1))
-                            )
+                            .font(.system(size: 8))
+                            .foregroundStyle(.orange.opacity(0.6))
                     }
                 }
                 .padding(3)
@@ -2569,14 +2551,8 @@ struct TodoCardView: View {
                 }
                 if todoList.isLocked {
                     Image(systemName: "lock.fill")
-                        .font(.system(size: 7, weight: .semibold))
-                        .foregroundStyle(.orange)
-                        .padding(3)
-                        .background(
-                            Circle()
-                                .fill(Color.orange.opacity(0.1))
-                                .overlay(Circle().stroke(Color.orange.opacity(0.4), lineWidth: 0.5))
-                        )
+                        .font(.system(size: 7))
+                        .foregroundStyle(.orange.opacity(0.6))
                 }
             }
             .padding(.horizontal, 6)
@@ -2622,14 +2598,8 @@ struct TodoCardView: View {
                     }
                     if todoList.isLocked {
                         Image(systemName: "lock.fill")
-                            .font(.system(size: 8, weight: .semibold))
-                            .foregroundStyle(.orange)
-                            .padding(4)
-                            .background(
-                                Circle()
-                                    .fill(Color.orange.opacity(0.1))
-                                    .overlay(Circle().stroke(Color.orange.opacity(0.4), lineWidth: 1))
-                            )
+                            .font(.system(size: 8))
+                            .foregroundStyle(.orange.opacity(0.6))
                     }
                 }
                 .padding(3)

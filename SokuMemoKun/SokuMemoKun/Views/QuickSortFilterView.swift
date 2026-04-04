@@ -176,6 +176,8 @@ struct QuickSortFilterView: View {
                                             Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                                                 .font(.system(size: 18))
                                                 .foregroundStyle(isSelected ? .green : .secondary.opacity(0.3))
+                                                .contentTransition(.identity)
+                                                .animation(nil, value: isSelected)
                                         }
                                         .contentShape(Rectangle())
                                         .padding(.horizontal, 20)
@@ -295,6 +297,8 @@ struct QuickSortFilterView: View {
                 Image(systemName: isOn.wrappedValue ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 22))
                     .foregroundStyle(isOn.wrappedValue ? .orange : .secondary.opacity(0.4))
+                    .contentTransition(.identity)
+                    .animation(nil, value: isOn.wrappedValue)
             }
             .contentShape(Rectangle())
             .padding(.horizontal, 16)

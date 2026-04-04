@@ -79,7 +79,7 @@ struct QuickSortCellView: View {
             // ルーレット表示中は本文拡大しない（共存禁止）
             // キーボード表示中はカードがキーボードに被らないよう制限
             let normalH = geo.size.height * 0.35
-            let expandedH = geo.size.height * 0.80
+            let expandedH = geo.size.height * 0.77
             // isExpanded最優先、ルーレット中は通常サイズ、編集モードでも自動拡大しない
             // カードサイズはキーボードで変えない（GutteredTextView内でcontentInset調整）
             let dialH = geo.size.height * 0.30
@@ -357,6 +357,12 @@ struct QuickSortCellView: View {
 
     // MARK: - 本文確定
 
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy/MM/dd HH:mm"
+        return formatter.string(from: date)
+    }
+
     private func commitContent() {
         if editingContent != memo.content {
             memo.content = editingContent
@@ -564,6 +570,18 @@ struct QuickSortCellView: View {
                     )
                 )
                 .shadow(color: .black.opacity(0.1), radius: 8, y: 4)
+
+                // 日付情報（入力中・ルーレット・最大化でないときのみ）
+                if !isContentEditing && !showDialArea && !isExpanded && editMode == .none {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("最終更新日：\(formatDate(memo.updatedAt))")
+                        Text("作成日：\(formatDate(memo.createdAt))")
+                    }
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary.opacity(0.5))
+                    .padding(.horizontal, 12)
+                    .padding(.top, 4)
+                }
 
                 // MDマーク（カード右上、ロックの左隣）
                 if containsMarkdown(memo.content) {
